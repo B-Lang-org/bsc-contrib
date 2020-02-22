@@ -1,0 +1,17 @@
+// Copyright (c) 2020 Bluespec, Inc. All rights reserved.
+//
+// SPDX-License-Identifier: BSD-3-Clause
+
+`include "TLM.defines"
+
+
+`define AXI_PRM_STD 4,  \
+                    32, \
+		    32, \
+		    10, \
+		    AxiCustom
+
+`define AXI_RR_STD TLMRequest#(`AXI_PRM_STD), \
+		   TLMResponse#(`AXI_PRM_STD) \
+
+`define AXI_XTR_STD `AXI_RR_STD, `AXI_PRM_STD

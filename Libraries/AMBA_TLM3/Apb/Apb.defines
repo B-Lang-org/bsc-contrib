@@ -1,0 +1,17 @@
+// Copyright (c) 2020 Bluespec, Inc. All rights reserved.
+//
+// SPDX-License-Identifier: BSD-3-Clause
+
+`include "TLM.defines"
+
+
+`define APB_PRM_STD 4,  \
+                    32, \
+		    32, \
+		    10, \
+                    Bit#(0)
+
+`define APB_RR_STD TLMRequest#(`APB_PRM_STD), \
+		   TLMResponse#(`APB_PRM_STD) \
+
+`define APB_XTR_STD `APB_RR_STD, `APB_PRM_STD
