@@ -2,12 +2,11 @@
 
 # Bluespec Compiler - Contributed libraries and utilities
 
+---
+
 </div>
 
-[bsc repository]: https://github.com/B-Lang-org/bsc) 
-[Bluespec Inc]: https://bluespec.com
-
-This is place to share libraries and utilities that don't belong
+This is a place to share libraries and utilities that don't belong
 (or don't yet belong) in the core [bsc repository].
 
 Files can be installed in the same way as in the [bsc repository]:
@@ -25,6 +24,9 @@ when explicitly added on the command line:
 Until a more sophisicated library system is available, this repository
 can be used for sharing useful code.  Contributions are welcome.
 No guarantees are made about the quality of this code.
+
+[bsc repository]: https://github.com/B-Lang-org/bsc
+[Bluespec Inc]: https://bluespec.com
 
 ---
 
