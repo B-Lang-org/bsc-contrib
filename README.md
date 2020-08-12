@@ -24,8 +24,10 @@ when explicitly added on the command line:
 Until a more sophisicated library system is available, this repository
 can be used for sharing useful code.  Contributions are welcome.
 No guarantees are made about the quality of this code.
+Tests for some libraries can be found in the [bsc-testsuite] respository.
 
 [bsc repository]: https://github.com/B-Lang-org/bsc
+[bsc-testsuite]: https://github.com/B-Lang-org/bsc-testsuite
 [Bluespec Inc]: https://bluespec.com
 
 ---
