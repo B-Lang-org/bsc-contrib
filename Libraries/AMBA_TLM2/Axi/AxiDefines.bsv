@@ -574,11 +574,6 @@ function AxiByteEn#(`TLM_PRM) getAxiByteEn (RequestDescriptor#(`TLM_PRM) tlm_des
    AxiByteEn#(`TLM_PRM) all_zeros = unpack(0);
    let tlm_byte_enable = tlm_descriptor.byte_enable;
    let out = tlm_byte_enable;
-   if (tlm_byte_enable == all_zeros || tlm_byte_enable == all_ones) 
-      begin
-	 let mask = ~(all_ones << ({1'b0,tlm_descriptor.burst_size} + 1));
-	 out = (mask << addr);
-      end
    return out;
 endfunction
 
