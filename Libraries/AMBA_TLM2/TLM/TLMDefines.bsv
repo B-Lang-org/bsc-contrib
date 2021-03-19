@@ -278,7 +278,7 @@ function RequestDescriptor#(`TLM_TYPES) incrTLMAddr(RequestDescriptor#(`TLM_TYPE
    return desc;
 endfunction
 
-function Bit#(n) countLSBZeros (Bit#(n) value);
+function Bit#(TLog#(TAdd#(n,1))) countLSBZeros (Bit#(n) value);
    Vector#(n, Bool) vector_value = unpack(value);
    let pos = findIndex(id, vector_value);
    case (pos) matches
