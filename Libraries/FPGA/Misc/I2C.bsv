@@ -5,7 +5,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //  Filename      : I2C.bsv
-//  Description   : I2C master read/write controller 
+//  Description   : I2C master read/write controller
 ////////////////////////////////////////////////////////////////////////////////
 package I2C;
 
@@ -82,23 +82,23 @@ interface I2CController#(numeric type n);
    (* prefix = "" *)
    interface I2C_Pins i2c;
    interface Vector#(n, Server#(I2CRequest, I2CResponse)) users;
-endinterface      
+endinterface
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-/// 
+///
 /// Implementation
-/// 
+///
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 module mkI2C#(Integer prescale)(I2C);
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Design Elements
    ////////////////////////////////////////////////////////////////////////////////
    FIFOF#(I2CRequest)              fRequest            <- mkSizedFIFOF(16);
    FIFO#(I2CResponse)              fResponse           <- mkSizedFIFO(16);
-   
+
    Reg#(Bit#(1))                   rSCL                <- mkReg(1);
    Reg#(Bit#(1))                   rSDA                <- mkReg(1);
    Reg#(Bool)                      rOutEn              <- mkReg(True);
@@ -108,14 +108,14 @@ module mkI2C#(Integer prescale)(I2C);
    Counter#(32)                    rPrescaler          <- mkCounter(fromInteger(prescale));
    PulseWire                       pwTick              <- mkPulseWire;
    Counter#(10)                    rPlayIndex          <- mkCounter(0);
-   
+
    Reg#(State)                     rState              <- mkReg(Idle);
    Reg#(Bool)                      rWrite              <- mkRegU;
    Reg#(Bit#(7))                   rSlaveAddr          <- mkRegU;
    Reg#(Bit#(8))                   rAddress            <- mkRegU;
    Reg#(Bit#(8))                   rWriteData          <- mkRegU;
    Vector#(8, Reg#(Bit#(1)))       vrReadData          <- replicateM(mkRegU);
-   
+
    Bit#(7)                         slv                  = rSlaveAddr;
    Bit#(3)                         s6                   = duplicate(slv[6]);
    Bit#(3)                         s5                   = duplicate(slv[5]);
@@ -124,7 +124,7 @@ module mkI2C#(Integer prescale)(I2C);
    Bit#(3)                         s2                   = duplicate(slv[2]);
    Bit#(3)                         s1                   = duplicate(slv[1]);
    Bit#(3)                         s0                   = duplicate(slv[0]);
-   
+
    Bit#(8)                         adr                  = rAddress;
    Bit#(3)                         a7                   = duplicate(adr[7]);
    Bit#(3)                         a6                   = duplicate(adr[6]);
@@ -134,7 +134,7 @@ module mkI2C#(Integer prescale)(I2C);
    Bit#(3)                         a2                   = duplicate(adr[2]);
    Bit#(3)                         a1                   = duplicate(adr[1]);
    Bit#(3)                         a0                   = duplicate(adr[0]);
-   
+
    Bit#(8)                         dat                  = rWriteData;
    Bit#(3)                         d7                   = duplicate(dat[7]);
    Bit#(3)                         d6                   = duplicate(dat[6]);
@@ -144,7 +144,7 @@ module mkI2C#(Integer prescale)(I2C);
    Bit#(3)                         d2                   = duplicate(dat[2]);
    Bit#(3)                         d1                   = duplicate(dat[1]);
    Bit#(3)                         d0                   = duplicate(dat[0]);
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Reads
    ////////////////////////////////////////////////////////////////////////////////
@@ -154,7 +154,7 @@ module mkI2C#(Integer prescale)(I2C);
    let wRdData   = { 3'b100, s6,     s5,     s4,     s3,     s2,     s1,     s0,     3'b000, 3'b000, a7,     a6,     a5,     a4,     a3,     a2,     a1,     a0,     3'b000, 3'b001, 3'b110, s6,     s5,     s4,     s3,     s2,     s1,     s0,     3'b111, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b001 };
    let wRdOutEn  = { 3'b111, 3'b111, 3'b111, 3'b111, 3'b111, 3'b111, 3'b111, 3'b111, 3'b111, 3'b000, 3'b111, 3'b111, 3'b111, 3'b111, 3'b111, 3'b111, 3'b111, 3'b111, 3'b000, 3'b111, 3'b111, 3'b111, 3'b111, 3'b111, 3'b111, 3'b111, 3'b111, 3'b111, 3'b111, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b111 };
    let wRdSample = { 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b000, 3'b010, 3'b010, 3'b010, 3'b010, 3'b010, 3'b010, 3'b010, 3'b010, 3'b000, 3'b000 };
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Writes
    ////////////////////////////////////////////////////////////////////////////////
@@ -177,7 +177,7 @@ module mkI2C#(Integer prescale)(I2C);
       rPrescaler.setF(fromInteger(prescale));
       pwTick.send;
    endrule
-   
+
    rule start(rState == Idle);
       let request = fRequest.first; fRequest.deq;
       rSlaveAddr <= request.slaveaddr;
@@ -190,7 +190,7 @@ module mkI2C#(Integer prescale)(I2C);
       else
 	 rPlayIndex.setF(fromInteger(readLength-1));
    endrule
-   
+
    rule running_write(rState == Running && rWrite && pwTick && rPlayIndex.value > 0);
       rPlayIndex.down;
       rOutEn     <= wWrOutEn[rPlayIndex.value] == 1;
@@ -205,7 +205,7 @@ module mkI2C#(Integer prescale)(I2C);
       rSCL       <= wRdClock[rPlayIndex.value];
       if (wRdSample[rPlayIndex.value] == 1) writeVReg(vrReadData, shiftInAt0(readVReg(vrReadData), tSDA));
    endrule
-            
+
    rule done_write(rState == Running && rWrite && pwTick && rPlayIndex.value == 0);
       rPlayIndex.down;
       rOutEn     <= wWrOutEn[rPlayIndex.value] == 1;
@@ -221,7 +221,7 @@ module mkI2C#(Integer prescale)(I2C);
       rState     <= Idle;
       fResponse.enq(unpack(pack(readVReg(vrReadData))));
    endrule
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Interface Connections / Methods
    ////////////////////////////////////////////////////////////////////////////////
@@ -229,12 +229,12 @@ module mkI2C#(Integer prescale)(I2C);
       interface sda    = tSDA.io;
       interface scl    = tSCL.io;
    endinterface
-  
+
    interface Server user;
       interface request  = toPut(fRequest);
       interface response = toGet(fResponse);
    endinterface
- 
+
 endmodule
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,24 +248,24 @@ module mkI2CController(I2CController#(n))
    provisos(
 	    Add#(1, _1, n)
 	    );
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Design Elements
    ////////////////////////////////////////////////////////////////////////////////
    Arbitrate#(n)                             mRoundRobin         <- mkRoundRobin;
    Arbiter#(n, I2CRequest, I2CResponse)      mArbiter            <- mkArbiter(mRoundRobin, 16);
    I2C                                       mI2C                <- mkI2C(1024);
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Submodule Connections
    ////////////////////////////////////////////////////////////////////////////////
    mkConnection(mArbiter.master, mI2C.user);
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Interface Connections / Methods
    ////////////////////////////////////////////////////////////////////////////////
    interface i2c   = mI2C.i2c;
-   interface users = mArbiter.users;   
+   interface users = mArbiter.users;
 endmodule
 
 endpackage: I2C

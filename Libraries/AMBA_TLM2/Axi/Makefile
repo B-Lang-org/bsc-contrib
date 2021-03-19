@@ -9,7 +9,7 @@ LIBNAME=AMBA_TLM2/Axi
 include ../../common.mk
 
 # Requires files in Bus and TLM
-BSCFLAGS += -p +:$(BUILDDIR)/../../Bus:$(BUILDDIR)/../TLM
+BSCFLAGS += -p $(BUILDDIR)/../../Bus:$(BUILDDIR)/../TLM:+
 
 INSTALLFILES = \
 	Axi.defines \

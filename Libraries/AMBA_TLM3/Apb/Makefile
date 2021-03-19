@@ -9,7 +9,7 @@ LIBNAME=AMBA_TLM3/Apb
 include ../../common.mk
 
 # Requires files in Bus and TLM3
-BSCFLAGS += -p +:$(BUILDDIR)/../../Bus:$(BUILDDIR)/../TLM3
+BSCFLAGS += -p $(BUILDDIR)/../../Bus:$(BUILDDIR)/../TLM3:+
 
 INSTALLFILES = \
 	Apb.defines \

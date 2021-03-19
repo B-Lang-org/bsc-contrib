@@ -357,7 +357,7 @@ typedef enum {
    VF1      = 65,
    VF2      = 66,
    VF3      = 67,
-   VF4      = 68, 
+   VF4      = 68,
    VF5      = 69,
    LAST     = 255
    } TargetFunction deriving (Bits, Eq);
@@ -390,8 +390,8 @@ typedef enum {
    START_ADDRESS           = 5,
    INVALID_TAG             = 6,
    FUNCTION_LEVEL_RESET    = 8,
-   TIMEOUT                 = 9   
-} ErrorCode deriving (Bits, Eq);	      
+   TIMEOUT                 = 9
+} ErrorCode deriving (Bits, Eq);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Packet Types

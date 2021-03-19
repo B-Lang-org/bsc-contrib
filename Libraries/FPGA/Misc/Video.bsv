@@ -135,7 +135,7 @@ VideoTiming vesa1600x1200x60 = VideoTiming {
        }
 };
 
-// 
+//
 VideoTiming hdtv_480p = VideoTiming {
    h: SyncDescriptor {
       active:  720,
@@ -188,7 +188,7 @@ typedef struct {
    Bit#(1)     hsync;
    Bit#(1)     dataen;
    d           data;
-} PixelData#(type d) deriving (Bits, Eq);		
+} PixelData#(type d) deriving (Bits, Eq);
 
 typedef PixelData#(Bit#(0)) SyncData;
 
@@ -227,12 +227,12 @@ module mkCSAdder(CSAdder);
    Reg#(SyncData)             rSync_S2       <- mkReg(unpack(0));
    Reg#(Bit#(25))             rData0_S2      <- mkReg(unpack(0));
    Reg#(Bit#(25))             rData1_S2      <- mkReg(unpack(0));
-   
+
    Reg#(SyncData)             rSync_S3       <- mkReg(unpack(0));
    Reg#(Bit#(25))             rData_S3       <- mkReg(unpack(0));
-   
+
    Reg#(PixelData#(Bit#(8)))  rData_S4       <- mkReg(unpack(0));
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Rules
    ////////////////////////////////////////////////////////////////////////////////
@@ -242,13 +242,13 @@ module mkCSAdder(CSAdder);
       rData0_S2 <= rData_S1.a + rData_S1.b;
       rData1_S2 <= rData_S1.c + rData_S1.d;
    endrule
-   
+
    (* fire_when_enabled, no_implicit_conditions *)
    rule stage2_to_stage3;
       rSync_S3 <= rSync_S2;
       rData_S3 <= rData0_S2 + rData1_S2;
    endrule
-   
+
    (* fire_when_enabled, no_implicit_conditions *)
    rule stage3_to_stage4;
       let data = PixelData {
@@ -257,14 +257,14 @@ module mkCSAdder(CSAdder);
 	 dataen: rSync_S3.dataen,
 	 data:   ?
 	 };
-      
-      if (msb(rData_S3) == 1) 
+
+      if (msb(rData_S3) == 1)
 	 data.data = 0;
       else if (rData_S3[23:20] == 0)
 	 data.data = rData_S3[19:12];
       else
 	 data.data = '1;
-      
+
       rData_S4 <= data;
    endrule
 
@@ -282,13 +282,13 @@ module mkCSAdder(CSAdder);
 	    };
       endmethod
    endinterface
-   
+
    interface Get out;
       method ActionValue#(PixelData#(Bit#(8))) get();
 	 return rData_S4;
       endmethod
    endinterface
-   
+
 endmodule: mkCSAdder
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -315,7 +315,7 @@ endinterface
 ////////////////////////////////////////////////////////////////////////////////
 (* synthesize *)
 module mkCSMult(CSMult);
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Design Elements
    ////////////////////////////////////////////////////////////////////////////////
@@ -326,18 +326,18 @@ module mkCSMult(CSMult);
    Reg#(Bit#(24))             rData2_S1      <- mkReg(unpack(0));
    Reg#(Bit#(24))             rData3_S1      <- mkReg(unpack(0));
    Reg#(Bit#(24))             rData4_S1      <- mkReg(unpack(0));
-   
+
    Reg#(Bit#(1))              rSign_S2       <- mkReg(unpack(0));
    Reg#(SyncData)             rSync_S2       <- mkReg(unpack(0));
    Reg#(Bit#(24))             rData0_S2      <- mkReg(unpack(0));
    Reg#(Bit#(24))             rData1_S2      <- mkReg(unpack(0));
-   
+
    Reg#(Bit#(1))              rSign_S3       <- mkReg(unpack(0));
    Reg#(SyncData)             rSync_S3       <- mkReg(unpack(0));
    Reg#(Bit#(24))             rData_S3       <- mkReg(unpack(0));
-   
+
    Reg#(PixelData#(Bit#(25))) rData_S4       <- mkReg(unpack(0));
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Rules
    ////////////////////////////////////////////////////////////////////////////////
@@ -348,14 +348,14 @@ module mkCSMult(CSMult);
       rData0_S2 <= rData0_S1 + rData1_S1 + rData4_S1;
       rData1_S2 <= rData2_S1 + rData3_S1;
    endrule
-   
+
    (* fire_when_enabled, no_implicit_conditions *)
    rule stage2_to_stage3;
       rSign_S3 <= rSign_S2;
       rSync_S3 <= rSync_S2;
       rData_S3 <= rData0_S2 + rData1_S2;
    endrule
-   
+
    (* fire_when_enabled, no_implicit_conditions *)
    rule stage3_to_stage4;
       let data = PixelData {
@@ -364,12 +364,12 @@ module mkCSMult(CSMult);
 	 dataen: rSync_S3.dataen,
 	 data:   ?
 	 };
-      
+
       data.data = { rSign_S3, rData_S3 };
-      
+
       rData_S4 <= data;
    endrule
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Interface Connections / Methods
    ////////////////////////////////////////////////////////////////////////////////
@@ -377,15 +377,15 @@ module mkCSMult(CSMult);
       method Action put(CSMultIn x);
 	 Bit#(17) x_a_1p_17 = { 1'b0, x.a[15:0] };
 	 Bit#(17) x_a_1n_17 = ~x_a_1p_17 + 1;
-	 
+
 	 Bit#(24) x_a_1p = pack(signExtend(x_a_1p_17));
 	 Bit#(24) x_a_1n = pack(signExtend(x_a_1n_17));
 	 Bit#(24) x_a_2p = pack(signExtend({x_a_1p_17,1'b0}));
 	 Bit#(24) x_a_2n = pack(signExtend({x_a_1n_17,1'b0}));
-   
+
 	 rSign_S1 <= msb(x.a);
 	 rSync_S1 <= x.sync;
-	 case(x.b[1:0]) 
+	 case(x.b[1:0])
 	    2'b11:   rData0_S1 <= x_a_1n;
 	    2'b10:   rData0_S1 <= x_a_2n;
 	    2'b01:   rData0_S1 <= x_a_1p;
@@ -424,13 +424,13 @@ module mkCSMult(CSMult);
 	 endcase
       endmethod
    endinterface
-   
+
    interface Get out;
       method ActionValue#(PixelData#(Bit#(25))) get();
 	 return rData_S4;
       endmethod
    endinterface
-   
+
 endmodule: mkCSMult
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -442,7 +442,7 @@ interface CSMacc;
    interface Get#(PixelData#(Bit#(8)))  out;
 endinterface
 
-(* synthesize *)      
+(* synthesize *)
 module mkCSMacc#(Bit#(17) c1, Bit#(17) c2, Bit#(17) c3, Bit#(25) c4)(CSMacc);
 
    ////////////////////////////////////////////////////////////////////////////////
@@ -452,10 +452,10 @@ module mkCSMacc#(Bit#(17) c1, Bit#(17) c2, Bit#(17) c3, Bit#(25) c4)(CSMacc);
    let                        i_mul_c2       <- mkCSMult;
    let                        i_mul_c3       <- mkCSMult;
    let                        i_add_c4       <- mkCSAdder;
-   
+
    Reg#(PixelData#(Bit#(24))) rPixelIn       <- mkReg(unpack(0));
    Reg#(PixelData#(Bit#(8)))  rPixelOut      <- mkReg(unpack(0));
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Rules
    ////////////////////////////////////////////////////////////////////////////////
@@ -498,13 +498,13 @@ module mkCSMacc#(Bit#(17) c1, Bit#(17) c2, Bit#(17) c3, Bit#(25) c4)(CSMacc);
 	 };
       i_mul_c3.in.put(t3);
    endrule
-   
+
    (* fire_when_enabled, no_implicit_conditions *)
    rule drive_adder;
       let data1 <- i_mul_c1.out.get;
       let data2 <- i_mul_c2.out.get;
       let data3 <- i_mul_c3.out.get;
-      
+
       let in = CSAdderIn {
 	 a:    data1.data,
 	 b:    data2.data,
@@ -519,13 +519,13 @@ module mkCSMacc#(Bit#(17) c1, Bit#(17) c2, Bit#(17) c3, Bit#(25) c4)(CSMacc);
 	 };
       i_add_c4.in.put(in);
    endrule
-   
+
    (* fire_when_enabled, no_implicit_conditions *)
    rule capture_results;
       let data <- i_add_c4.out.get;
       rPixelOut <= data;
    endrule
-      
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Interface Connections / Methods
    ////////////////////////////////////////////////////////////////////////////////
@@ -534,7 +534,7 @@ module mkCSMacc#(Bit#(17) c1, Bit#(17) c2, Bit#(17) c3, Bit#(25) c4)(CSMacc);
 	 rPixelIn <= x;
       endmethod
    endinterface
-   
+
    interface Get out;
       method ActionValue#(PixelData#(Bit#(8))) get();
 	 return rPixelOut;
@@ -551,7 +551,7 @@ interface RGB888toCrYCbY422;
    interface Put#(PixelData#(RGB888))    rgb;
    interface Get#(PixelData#(CrYCbY422)) crycby;
 endinterface
-   
+
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 ///
@@ -561,11 +561,11 @@ endinterface
 ////////////////////////////////////////////////////////////////////////////////
 (* synthesize *)
 module mkRGB888toCrYCbY422(RGB888toCrYCbY422);
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Design Elements
    ////////////////////////////////////////////////////////////////////////////////
-   Reg#(PixelData#(RGB888))   rPixelIn       <- mkReg(unpack(0));   
+   Reg#(PixelData#(RGB888))   rPixelIn       <- mkReg(unpack(0));
    let                        i_csc_Cr       <- mkCSMacc(17'h00707, 17'h105e2, 17'h10124, 25'h0080000);
    let                        i_csc_Y        <- mkCSMacc(17'h0041b, 17'h00810, 17'h00191, 25'h0010000);
    let                        i_csc_Cb       <- mkCSMacc(17'h1025f, 17'h104a7, 17'h00707, 25'h0080000);
@@ -574,13 +574,13 @@ module mkRGB888toCrYCbY422(RGB888toCrYCbY422);
    Reg#(PixelData#(Bit#(24))) rData_S1       <- mkReg(unpack(0));
    Reg#(PixelData#(Bit#(24))) rData_S2       <- mkReg(unpack(0));
    Reg#(PixelData#(Bit#(24))) rData_S3       <- mkReg(unpack(0));
-   
+
    Reg#(Bool)                 rCrCbSel       <- mkReg(True);
    Reg#(Bit#(8))              rCr            <- mkReg(0);
    Reg#(Bit#(8))              rCb            <- mkReg(0);
 
    Reg#(PixelData#(CrYCbY422)) rPixelOut     <- mkReg(unpack(0));
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Rules
    ////////////////////////////////////////////////////////////////////////////////
@@ -592,18 +592,18 @@ module mkRGB888toCrYCbY422(RGB888toCrYCbY422);
 	 dataen: rPixelIn.dataen,
 	 data:   pack(rPixelIn.data)
 	 };
-      
+
       i_csc_Cr.in.put(x);
       i_csc_Y.in.put(x);
       i_csc_Cb.in.put(x);
    endrule
-   
+
    (* fire_when_enabled, no_implicit_conditions *)
    rule assemble_intermediate_pixel;
       let out_cr <- i_csc_Cr.out.get;
       let out_y  <- i_csc_Y.out.get;
       let out_cb <- i_csc_Cb.out.get;
-      
+
       rPixelInter <= PixelData {
 	 vsync:   out_cr.vsync,
 	 hsync:   out_cr.hsync,
@@ -611,7 +611,7 @@ module mkRGB888toCrYCbY422(RGB888toCrYCbY422);
 	 data:    CrYCb444 { cr: out_cr.data, y: out_y.data, cb: out_cb.data }
 	 };
    endrule
-   
+
    (* fire_when_enabled, no_implicit_conditions *)
    rule pipeline_subsample_pixels;
       rData_S1  <= PixelData {
@@ -623,7 +623,7 @@ module mkRGB888toCrYCbY422(RGB888toCrYCbY422);
       rData_S2  <= rData_S1;
       rData_S3  <= rData_S2;
    endrule
-   
+
    (* fire_when_enabled, no_implicit_conditions *)
    rule compute_subsample_cr_cb;
       Bit#(10) cr = { 2'd0, rData_S1.data[23:16] } + { 2'd0, rData_S3.data[23:16] } + { 1'd0, rData_S2.data[23:16], 1'd0 };
@@ -637,7 +637,7 @@ module mkRGB888toCrYCbY422(RGB888toCrYCbY422);
 	 rCrCbSel <= True;
       end
    endrule
-   
+
    (* fire_when_enabled, no_implicit_conditions *)
    rule assemble_output_pixel;
       PixelData#(CrYCbY422) d = PixelData {
@@ -647,16 +647,16 @@ module mkRGB888toCrYCbY422(RGB888toCrYCbY422);
 	 data:   ?
 	 };
 
-      if (rData_S3.dataen == 0) 
+      if (rData_S3.dataen == 0)
 	 d.data = CrYCbY422 { c: 0, y: 0 };
       else if (rCrCbSel)
 	 d.data = CrYCbY422 { c: rCr, y: rData_S3.data[15:8] };
       else
 	 d.data = CrYCbY422 { c: rCb, y: rData_S3.data[15:8] };
-      
-      rPixelOut <= d;      
+
+      rPixelOut <= d;
    endrule
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Interface Connections / Methods
    ////////////////////////////////////////////////////////////////////////////////
@@ -665,7 +665,7 @@ module mkRGB888toCrYCbY422(RGB888toCrYCbY422);
 	 rPixelIn <= x;
       endmethod
    endinterface
-   
+
    interface Get crycby;
       method ActionValue#(PixelData#(CrYCbY422)) get();
 	 return rPixelOut;
@@ -693,22 +693,22 @@ endinterface
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 module mkSyncGenerator#(SyncDescriptor info)(SyncGenerator);
-   
+
    let maxActive = fromInteger(info.active - 1);
    let maxFPorch = fromInteger(info.fporch - 1);
    let maxSync   = fromInteger(info.sync   - 1);
    let maxBPorch = fromInteger(info.bporch - 1);
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Design Elements
    ////////////////////////////////////////////////////////////////////////////////
    Counter#(16)                    rCounter            <- mkCounter(0);
-  
+
    PulseWire                       pwTick              <- mkPulseWire;
    PulseWire                       pwPreSyncEdge       <- mkPulseWire;
    Reg#(Bool)                      rSyncOut            <- mkReg(True);
    Reg#(Bool)                      rActive             <- mkReg(False);
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Rules
    ////////////////////////////////////////////////////////////////////////////////
@@ -719,41 +719,41 @@ module mkSyncGenerator#(SyncDescriptor info)(SyncGenerator);
 	 while(rCounter.value < maxFPorch) action
 	    rCounter.up;
 	 endaction
-	 
+
 	 action
 	    rCounter.clear;
 	    pwPreSyncEdge.send;
 	    rSyncOut   <= False;
 	    rActive    <= False;
 	 endaction
-	 
+
 	 // Sync Pulse
 	 while(rCounter.value < maxSync) action
 	    rCounter.up;
 	 endaction
-	 
+
 	 action
 	    rCounter.clear;
 	    rSyncOut  <= True;
 	    rActive   <= False;
 	 endaction
-	 
+
 	 // Back Porch
 	 while(rCounter.value < maxBPorch) action
 	    rCounter.up;
 	 endaction
-	 
+
 	 action
 	    rCounter.clear;
 	    rSyncOut  <= True;
 	    rActive   <= True;
 	 endaction
-	 
+
 	 // Active
 	 while(rCounter.value < maxActive) action
 	    rCounter.up;
 	 endaction
-	 
+
 	 action
 	    rCounter.clear;
 	    rSyncOut  <= True;
@@ -761,13 +761,13 @@ module mkSyncGenerator#(SyncDescriptor info)(SyncGenerator);
 	 endaction
       endseq
    endseq;
-   
+
    FSM                             fsmSyncGen          <- mkFSMWithPred(machine, pwTick);
-   
+
    rule start_sync_generator(fsmSyncGen.done);
       fsmSyncGen.start;
    endrule
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Interface Connections / Methods
    ////////////////////////////////////////////////////////////////////////////////
@@ -776,7 +776,7 @@ module mkSyncGenerator#(SyncDescriptor info)(SyncGenerator);
    method Bool   out_n    = rSyncOut;
    method Bool   out      = !rSyncOut;
    method Bool   active   = rActive;
-   
+
 endmodule: mkSyncGenerator
 
 endpackage: Video

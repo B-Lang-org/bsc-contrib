@@ -87,7 +87,7 @@ module mkTLMCBusAdapterToReadWrite#(function Bit#(caddr_size) mapTLMAddr(Bit#(ad
 	    DefaultValue#(TLMResponse#(`TLM_PRM)),
 	    Bits#(TLMRequest#(`TLM_PRM),  s0),
 	    Bits#(resp_t, s1));
-   
+
 //	    Add#(ignore, caddr_size, addr_size));
 
    // Wire is OK since CBus never blocks request.

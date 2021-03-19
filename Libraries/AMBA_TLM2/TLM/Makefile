@@ -9,7 +9,7 @@ LIBNAME=AMBA_TLM2/TLM
 include ../../common.mk
 
 # TLM2 requires files in Bus
-BSCFLAGS += -p +:$(BUILDDIR)/../../Bus
+BSCFLAGS += -p $(BUILDDIR)/../../Bus:+
 
 INSTALLFILES = \
 	ram_init.text \

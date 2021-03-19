@@ -158,7 +158,7 @@ import "BVI" altpll_wrapper =
 module vMkAltPLL#(AlteraClockGenParams params)(AlteraClockGen);
    default_clock inclk(CLKIN);
    default_reset rst(RESET_N);
-   
+
    parameter bandwidth_type          = "AUTO";
    parameter clk0_divide_by          = params.clk0_div;
    parameter clk0_duty_cycle         = params.clk0_duty_cycle;
@@ -262,9 +262,9 @@ module vMkAltPLL#(AlteraClockGenParams params)(AlteraClockGen);
    output_clock clkout7(CLK7);
    output_clock clkout8(CLK8);
    output_clock clkout9(CLK9);
-   
+
    method LOCKED locked() clocked_by(no_clock) reset_by(no_reset);
-      
+
    schedule (locked) CF (locked);
 endmodule
 
@@ -281,17 +281,17 @@ import "BVI" alt_inbuf_diff =
 module vMkAltInbufDiff#(Clock clk_p, Clock clk_n)(ClockGenIfc);
    default_clock no_clock;
    default_reset no_reset;
-   
+
    parameter io_standard = "LVDS";
-   
+
    input_clock clk_p(i)    = clk_p;
    input_clock clk_n(ibar) = clk_n;
-   
+
    output_clock gen_clk(o);
-   
+
    path(i, o);
    path(ib, o);
-   
+
    same_family(clk_p, gen_clk);
 endmodule: vMkAltInbufDiff
 
@@ -307,15 +307,15 @@ import "BVI" alt_outbuf_diff =
 module vMkAltOutbufDiff(DiffClock);
    default_clock clk(i);
    default_reset no_reset;
-   
+
    parameter io_standard = "LVDS";
-   
+
    output_clock p(o);
    output_clock n(obar);
-   
+
    path(i, o);
    path(i, obar);
-   
+
    same_family(clk, p);
 endmodule: vMkAltOutbufDiff
 
@@ -335,7 +335,7 @@ typedef struct {
    String      lpm_type;
    String      oe_reg;
    String      power_up_high;
-} ODDRParams deriving (Bits, Eq);		
+} ODDRParams deriving (Bits, Eq);
 
 instance DefaultValue#(ODDRParams);
    defaultValue = ODDRParams {
@@ -359,10 +359,10 @@ endinterface: ODDR
 import "BVI" altddio_out =
 module vMkAltDdioOut#(ODDRParams params)(ODDR#(a))
    provisos(Bits#(a, sa));
-   
+
    default_clock clk(outclock);
    default_reset no_reset;
-   
+
    parameter extend_oe_disable      = params.extend_oe_disable;
    parameter intended_device_family = params.intended_device_family;
    parameter invert_output          = params.invert_output;
@@ -371,22 +371,22 @@ module vMkAltDdioOut#(ODDRParams params)(ODDR#(a))
    parameter oe_reg                 = params.oe_reg;
    parameter power_up_high          = params.power_up_high;
    parameter width                  = valueOf(sa);
-   
+
    port      aclr       = Bit#(1)'(0);
    port      aset       = Bit#(1)'(0);
    port      oe         = Bit#(1)'(1);
    port      outclocken = Bit#(1)'(1);
    port      sclr       = Bit#(1)'(0);
    port      sset       = Bit#(1)'(0);
-      
+
    method    dataout          q;
    method                     data_hi(datain_h) enable((*inhigh*)en0);
    method                     data_lo(datain_l) enable((*inhigh*)en1);
-   
+
    schedule (q)       SB (data_hi, data_lo);
    schedule (data_hi) CF (data_lo);
    schedule (data_hi) C  (data_hi);
-   schedule (data_lo) C  (data_lo);   
+   schedule (data_lo) C  (data_lo);
    schedule (q)       CF (q);
 endmodule: vMkAltDdioOut
 
@@ -400,7 +400,7 @@ import "BVI" altddio_out =
 module vMkAltDdioClockOut#(ODDRParams params, Bit#(1) data_hi, Bit#(1) data_lo)(ClockGenIfc);
    default_clock clk(outclock);
    default_reset no_reset;
-   
+
    parameter extend_oe_disable      = params.extend_oe_disable;
    parameter intended_device_family = params.intended_device_family;
    parameter invert_output          = params.invert_output;
@@ -409,7 +409,7 @@ module vMkAltDdioClockOut#(ODDRParams params, Bit#(1) data_hi, Bit#(1) data_lo)(
    parameter oe_reg                 = params.oe_reg;
    parameter power_up_high          = params.power_up_high;
    parameter width                  = 1;
-   
+
    port      aclr       = Bit#(1)'(0);
    port      aset       = Bit#(1)'(0);
    port      oe         = Bit#(1)'(1);
@@ -418,7 +418,7 @@ module vMkAltDdioClockOut#(ODDRParams params, Bit#(1) data_hi, Bit#(1) data_lo)(
    port      sset       = Bit#(1)'(0);
    port      datain_h   = data_hi;
    port      datain_l   = data_lo;
-   
+
    output_clock gen_clk(dataout);
 endmodule: vMkAltDdioClockOut
 
@@ -436,7 +436,7 @@ typedef struct {
    String      lpm_hint;
    String      lpm_type;
    String      power_up_high;
-} IDDRParams deriving (Bits, Eq);		
+} IDDRParams deriving (Bits, Eq);
 
 instance DefaultValue#(IDDRParams);
    defaultValue = IDDRParams {
@@ -458,30 +458,30 @@ endinterface: IDDR
 import "BVI" altddio_in =
 module vMkAltDdioIn#(IDDRParams params)(IDDR#(a))
    provisos(Bits#(a, sa));
-   
+
    default_clock clk(inclock);
    default_reset no_reset;
-   
+
    parameter intended_device_family = params.intended_device_family;
    parameter invert_input_clocks    = params.invert_input_clocks;
    parameter lpm_hint               = params.lpm_hint;
    parameter lpm_type               = params.lpm_type;
    parameter power_up_high          = params.power_up_high;
    parameter width                  = valueOf(sa);
-   
+
    port      aclr       = Bit#(1)'(0);
    port      aset       = Bit#(1)'(0);
    port      inclocken  = Bit#(1)'(1);
    port      sclr       = Bit#(1)'(0);
    port      sset       = Bit#(1)'(0);
-      
+
    method    dataout_h        q_hi;
    method    dataout_l        q_lo;
    method                     data_in(datain) enable((*inhigh*)en0);
-   
+
    schedule (q_hi, q_lo)   SB  (data_in);
    schedule (data_in)      C   (data_in);
-   schedule (q_hi, q_lo)   CF  (q_hi, q_lo);   
+   schedule (q_hi, q_lo)   CF  (q_hi, q_lo);
 endmodule: vMkAltDdioIn
 
 module mkAlteraIDDR#(IDDRParams params)(IDDR#(a))
@@ -571,12 +571,12 @@ module vMkAltLvdsTx#(LVDSTX params)(SERDES_TX#(a, b))
 	    , Mul#(sb, x, sa)
 	    , Div#(sa, x, sb)
 	    );
-   
+
    let reset <- invertCurrentReset;
-   
+
    default_clock clk(tx_inclock);
    default_reset rst(pll_areset) = reset;
-   
+
    parameter number_of_channels     	 = valueOf(sb);
    parameter deserialization_factor 	 = valueOf(x);
    parameter registered_input       	 = params.registered_input;
@@ -608,16 +608,16 @@ module vMkAltLvdsTx#(LVDSTX params)(SERDES_TX#(a, b))
    parameter lpm_type  			 = params.lpm_type;
    parameter lpm_hint  			 = params.lpm_hint;
    parameter clk_src_is_pll              = params.clk_src_is_pll;
-   
+
    port      sync_inclock     = Bit#(1)'(0);
    port      tx_data_reset    = Bit#(1)'(0);
    port      tx_enable        = Bit#(1)'(1);
    port      tx_pll_enable    = Bit#(1)'(1);
    port      tx_syncclock     = Bit#(1)'(0);
-   
+
    output_clock coreclk(tx_coreclock);
    output_clock outclk(tx_outclock);
-   
+
    method             pins_in(tx_in) enable((*inhigh*)en0) reset_by(no_reset);
    method tx_locked   locked() reset_by(no_reset);
    method tx_out      pins_out() reset_by(no_reset);
@@ -627,27 +627,27 @@ endmodule: vMkAltLvdsTx
 
 module mkAlteraLVDS_TX#(LVDSTX params)(SERDES_TX#(in,out))
    provisos(  Bits#(in, sa)
-	    , Bits#(out, sb) 
+	    , Bits#(out, sb)
 	    , Mul#(sb, factor, sa)
 	    , Div#(sa, factor, sb)
 	    );
-   
-   if (valueOf(factor) > 10) 
+
+   if (valueOf(factor) > 10)
       error("The deserialization factor must be between 1 and 10, inclusive.");
-   
-   if (valueOf(sb) > 45 && 
+
+   if (valueOf(sb) > 45 &&
        valueOf(sb) != 48 &&
        valueOf(sb) != 52 &&
-       valueOf(sb) != 56 && 
+       valueOf(sb) != 56 &&
        valueOf(sb) != 60 &&
        valueOf(sb) != 64)
       error("Invalid number of output channels.  Legal values are [1,45],48,52,56,60,64.");
-      
-   
+
+
    let _m <- vMkAltLvdsTx(params);
    return _m;
 endmodule
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// LVDS SERDES Receiver
 ////////////////////////////////////////////////////////////////////////////////
@@ -694,7 +694,7 @@ typedef struct {
    String           data_rate;
    String           lpm_hint;
    String           lpm_type;
-} LVDSRX deriving (Bits, Eq);		
+} LVDSRX deriving (Bits, Eq);
 
 instance DefaultValue#(LVDSRX);
    defaultValue = LVDSRX {
@@ -739,7 +739,7 @@ instance DefaultValue#(LVDSRX);
       enable_clock_pin_mode:                "UNUSED",
       data_rate:                            "UNUSED",
       lpm_hint:                             "UNUSED",
-      lpm_type:                             "altlvds_rx" 
+      lpm_type:                             "altlvds_rx"
       };
 endinstance
 
@@ -758,12 +758,12 @@ module vMkAltLvdsRx#(LVDSRX params)(SERDES_RX#(a, b))
 	    , Mul#(sa, x, sb)
 	    , Div#(sb, x, sa)
 	    );
-   
+
    let reset <- invertCurrentReset;
-   
+
    default_clock clk(rx_inclock);
    default_reset rst(pll_areset) = reset;
-   
+
    parameter number_of_channels                   = valueOf(sa);
    parameter deserialization_factor               = valueOf(x);
    parameter registered_output 			  = params.registered_output;
@@ -810,7 +810,7 @@ module vMkAltLvdsRx#(LVDSRX params)(SERDES_RX#(a, b))
    parameter data_rate                            = params.data_rate;
    parameter lpm_hint                             = params.lpm_hint;
    parameter lpm_type                             = params.lpm_type;
-   
+
    port      dpa_pll_recal        = Bit#(1)'(0);
    port      pll_phasedone        = Bit#(1)'(1);
    port      rx_coreclk           = Bit#(sa)'('1);
@@ -828,14 +828,14 @@ module vMkAltLvdsRx#(LVDSRX params)(SERDES_RX#(a, b))
    port      rx_readclock         = Bit#(1)'(0);
    port      rx_reset             = Bit#(sa)'(0);
    port      rx_syncclock         = Bit#(1)'(0);
-   
+
    output_clock outclk(rx_outclock);
    method             pins_in(rx_in) enable((*inhigh*)en0) reset_by(no_reset);
    method rx_locked   locked() reset_by(no_reset);
    method rx_out      pins_out() reset_by(no_reset);
-      
+
    schedule (pins_in, locked, pins_out) CF (pins_in, locked, pins_out);
-      
+
 endmodule: vMkAltLvdsRx
 
 module mkAlteraLVDS_RX#(LVDSRX params)(SERDES_RX#(in,out))
@@ -844,14 +844,14 @@ module mkAlteraLVDS_RX#(LVDSRX params)(SERDES_RX#(in,out))
 	    , Mul#(sa, factor, sb)
 	    , Div#(sb, factor, sa)
 	    );
-   
-   if (valueOf(factor) > 10) 
+
+   if (valueOf(factor) > 10)
       error("The deserialization factor must be between 1 and 10, inclusive.");
-   
-   if (valueOf(sa) > 45 && 
+
+   if (valueOf(sa) > 45 &&
        valueOf(sa) != 48 &&
        valueOf(sa) != 52 &&
-       valueOf(sa) != 56 && 
+       valueOf(sa) != 56 &&
        valueOf(sa) != 60 &&
        valueOf(sa) != 64)
       error("Invalid number of input channels.  Legal values are [1,45],48,52,56,60,64.");
