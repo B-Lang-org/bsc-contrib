@@ -550,7 +550,7 @@ function RequestDescriptor#(`TLM_PRM) incrTLMAddr(RequestDescriptor#(`TLM_PRM) d
    return desc;
 endfunction
 
-function Bit#(n) countLSBZeros (Bit#(n) value);
+function Bit#(TLog#(TAdd#(n,1))) countLSBZeros (Bit#(n) value);
    Vector#(n, Bool) vector_value = unpack(value);
    let pos = findIndex(id, vector_value);
    case (pos) matches
