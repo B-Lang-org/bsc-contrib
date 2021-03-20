@@ -1,0 +1,242 @@
+name: CI
+
+# Trigger the workflow on push or pull request
+on: [ push, pull_request ]
+
+jobs:
+  build-check:
+    name: "Check: code cleanliness"
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Check tabs and whitespace
+        shell: bash
+        run: ".github/workflows/check_whitespace.sh"
+
+  build-ubuntu:
+    strategy:
+      matrix:
+        os: [ ubuntu-16.04, ubuntu-18.04, ubuntu-20.04 ]
+      fail-fast: false
+    name: "Build ${{ matrix.os }}"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Download bsc
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ".github/workflows/get_latest_bsc.sh ${{ matrix.os }} "
+
+      - name: Build
+        run: |
+          export PATH=$PWD/../bsc/inst/bin:$PATH
+          make
+          tar czf inst.tar.gz inst
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v1
+        with:
+          name: ${{ matrix.os }} build
+          path: inst.tar.gz
+
+  build-macOS:
+    strategy:
+      matrix:
+        os: [ macos-10.15 ]
+    name: "Build ${{ matrix.os }}"
+    runs-on: ${{ matrix. os }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Download bsc
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ".github/workflows/get_latest_bsc.sh 'macos-10.13+' "
+
+      - name: Build
+        run: |
+          export PATH=$PWD/../bsc/inst/bin:$PATH
+          make
+          tar czf inst.tar.gz inst
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v1
+        with:
+          name: ${{ matrix.os }} build
+          path: inst.tar.gz
+
+  test-ubuntu:
+    strategy:
+      matrix:
+        os: [ ubuntu-16.04, ubuntu-18.04, ubuntu-20.04 ]
+      fail-fast: false
+    name: "Test ${{ matrix.os }}"
+    runs-on: ${{ matrix.os }}
+    needs: build-ubuntu
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install dependencies
+        shell: bash
+        run: "sudo .github/workflows/install_dependencies_testsuite_ubuntu.sh"
+
+      # Can this be cached from the previous job?
+      - name: Download bsc
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ".github/workflows/get_latest_bsc.sh ${{ matrix.os }} "
+
+      # This ought to be downloaded at the same version as BSC?
+      - name: Download testsuite
+        run: |
+          git clone https://github.com/B-Lang-org/bsc ../bsc-testsuite
+
+      - name: Download bsc-contrib
+        uses: actions/download-artifact@v2
+        with:
+          name: ${{ matrix.os }} build
+      - name: Install bsc-contrib
+        run: "tar xzf inst.tar.gz"
+
+      # Restore previous ccache cache of compiled object files. Use a SHA
+      # in the key so that a new cache file is generated after every
+      # successful build, and have the restore-key use the most recent.
+      - name: CCache cache files
+        uses: actions/cache@v2
+        with:
+          path: ${{ GITHUB.WORKSPACE }}/ccache
+          key: ${{ matrix.os }}-ccache-${{ github.sha }}
+          restore-keys: |
+            ${{ matrix.os }}-ccache-
+
+      - name: Run testsuite
+        env:
+          CCACHE_DIR: ${{ GITHUB.WORKSPACE }}/ccache
+        run: |
+          # Use ccache to avoid recompiling generated .cxx every run.
+          ccache --zero-stats --max-size 500M
+          export PATH=/usr/lib/ccache:$PATH
+
+          REL=$(lsb_release -rs | tr -d .)
+          if [ $REL -ge 1804 ]; then
+              export LINKER=lld
+          else
+              export LINKER=gold
+          fi
+          export LDFLAGS="-Wl,-fuse-ld=$LINKER"
+
+          # Always archive logs, even if make fails (and terminates this script
+          # because it's invoked with :set -eo pipefile)
+          trap ./archive_logs.sh EXIT
+
+          # Use -O0 for significantly faster C++ compiles (which more
+          # than make up for slower simulations), and gold as the C++
+          # linked for a moderate build-time speedup over ld.bfd.
+          export CXXFLAGS="-O0"
+
+          cd ../bsc-testsuite/testsuite
+
+          export TEST_RELEASE=$PWD/../../bsc/inst
+          export TEST_CONTRIB=$PWD/../../bsc-contrib/inst
+
+          # Insert additional directories as necessary
+          make -C bsc.bsv_examples/AzureIP localcheck
+
+      # Show ccache stats so we can see what the hit-rate is like.
+      - name: CCache stats
+        env:
+          CCACHE_DIR: ${{ GITHUB.WORKSPACE }}/ccache
+        run: ccache --show-stats
+
+      # Save test logs on failure so we can diagnose
+      - name: Archive test logs
+        if: failure()
+        uses: actions/upload-artifact@v1
+        with:
+          name: logs-${{ matrix.os }}
+          path: ../bsc-testsuite/testsuite/logs.tar.gz
+
+  test-macOS:
+    strategy:
+      matrix:
+        os: [ macos-10.15 ]
+    name: "Test ${{ matrix.os }}"
+    runs-on: ${{ matrix. os }}
+    needs: build-macos
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install dependencies
+        shell: bash
+        run: ".github/workflows/install_dependencies_testsuite_macos.sh"
+
+      # Can this be cached from the previous job?
+      - name: Download bsc
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ".github/workflows/get_latest_bsc.sh 'macos-10.13+' "
+
+      # This ought to be downloaded at the same version as BSC?
+      - name: Download testsuite
+        run: |
+          git clone https://github.com/B-Lang-org/bsc ../bsc-testsuite
+
+      - name: Download bsc-contrib
+        uses: actions/download-artifact@v2
+        with:
+          name: ${{ matrix.os }} build
+      - name: Install bsc
+        run: "tar xzf inst.tar.gz"
+
+      # Restore previous ccache cache of compiled object files. Use a SHA
+      # in the key so that a new cache file is generated after every
+      # successful build, and have the restore-key use the most recent.
+      - name: CCache cache files
+        uses: actions/cache@v2
+        with:
+          path: ${{ GITHUB.WORKSPACE }}/ccache
+          key: ${{ matrix.os }}-ccache-${{ github.sha }}
+          restore-keys: |
+            ${{ matrix.os }}-ccache-
+
+      - name: Run testsuite
+        env:
+          CCACHE_DIR: ${{ GITHUB.WORKSPACE }}/ccache
+        run: |
+          # Use ccache to avoid recompiling generated .cxx every run.
+          ccache --zero-stats --max-size 500M
+          export PATH=$(brew --prefix)/opt/local/ccache/libexec:$PATH
+
+          # Always archive logs, even if make fails (and terminates this script
+          # because it's invoked with :set -eo pipefile)
+          trap ./archive_logs.sh EXIT
+
+          # Use -O0 for significantly faster C++ compiles (which more
+          # than make up for slower simulations).
+          export CXXFLAGS="-O0"
+
+          cd ../bsc-testsuite/testsuite
+
+          export TEST_RELEASE=$PWD/../../bsc/inst
+          export TEST_CONTRIB=$PWD/../../bsc-contrib/inst
+
+          # Insert additional directories as necessary
+          make -C bsc.bsv_examples/AzureIP localcheck
+
+      # Show ccache stats so we can see what the hit-rate is like.
+      - name: CCache stats
+        env:
+          CCACHE_DIR: ${{ GITHUB.WORKSPACE }}/ccache
+        run: ccache --show-stats
+
+      # Save test logs on failure so we can diagnose
+      - name: Archive test logs
+        if: failure()
+        uses: actions/upload-artifact@v2
+        with:
+          name: test-logs-${{ matrix.os }}
+          path: ../bsc-testsuite/testsuite/logs.tar.gz
