@@ -36,24 +36,24 @@ interface AHBMasterIFC#(`TLM_PRM_DCL);
 endinterface
 
 module mkAHBMasterIFC (AHBMasterIFC#(`TLM_PRM));
-   
+
    Reg#(AHBRequest#(`TLM_PRM))   request_reg  <- mkReg(unpack(0));
    Wire#(AHBResponse#(`TLM_PRM)) response     <- mkWire;
-   
+
    let request = request_reg;
-   
+
    Wire#(AHBResp)              response_wire <- mkBypassWire;
    Wire#(AHBData#(`TLM_PRM)) rdata_wire    <- mkBypassWire;
    Wire#(Bool)                 ready_wire    <- mkBypassWire;
-   
+
    Wire#(AHBWrite)             command_wire  <- mkWire;
-   
+
    FIFOF#(Maybe#(AHBWrite))    fifo_op       <- mkDFIFOF(Invalid);
-   
+
    rule every (ready_wire);
       let command = fifo_op.first;
       fifo_op.deq;
-      let value = AHBResponse {data:    rdata_wire, 
+      let value = AHBResponse {data:    rdata_wire,
 			       status:  response_wire,
 			       command: command};
       response <= value;
@@ -62,20 +62,20 @@ module mkAHBMasterIFC (AHBMasterIFC#(`TLM_PRM));
    rule do_enq;
       fifo_op.enq(tagged Valid command_wire);
    endrule
-   
-   rule pre_enq ((request.ctrl.transfer != IDLE) && 
+
+   rule pre_enq ((request.ctrl.transfer != IDLE) &&
 		 (request.ctrl.transfer != BUSY) &&
 		 ready_wire);
       command_wire <= request.ctrl.command;
    endrule
-   
+
    interface GetPut obj;
       method ActionValue#(AHBResponse#(`TLM_PRM)) getput (AHBRequest#(`TLM_PRM) value) if (ready_wire);
 	 request_reg <= value;
 	 return(response);
       endmethod
    endinterface
-   
+
    interface AHBMaster bus;
       // Outputs
       method hADDR  = request.ctrl.addr;
@@ -91,8 +91,8 @@ module mkAHBMasterIFC (AHBMasterIFC#(`TLM_PRM));
       method hREADY = ready_wire._write;
       method hRESP  = response_wire._write;
    endinterface
-   
-      
+
+
 endmodule
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,13 +117,13 @@ module mkAHBMaster (AHBMasterXActor#(`TLM_RR, `TLM_PRM))
 	    );
 
    Wire#(AHBResponse#(`TLM_PRM))              response_wire <- mkWire;
-   
+
    FIFOF#(req_t)                              fifo_rx    <- mkBypassFIFOF;
    FIFOLevelIfc#(resp_t, 5)                   fifo_tx    <- mkBypassFIFOLevel;
-   
+
    Reg#(Bool)                                 req_wire   <- mkDWire(False);
    Reg#(Bool)                                 req_reg    <- mkReg(False);
-   
+
    Reg#(Maybe#(RequestDescriptor#(`TLM_PRM))) descriptor <- mkReg(Invalid);
    Reg#(TLMUInt#(`TLM_PRM))                   count      <- mkReg(0);
    Wire#(Bool)                                lock_wire  <- mkDWire(False);
@@ -131,19 +131,19 @@ module mkAHBMaster (AHBMasterXActor#(`TLM_RR, `TLM_PRM))
    Reg#(Bool)                                 grant_reg  <- mkReg(False);
    Wire#(Bool)                                stall_wire <- mkDWire(False);
    Reg#(Maybe#(AHBData#(`TLM_PRM)))           data_reg   <- mkReg(Invalid);
-   
+
    let ifc <- mkAHBMasterIFC;
-   
+
    rule update_grant;
       grant_reg <= grant_wire;
    endrule
-   
+
    rule send_request (fifo_rx.notEmpty && !grant_reg && !(count == 0 && stall_wire));
       req_wire <= True;
    endrule
-   
+
    let rx_first = toTLMRequest(fifo_rx.first);
-   
+
    (* preempts = "(start_op, write_op, read_op), (idle_op, stall_op)" *)
    rule start_op (rx_first matches tagged Descriptor .d &&&
 		  count == 0 &&&
@@ -165,7 +165,7 @@ module mkAHBMaster (AHBMasterXActor#(`TLM_RR, `TLM_PRM))
       if (assertLock(d)) lock_wire <= True;
       req_reg <= (ctrl.burst == INCR) && (remaining > 0);
    endrule
-   
+
    rule write_op (rx_first matches tagged Data .d &&&
 		  descriptor matches tagged Valid .des &&&
 		  des.command == WRITE &&&
@@ -188,7 +188,7 @@ module mkAHBMaster (AHBMasterXActor#(`TLM_RR, `TLM_PRM))
       if (ctrl.transfer == NONSEQ) lock_wire <= True;
       req_reg <= (ctrl.burst == INCR) && (remaining > 0);
    endrule
-   
+
    rule read_op (descriptor matches tagged Valid .des &&&
 		 des.command == READ &&&
 		 count > 0 &&&
@@ -209,7 +209,7 @@ module mkAHBMaster (AHBMasterXActor#(`TLM_RR, `TLM_PRM))
       if (ctrl.transfer == NONSEQ) lock_wire <= True;
       req_reg <= (ctrl.burst == INCR) && (remaining > 0);
    endrule
-   
+
    rule idle_op (data_reg matches tagged Valid .x);
       let ctrl = unpack(0);
       if (descriptor matches tagged Valid .des) ctrl = getAHBCtrl(des);
@@ -224,7 +224,7 @@ module mkAHBMaster (AHBMasterXActor#(`TLM_RR, `TLM_PRM))
       response_wire <= response;
       req_reg <= (ctrl.transfer == IDLE) ? False : req_reg;
    endrule
-   
+
    rule stall_op (data_reg matches tagged Invalid);
       let ctrl = unpack(0);
       if (descriptor matches tagged Valid .des) ctrl = getAHBCtrl(des);
@@ -236,7 +236,7 @@ module mkAHBMaster (AHBMasterXActor#(`TLM_RR, `TLM_PRM))
       response_wire <= response;
       req_reg <= (ctrl.transfer == IDLE) ? False : req_reg;
    endrule
-   
+
    rule grab_valid_response (response_wire.command matches tagged Valid .c);
       let value = response_wire;
       TLMResponse#(`TLM_PRM) response = defaultValue;
@@ -246,21 +246,21 @@ module mkAHBMaster (AHBMasterXActor#(`TLM_RR, `TLM_PRM))
       response.custom  = fromAHB(value.status);
       fifo_tx.enq(fromTLMResponse(response));
    endrule
-   
+
    rule grab_invalid_response (response_wire.command matches tagged Invalid);
       dummyAction;
    endrule
-   
+
 
    rule stall (fifo_tx.isGreaterThan(1) && (count != 1));
       stall_wire <= True;
    endrule
- 
+
    interface TLMRecvIFC tlm;
       interface Get tx = toGet(fifo_tx);
       interface Put rx = toPut(fifo_rx);
    endinterface
-   
+
    interface AHBFabricMaster fabric;
       interface AHBMaster bus = ifc.bus;
       interface AHBMasterArbiter arbiter;
@@ -269,8 +269,8 @@ module mkAHBMaster (AHBMasterXActor#(`TLM_RR, `TLM_PRM))
 	 method hGRANT  = grant_wire._write;
       endinterface
    endinterface
-   
-   
+
+
 endmodule
 
 function Bool assertLock (RequestDescriptor#(`TLM_PRM) desc);

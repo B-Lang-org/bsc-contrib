@@ -3,7 +3,7 @@
 // With modifications by Colin Rothwell, University of Cambridge
 //
 // SPDX-License-Identifier: BSD-3-Clause
-// 
+//
 ////////////////////////////////////////////////////////////////////////////////
 //  Filename      : NonPipelinedMath.bsv
 //  Description   : Non-pipelined versions of modules in the Math library,
@@ -27,7 +27,7 @@ export mkNonPipelinedSquareRooter;
 // n+3 cycle latency
 module mkNonPipelinedDivider
         #(Integer s)
-        (Server#(Tuple2#(UInt#(m),UInt#(n)), 
+        (Server#(Tuple2#(UInt#(m),UInt#(n)),
                  Tuple2#(UInt#(n),UInt#(n))))
    provisos(
       Mul#(2, n, m),

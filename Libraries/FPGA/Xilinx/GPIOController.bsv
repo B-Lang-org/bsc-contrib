@@ -5,7 +5,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //  Filename      : GPIOController.bsv
-//  Description   : 
+//  Description   :
 ////////////////////////////////////////////////////////////////////////////////
 package GPIOController;
 
@@ -28,7 +28,7 @@ export getGPIO, gpioToInout, inoutToGPIO;
 ////////////////////////////////////////////////////////////////////////////////
 /// Interfaces
 ////////////////////////////////////////////////////////////////////////////////
-// This is the interface that connects external to the FPGA 
+// This is the interface that connects external to the FPGA
 interface GPIO;
    interface Inout#(Bit#(1))   gpio;
 endinterface
@@ -55,7 +55,7 @@ interface GPIOController;
    (* prefix = "" *)
    interface GPIO ifc;
 endinterface: GPIOController
-     
+
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 ///
@@ -64,16 +64,16 @@ endinterface: GPIOController
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 module mkGPIOController#(parameter Bool bInitOutEn)(GPIOController);
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Design Elements
    ////////////////////////////////////////////////////////////////////////////////
    Reg#(Bit#(1))        rDataOut     <- mkReg(0);
    Reg#(Bool)           rOutEn       <- mkReg(bInitOutEn);
    Reg#(Bit#(1))        rDataIn      <- mkRegU;
-   
+
    TriState#(Bit#(1))   tGPIO        <- mkTriState(rOutEn, rDataOut);
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Rules
    ////////////////////////////////////////////////////////////////////////////////
@@ -81,30 +81,30 @@ module mkGPIOController#(parameter Bool bInitOutEn)(GPIOController);
    rule update_input_register;
       rDataIn <= tGPIO;
    endrule
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Interface Connections / Methods
    ////////////////////////////////////////////////////////////////////////////////
    method Action _write(Bit#(1) i);
       rDataOut <= i;
    endmethod
-   
+
    method Action drive_out(Bool i);
       rOutEn <= i;
    endmethod
-   
+
    method Bool read_drive_out();
       return rOutEn;
    endmethod
-   
+
    method Bit#(1) _read();
       return rDataIn;
    endmethod
-   
+
    interface GPIO ifc;
       interface gpio = tGPIO.io;
    endinterface
-   
+
 endmodule: mkGPIOController
 
 // A utility function to get the inout interface from the GPIO controller
@@ -126,7 +126,7 @@ endfunction: inoutToGPIO
 
 instance DummyDriver#(GPIO);
    module mkStub(GPIO ifc);
-      
+
       TriState#(Bit#(1)) t <- mkTriState(False, 0);
       interface gpio = t.io;
    endmodule

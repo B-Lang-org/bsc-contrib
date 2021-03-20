@@ -29,13 +29,13 @@ module mkTLMCBusAdapter#(function Bit#(caddr_size) mapTLMAddr(Bit#(addr_size) ad
 	    Bits#(TLMRequest#(`TLM_PRM),  s0),
 	    Bits#(resp_t, s1),
 	    Add#(ignore, caddr_size, addr_size));
-   
+
    // Wire is OK since CBus never blocks request.
    Wire#(TLMRequest#(`TLM_PRM))  tlm_wire_in   <- mkWire;
 
    FIFO#(resp_t) tlm_fifo_out <- mkFIFO;
-			    
-   rule read_op (tlm_wire_in matches tagged Descriptor .d 
+
+   rule read_op (tlm_wire_in matches tagged Descriptor .d
 		 &&& d.command matches READ
 		 &&& d.burst_length matches 1);
 
@@ -50,8 +50,8 @@ module mkTLMCBusAdapter#(function Bit#(caddr_size) mapTLMAddr(Bit#(addr_size) ad
       tlm_fifo_out.enq(fromTLMResponse(response));
       // $display("(%0d) READ OP Addr: %h Data: %h", $time, addr, data);
    endrule
-   
-   rule write_op (tlm_wire_in matches tagged Descriptor .d 
+
+   rule write_op (tlm_wire_in matches tagged Descriptor .d
 		  &&& d.command matches WRITE
 		  &&& d.burst_length matches 1);
       TLMResponse#(`TLM_PRM) response = defaultValue;
@@ -63,12 +63,12 @@ module mkTLMCBusAdapter#(function Bit#(caddr_size) mapTLMAddr(Bit#(addr_size) ad
       tlm_fifo_out.enq(fromTLMResponse(response));
       // $display("(%0d) WRITE OP Addr: %h Data: %h", $time, addr, d.data);
    endrule
-   
-   rule error_op (tlm_wire_in matches tagged Descriptor .d 
+
+   rule error_op (tlm_wire_in matches tagged Descriptor .d
 		  &&& (d.burst_length > 1));
       $display("(%5d) ERROR: TLMCbusAdapter (cant handle ops with burst length > 1).", $time);
    endrule
-   
+
    interface Get tx = toGet(tlm_fifo_out);
    interface Put rx;
       method Action put (x);
@@ -87,15 +87,15 @@ module mkTLMCBusAdapterToReadWrite#(function Bit#(caddr_size) mapTLMAddr(Bit#(ad
 	    Bits#(TLMRequest#(`TLM_PRM),  s0),
 	    Bits#(resp_t, s1),
 	    Add#(ignore, caddr_size, addr_size));
-				       
+
    // Wire is OK since CBus never blocks request.
    Wire#(TLMRequest#(`TLM_PRM))  read_wire_in   <- mkWire;
    Wire#(TLMRequest#(`TLM_PRM))  write_wire_in  <- mkWire;
-				       
-   FIFO#(resp_t) read_fifo_out <- mkFIFO;		       
-   FIFO#(resp_t) write_fifo_out <- mkFIFO;		       				       
-   
-   rule read_op (read_wire_in matches tagged Descriptor .d 
+
+   FIFO#(resp_t) read_fifo_out <- mkFIFO;
+   FIFO#(resp_t) write_fifo_out <- mkFIFO;
+
+   rule read_op (read_wire_in matches tagged Descriptor .d
 		 &&& d.command matches READ
 		 &&& d.burst_length matches 1);
 
@@ -109,8 +109,8 @@ module mkTLMCBusAdapterToReadWrite#(function Bit#(caddr_size) mapTLMAddr(Bit#(ad
       response.transaction_id = d.transaction_id;
       read_fifo_out.enq(fromTLMResponse(response));
    endrule
-				       
-   rule write_op (write_wire_in matches tagged Descriptor .d 
+
+   rule write_op (write_wire_in matches tagged Descriptor .d
 		  &&& d.command matches WRITE
 		  &&& d.burst_length matches 1);
       TLMResponse#(`TLM_PRM) response = defaultValue;
@@ -122,16 +122,16 @@ module mkTLMCBusAdapterToReadWrite#(function Bit#(caddr_size) mapTLMAddr(Bit#(ad
       write_fifo_out.enq(fromTLMResponse(response));
    endrule
 
-   rule read_error_op (read_wire_in matches tagged Descriptor .d 
+   rule read_error_op (read_wire_in matches tagged Descriptor .d
 		       &&& (d.burst_length > 1));
       $display("[%0d] ERROR: TLMCbusAdapter (cant handle ops with burst length > 1).", $time);
    endrule
-   
-   rule write_error_op (read_wire_in matches tagged Descriptor .d 
+
+   rule write_error_op (read_wire_in matches tagged Descriptor .d
 			&&& (d.burst_length > 1));
       $display("[%0d] ERROR: TLMCbusAdapter (cant handle ops with burst length > 1).", $time);
    endrule
-   
+
    interface TLMRecvIFC read;
       interface Get tx = toGet(read_fifo_out);
       interface Put rx;
@@ -140,7 +140,7 @@ module mkTLMCBusAdapterToReadWrite#(function Bit#(caddr_size) mapTLMAddr(Bit#(ad
 	 endmethod
       endinterface
    endinterface
-   
+
    interface TLMRecvIFC write;
       interface Get tx = toGet(write_fifo_out);
       interface Put rx;

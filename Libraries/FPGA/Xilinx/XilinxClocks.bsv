@@ -5,7 +5,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //  Filename      : XilinxClocks.bsv
-//  Description   : 
+//  Description   :
 ////////////////////////////////////////////////////////////////////////////////
 package XilinxClocks;
 
@@ -102,7 +102,7 @@ typedef struct {
    Real        clkout6_phase;
    Real        ref_jitter1;
    Real        ref_jitter2;
-} XilinxClockParams deriving (Bits, Eq);		
+} XilinxClockParams deriving (Bits, Eq);
 
 instance DefaultValue#(XilinxClockParams);
    defaultValue = XilinxClockParams {
@@ -232,15 +232,15 @@ module mkXilinxClockController#(XilinxClockParams params, Clock refclk)(XilinxCl
    mmcm_params.clkout0_divide_f   = params.clkout0_divide_f;
    mmcm_params.clkout0_duty_cycle = params.clkout0_duty_cycle;
    mmcm_params.clkout0_phase      = params.clkout0_phase;
-   
+
    VMMCM_ADV                       mmcm                 = ?;
-   
+
    case (params.e_type)
       E3:      mmcm <- vMMCME3_ADV(mmcm_params, refclk);
       E2:      mmcm <- vMMCME2_ADV(mmcm_params, refclk);
       default: mmcm <- vMMCM_ADV(mmcm_params, refclk);
    endcase
-   
+
    ReadOnly#(Bool)                 clkfbbuf            <- mkClockBitBUFG(clocked_by mmcm.clkfbout);
 
    Clock                           clkout0_buf          = ?;
@@ -262,7 +262,7 @@ module mkXilinxClockController#(XilinxClockParams params, Clock refclk)(XilinxCl
    else begin
       clkout0_buf = mmcm.clkout0;
    end
-   
+
    if (params.clkout0n_buffer) begin
       Clock clkout0nbuffer <- mkClockBUFG(clocked_by mmcm.clkout0_n);
       clkout0n_buf = clkout0nbuffer;
@@ -270,7 +270,7 @@ module mkXilinxClockController#(XilinxClockParams params, Clock refclk)(XilinxCl
    else begin
       clkout0n_buf = mmcm.clkout0_n;
    end
-   
+
    if (params.clkout1_buffer) begin
       Clock clkout1buffer <- mkClockBUFG(clocked_by mmcm.clkout1);
       clkout1_buf = clkout1buffer;
@@ -278,7 +278,7 @@ module mkXilinxClockController#(XilinxClockParams params, Clock refclk)(XilinxCl
    else begin
       clkout1_buf = mmcm.clkout1;
    end
-   
+
    if (params.clkout1n_buffer) begin
       Clock clkout1nbuffer <- mkClockBUFG(clocked_by mmcm.clkout1_n);
       clkout1n_buf = clkout1nbuffer;
@@ -286,7 +286,7 @@ module mkXilinxClockController#(XilinxClockParams params, Clock refclk)(XilinxCl
    else begin
       clkout1n_buf = mmcm.clkout1_n;
    end
-   
+
    if (params.clkout2_buffer) begin
       Clock clkout2buffer <- mkClockBUFG(clocked_by mmcm.clkout2);
       clkout2_buf = clkout2buffer;
@@ -294,7 +294,7 @@ module mkXilinxClockController#(XilinxClockParams params, Clock refclk)(XilinxCl
    else begin
       clkout2_buf = mmcm.clkout2;
    end
-   
+
    if (params.clkout2n_buffer) begin
       Clock clkout2nbuffer <- mkClockBUFG(clocked_by mmcm.clkout2_n);
       clkout2n_buf = clkout2nbuffer;
@@ -302,7 +302,7 @@ module mkXilinxClockController#(XilinxClockParams params, Clock refclk)(XilinxCl
    else begin
       clkout2n_buf = mmcm.clkout2_n;
    end
-   
+
    if (params.clkout3_buffer) begin
       Clock clkout3buffer <- mkClockBUFG(clocked_by mmcm.clkout3);
       clkout3_buf = clkout3buffer;
@@ -310,7 +310,7 @@ module mkXilinxClockController#(XilinxClockParams params, Clock refclk)(XilinxCl
    else begin
       clkout3_buf = mmcm.clkout3;
    end
-   
+
    if (params.clkout3n_buffer) begin
       Clock clkout3nbuffer <- mkClockBUFG(clocked_by mmcm.clkout3_n);
       clkout3n_buf = clkout3nbuffer;
@@ -318,7 +318,7 @@ module mkXilinxClockController#(XilinxClockParams params, Clock refclk)(XilinxCl
    else begin
       clkout3n_buf = mmcm.clkout3_n;
    end
-   
+
    if (params.clkout4_buffer) begin
       Clock clkout4buffer <- mkClockBUFG(clocked_by mmcm.clkout4);
       clkout4_buf = clkout4buffer;
@@ -326,7 +326,7 @@ module mkXilinxClockController#(XilinxClockParams params, Clock refclk)(XilinxCl
    else begin
       clkout4_buf = mmcm.clkout4;
    end
-   
+
    if (params.clkout5_buffer) begin
       Clock clkout5buffer <- mkClockBUFG(clocked_by mmcm.clkout5);
       clkout5_buf = clkout5buffer;
@@ -334,7 +334,7 @@ module mkXilinxClockController#(XilinxClockParams params, Clock refclk)(XilinxCl
    else begin
       clkout5_buf = mmcm.clkout5;
    end
-   
+
    if (params.clkout6_buffer) begin
       Clock clkout6buffer <- mkClockBUFG(clocked_by mmcm.clkout6);
       clkout6_buf = clkout6buffer;
@@ -348,7 +348,7 @@ module mkXilinxClockController#(XilinxClockParams params, Clock refclk)(XilinxCl
    ////////////////////////////////////////////////////////////////////////////////
    FIFO#(XilinxClockRequest)       fRequest            <- mkFIFO;
    FIFO#(Bit#(16))                 fResponse           <- mkFIFO;
-   
+
    // MMCM State
    Reg#(Bool)                      rMMCM_swrst         <- mkReg(False);
    Reg#(Bool)                      rMMCM_start         <- mkReg(False);
@@ -375,7 +375,7 @@ module mkXilinxClockController#(XilinxClockParams params, Clock refclk)(XilinxCl
    Reg#(Bit#(16))                  rMMCM_lock_3        <- mkReg(0);
    Reg#(Bit#(16))                  rMMCM_filter_1      <- mkReg(0);
    Reg#(Bit#(16))                  rMMCM_filter_2      <- mkReg(0);
-   
+
    // DRP interface
    Reg#(Bool)                      rReset              <- mkReg(True);
    Reg#(Bit#(7))                   rAddress            <- mkReg(0);
@@ -420,7 +420,7 @@ module mkXilinxClockController#(XilinxClockParams params, Clock refclk)(XilinxCl
 	 default: return tuple3(7'h00, 16'h0000, 16'h0000);
       endcase
    endfunction
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Rules
    ////////////////////////////////////////////////////////////////////////////////
@@ -455,7 +455,7 @@ module mkXilinxClockController#(XilinxClockParams params, Clock refclk)(XilinxCl
 	 default: fResponse.enq(0);
       endcase
    endrule
-   
+
    rule process_write_request if (!fRequest.first.rnw);
       let req <- toGet(fRequest).get;
       case(req.addr)
@@ -488,12 +488,12 @@ module mkXilinxClockController#(XilinxClockParams params, Clock refclk)(XilinxCl
 	 default: noAction;
       endcase
    endrule
-      
+
    (* fire_when_enabled, no_implicit_conditions *)
    rule process_start_delay;
       rMMCM_start_d1 <= rMMCM_start;
    endrule
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// DRP Connection Rules
    ////////////////////////////////////////////////////////////////////////////////
@@ -508,7 +508,7 @@ module mkXilinxClockController#(XilinxClockParams params, Clock refclk)(XilinxCl
    rule mmcm_feedback;
       mmcm.clkfbin(clkfbbuf);
    endrule
-   
+
    (* fire_when_enabled, no_implicit_conditions *)
    rule mmcm_drp_inputs;
       mmcm.rst(rReset);
@@ -530,20 +530,20 @@ module mkXilinxClockController#(XilinxClockParams params, Clock refclk)(XilinxCl
       rCount     <= 0;
       rState     <= WaitLock;
    endrule
-   
+
    rule wait_lock_state if (rState == WaitLock);
       rReset     <= False;
       rCount     <= 22;
-      
+
       if (wLocked) begin
 	 rState  <= WaitStart;
       end
    endrule
-   
+
    rule wait_start_state if (rState == WaitStart && rMMCM_start && !rMMCM_start_d1);
       rState     <= Address;
    endrule
-   
+
    rule address_state if (rState == Address);
       match { .addr, .*, .* } = fnCountMMCMDataSel(rCount);
       rReset     <= True;
@@ -551,23 +551,23 @@ module mkXilinxClockController#(XilinxClockParams params, Clock refclk)(XilinxCl
       rAddress   <= addr;
       rState     <= Read;
    endrule
-   
+
    rule read_state if (rState == Read && wRdReady);
       rState     <= Modify;
    endrule
-   
+
    rule modify_state if (rState == Modify);
       match { .*, .mask, .data } = fnCountMMCMDataSel(rCount);
       rWrData    <= (mask & wRdData) | (~mask & data);
       rState     <= Write;
    endrule
-   
+
    rule write_state if (rState == Write);
       rSel       <= True;
       rWrEn      <= True;
       rState     <= WaitWriteReady;
    endrule
-   
+
    rule wait_write_ready if (rState == WaitWriteReady && wRdReady);
       rCount     <= rCount - 1;
       if (rCount > 0)
@@ -575,7 +575,7 @@ module mkXilinxClockController#(XilinxClockParams params, Clock refclk)(XilinxCl
       else
 	 rState  <= WaitLock;
    endrule
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Interface Connections / Methods
    ////////////////////////////////////////////////////////////////////////////////
@@ -605,10 +605,10 @@ endmodule: mkXilinxClockController
 import "BVI" MMCME3_ADV =
 module vMMCME3_ADV#(MMCMParams params, Clock refclk)(VMMCM_ADV);
    default_clock dclk(DCLK);
-   default_reset no_reset;   
-   
+   default_reset no_reset;
+
    input_clock clk1(CLKIN1) = refclk;
-   
+
    parameter BANDWIDTH            = params.bandwidth;
    parameter CLKFBOUT_USE_FINE_PS = params.clkfbout_use_fine_ps;
    parameter CLKOUT0_USE_FINE_PS  = params.clkout0_use_fine_ps;
@@ -656,7 +656,7 @@ module vMMCME3_ADV#(MMCMParams params, Clock refclk)(VMMCM_ADV);
    port      PSEN                 = Bit#(1)'(0);
    port      PSINCDEC             = Bit#(1)'(0);
    port      PWRDWN               = Bit#(1)'(0);
-   
+
    output_clock clkfbout(CLKFBOUT);
    output_clock clkfbout_n(CLKFBOUTB);
    output_clock clkout0(CLKOUT0);
@@ -670,7 +670,7 @@ module vMMCME3_ADV#(MMCMParams params, Clock refclk)(VMMCM_ADV);
    output_clock clkout4(CLKOUT4);
    output_clock clkout5(CLKOUT5);
    output_clock clkout6(CLKOUT6);
-   
+
    same_family(clk1, clkfbout);
    same_family(clk1, clkfbout_n);
    same_family(clk1, clkout0);
@@ -683,12 +683,12 @@ module vMMCME3_ADV#(MMCMParams params, Clock refclk)(VMMCM_ADV);
    same_family(clk1, clkout3_n);
    same_family(clk1, clkout4);
    same_family(clk1, clkout5);
-   same_family(clk1, clkout6);     
-   
+   same_family(clk1, clkout6);
+
    method              clkfbin(CLKFBIN) enable((*inhigh*)en1) clocked_by(clkfbout) reset_by(no_reset);
-         
+
    method LOCKED       locked()        clocked_by(no_clock) reset_by(no_reset);
-   
+
    method              daddr(DADDR)     enable((*inhigh*)en2) clocked_by(dclk) reset_by(no_reset);
    method              dsel(DEN)        enable((*inhigh*)en3) clocked_by(dclk) reset_by(no_reset);
    method              di(DI)           enable((*inhigh*)en4) clocked_by(dclk) reset_by(no_reset);
@@ -696,11 +696,11 @@ module vMMCME3_ADV#(MMCMParams params, Clock refclk)(VMMCM_ADV);
    method DO           dout()           clocked_by(dclk) reset_by(no_reset);
    method DRDY         drdy()           clocked_by(dclk) reset_by(no_reset);
    method              dwe(DWE)         enable((*inhigh*)en6) clocked_by(dclk) reset_by(no_reset);
-   
+
    schedule clkfbin C clkfbin;
    schedule locked CF locked;
    schedule (daddr, dsel, di, dout, drdy, dwe, rst) CF (daddr, dsel, di, dout, drdy, dwe, rst);
-      
+
 endmodule: vMMCME3_ADV
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -709,10 +709,10 @@ endmodule: vMMCME3_ADV
 import "BVI" MMCME2_ADV =
 module vMMCME2_ADV#(MMCMParams params, Clock refclk)(VMMCM_ADV);
    default_clock dclk(DCLK);
-   default_reset no_reset;   
-   
+   default_reset no_reset;
+
    input_clock clk1(CLKIN1) = refclk;
-   
+
    parameter BANDWIDTH            = params.bandwidth;
    parameter CLKFBOUT_USE_FINE_PS = params.clkfbout_use_fine_ps;
    parameter CLKOUT0_USE_FINE_PS  = params.clkout0_use_fine_ps;
@@ -760,7 +760,7 @@ module vMMCME2_ADV#(MMCMParams params, Clock refclk)(VMMCM_ADV);
    port      PSEN                 = Bit#(1)'(0);
    port      PSINCDEC             = Bit#(1)'(0);
    port      PWRDWN               = Bit#(1)'(0);
-   
+
    output_clock clkfbout(CLKFBOUT);
    output_clock clkfbout_n(CLKFBOUTB);
    output_clock clkout0(CLKOUT0);
@@ -774,7 +774,7 @@ module vMMCME2_ADV#(MMCMParams params, Clock refclk)(VMMCM_ADV);
    output_clock clkout4(CLKOUT4);
    output_clock clkout5(CLKOUT5);
    output_clock clkout6(CLKOUT6);
-   
+
    same_family(clk1, clkfbout);
    same_family(clk1, clkfbout_n);
    same_family(clk1, clkout0);
@@ -787,12 +787,12 @@ module vMMCME2_ADV#(MMCMParams params, Clock refclk)(VMMCM_ADV);
    same_family(clk1, clkout3_n);
    same_family(clk1, clkout4);
    same_family(clk1, clkout5);
-   same_family(clk1, clkout6);     
-   
+   same_family(clk1, clkout6);
+
    method              clkfbin(CLKFBIN) enable((*inhigh*)en1) clocked_by(clkfbout) reset_by(no_reset);
-         
+
    method LOCKED       locked()        clocked_by(no_clock) reset_by(no_reset);
-   
+
    method              daddr(DADDR)     enable((*inhigh*)en2) clocked_by(dclk) reset_by(no_reset);
    method              dsel(DEN)        enable((*inhigh*)en3) clocked_by(dclk) reset_by(no_reset);
    method              di(DI)           enable((*inhigh*)en4) clocked_by(dclk) reset_by(no_reset);
@@ -800,11 +800,11 @@ module vMMCME2_ADV#(MMCMParams params, Clock refclk)(VMMCM_ADV);
    method DO           dout()           clocked_by(dclk) reset_by(no_reset);
    method DRDY         drdy()           clocked_by(dclk) reset_by(no_reset);
    method              dwe(DWE)         enable((*inhigh*)en6) clocked_by(dclk) reset_by(no_reset);
-   
+
    schedule clkfbin C clkfbin;
    schedule locked CF locked;
    schedule (daddr, dsel, di, dout, drdy, dwe, rst) CF (daddr, dsel, di, dout, drdy, dwe, rst);
-      
+
 endmodule: vMMCME2_ADV
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -814,9 +814,9 @@ import "BVI" MMCM_ADV =
 module vMMCM_ADV#(MMCMParams params, Clock refclk)(VMMCM_ADV);
    default_clock dclk(DCLK);
    default_reset no_reset;
-   
+
    input_clock clk1(CLKIN1) = refclk;
-   
+
    parameter BANDWIDTH            = params.bandwidth;
    parameter CLKFBOUT_USE_FINE_PS = params.clkfbout_use_fine_ps;
    parameter CLKOUT0_USE_FINE_PS  = params.clkout0_use_fine_ps;
@@ -864,7 +864,7 @@ module vMMCM_ADV#(MMCMParams params, Clock refclk)(VMMCM_ADV);
    port      PSEN                 = Bit#(1)'(0);
    port      PSINCDEC             = Bit#(1)'(0);
    port      PWRDWN               = Bit#(1)'(0);
-   
+
    output_clock clkfbout(CLKFBOUT);
    output_clock clkfbout_n(CLKFBOUTB);
    output_clock clkout0(CLKOUT0);
@@ -878,7 +878,7 @@ module vMMCM_ADV#(MMCMParams params, Clock refclk)(VMMCM_ADV);
    output_clock clkout4(CLKOUT4);
    output_clock clkout5(CLKOUT5);
    output_clock clkout6(CLKOUT6);
-   
+
    same_family(clk1, clkfbout);
    same_family(clk1, clkfbout_n);
    same_family(clk1, clkout0);
@@ -891,12 +891,12 @@ module vMMCM_ADV#(MMCMParams params, Clock refclk)(VMMCM_ADV);
    same_family(clk1, clkout3_n);
    same_family(clk1, clkout4);
    same_family(clk1, clkout5);
-   same_family(clk1, clkout6);     
-   
+   same_family(clk1, clkout6);
+
    method              clkfbin(CLKFBIN) enable((*inhigh*)en1) clocked_by(clkfbout) reset_by(no_reset);
-         
+
    method LOCKED       locked()        clocked_by(no_clock) reset_by(no_reset);
-   
+
    method              daddr(DADDR)     enable((*inhigh*)en2) clocked_by(dclk) reset_by(no_reset);
    method              dsel(DEN)         enable((*inhigh*)en3) clocked_by(dclk) reset_by(no_reset);
    method              di(DI)           enable((*inhigh*)en4) clocked_by(dclk) reset_by(no_reset);
@@ -904,11 +904,11 @@ module vMMCM_ADV#(MMCMParams params, Clock refclk)(VMMCM_ADV);
    method DO           dout()           clocked_by(dclk) reset_by(no_reset);
    method DRDY         drdy()           clocked_by(dclk) reset_by(no_reset);
    method              dwe(DWE)         enable((*inhigh*)en6) clocked_by(dclk) reset_by(no_reset);
-   
+
    schedule clkfbin C clkfbin;
    schedule locked CF locked;
    schedule (daddr, dsel, di, dout, drdy, dwe, rst) CF (daddr, dsel, di, dout, drdy, dwe, rst);
-      
+
 endmodule: vMMCM_ADV
 
 endpackage: XilinxClocks
