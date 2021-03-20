@@ -46,28 +46,28 @@ endfunction
 
 function TLMData#(`TLM_PRM) createTLMBitMask (TLMByteEn#(`TLM_PRM) enable_bits);
 
-   
+
    Vector#(TDiv#(data_size, 8),Bit#(1)) enable = unpack(enable_bits);
    Vector#(TDiv#(data_size, 8),Bit#(8)) mask   = map(signExtend, enable);
-   
+
    return cExtend(mask);
 
 endfunction
 
 function TLMData#(`TLM_PRM) maskTLMData(TLMByteEn#(`TLM_PRM) byte_enable, TLMData#(`TLM_PRM) data);
-   
+
    TLMData#(`TLM_PRM) mask = createTLMBitMask(byte_enable);
- 
+
    return mask & data;
-   
+
 endfunction
 
 function TLMData#(`TLM_PRM) overwriteTLMData(TLMByteEn#(`TLM_PRM) byte_enable, TLMData#(`TLM_PRM) data_orig, TLMData#(`TLM_PRM) data);
-   
+
    TLMData#(`TLM_PRM) mask = createTLMBitMask(byte_enable);
-   
+
    return (~mask & data_orig) | (mask & data);
-    
+
 endfunction
 
 endpackage

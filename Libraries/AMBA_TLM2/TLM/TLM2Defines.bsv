@@ -276,7 +276,7 @@ module mkTLMSource#(Maybe#(TLMCommand) m_command, Bool verbose) (TLMSendIFC#(`TL
 	    Bounded#(cstm_type));
 
    Reg#(Bool)                initialized   <- mkReg(False);
-	    
+
    FIFO#(resp_t)             response_fifo <- mkFIFO;
    Randomize#(req_t)         gen           <- mkTLMRandomizer(m_command);
 
@@ -642,7 +642,7 @@ instance TLMRequestTC#(BRAMRequest#(Bit#(addr_size), Bit#(data_size)), `TLM_PRM)
 
    function BRAMRequest#(Bit#(addr_size), Bit#(data_size)) fromTLMRequest(TLMRequest#(`TLM_PRM) value);
       BRAMRequest#(Bit#(addr_size), Bit#(data_size)) brequest = defaultValue ;
-      case (value) matches 
+      case (value) matches
          tagged Descriptor .desc:
             begin
                brequest.write     = desc.command == WRITE ;
@@ -691,7 +691,7 @@ instance TLMRequestTC#(BRAMRequestBE#(Bit#(addr_size), Bit#(data_size), n), `TLM
 
    function BRAMRequestBE#(Bit#(addr_size), Bit#(data_size), n) fromTLMRequest(TLMRequest#(`TLM_PRM) value);
       BRAMRequestBE#(Bit#(addr_size), Bit#(data_size),n) brequest = defaultValue ;
-      case (value) matches 
+      case (value) matches
          tagged Descriptor .desc:
             begin
 //               brequest.writeen   = desc.command == WRITE ?  desc.byte_enable : 0 ;

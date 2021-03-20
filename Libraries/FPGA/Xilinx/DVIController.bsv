@@ -5,7 +5,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //  Filename      : DVIController.bsv
-//  Description   : 
+//  Description   :
 ////////////////////////////////////////////////////////////////////////////////
 package DVIController;
 
@@ -105,14 +105,14 @@ endinterface
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 module mkDVIController#(VideoTiming timing)(DVIController#(clockMHz));
-   
+
    let clockrate     = valueof(clockMHz);
    Bool greater65MHz = (clockrate > 65);
-   
+
    Bit#(8) reg33h    = (greater65MHz) ? 'h06 : 'h08;
    Bit#(8) reg34h    = (greater65MHz) ? 'h26 : 'h16;
    Bit#(8) reg36h    = (greater65MHz) ? 'hA0 : 'h60;
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Clocks & Reset
    ////////////////////////////////////////////////////////////////////////////////
@@ -123,7 +123,7 @@ module mkDVIController#(VideoTiming timing)(DVIController#(clockMHz));
 
    Clock                           xClkP               <- mkClockODDR(defaultValue, 1, 0);
    Clock                           xClkN               <- mkClockODDR(defaultValue, 0, 1);
-      
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Design Elements
    ////////////////////////////////////////////////////////////////////////////////
@@ -133,21 +133,21 @@ module mkDVIController#(VideoTiming timing)(DVIController#(clockMHz));
 
    FIFO#(I2CRequest)               fI2CRequest         <- mkFIFO;
    FIFO#(I2CResponse)              fI2CResponse        <- mkFIFO;
-   
+
    ODDR#(Bit#(12))                 rDataOut            <- mkODDR(defaultValue);
-   
+
    ReadOnly#(Bool)                 wHSyncN_clkN        <- mkNullCrossingWire(clkN, mHSyncGen.out_n);
    ReadOnly#(Bool)                 wVSyncN_clkN        <- mkNullCrossingWire(clkN, mVSyncGen.out_n);
    ReadOnly#(Bool)                 wHDE_clkN           <- mkNullCrossingWire(clkN, mHSyncGen.active);
    ReadOnly#(Bool)                 wVDE_clkN           <- mkNullCrossingWire(clkN, mVSyncGen.active);
-   
+
    Reg#(Bool)                      rHSyncN             <- mkReg(True, clocked_by clkN, reset_by rstN_delayed);
    Reg#(Bool)                      rVSyncN             <- mkReg(True, clocked_by clkN, reset_by rstN_delayed);
    Reg#(Bool)                      rActive             <- mkReg(False, clocked_by clkN, reset_by rstN_delayed);
-   
+
    FIFO#(RGB888)                   fPixelData          <- mkLSizedFIFO(4);
    Wire#(RGB888)                   wPixelData          <- mkDWire(unpack(0));
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Rules
    ////////////////////////////////////////////////////////////////////////////////
@@ -160,48 +160,48 @@ module mkDVIController#(VideoTiming timing)(DVIController#(clockMHz));
       fI2CRequest.enq(I2CRequest { write: True, slaveaddr: 'h76, address: 'h36, data: reg36h });
       rInitialized <= True;
    endseq;
-   
+
    FSM                             fsmInitDVI          <- mkFSM(init_dvi);
-   
+
    rule initialize_dvi(!rInitialized && fsmInitDVI.done);
       fsmInitDVI.start;
    endrule
-   
+
    (* no_implicit_conditions, fire_when_enabled *)
    rule connect_hsync_gen;
       mHSyncGen.tick();
    endrule
-   
+
    (* no_implicit_conditions, fire_when_enabled *)
    rule connect_vsync_gen(mHSyncGen.preedge);
       mVSyncGen.tick();
    endrule
-   
+
    (* no_implicit_conditions, fire_when_enabled *)
    rule connect_sync_generator_outputs;
       rHSyncN <= wHSyncN_clkN;
       rVSyncN <= wVSyncN_clkN;
       rActive <= wHDE_clkN && wVDE_clkN;
    endrule
-   
+
    (* no_implicit_conditions, fire_when_enabled *)
    rule connect_data_out;
       rDataOut.ce(True);
       rDataOut.s(False);
    endrule
-   
+
    rule get_next_pixel(mHSyncGen.active && mVSyncGen.active);
       let data = fPixelData.first; fPixelData.deq;
       wPixelData <= data;
    endrule
-   
+
    (* no_implicit_conditions, fire_when_enabled *)
    rule connect_pixel_out_to_data_out;
       let { hi, lo } = split(pack(wPixelData));
       rDataOut.d1(hi);
       rDataOut.d2(lo);
    endrule
-      
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Interface Connections / Methods
    ////////////////////////////////////////////////////////////////////////////////
@@ -222,7 +222,7 @@ module mkDVIController#(VideoTiming timing)(DVIController#(clockMHz));
       interface pclk_p   = clk;
       interface pclk_n   = clkN;
    endinterface
-   
+
    interface Client i2c;
       interface request  = toGet(fI2CRequest);
       interface response = toPut(fI2CResponse);

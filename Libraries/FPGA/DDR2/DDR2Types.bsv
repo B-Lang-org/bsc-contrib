@@ -73,7 +73,7 @@ instance Connectable#(DDR2Client, DDR2Server);
         mkConnection(client.response, server.response);
     endmodule
 endinstance
-        
+
 instance Connectable#(DDR2Server, DDR2Client);
     module mkConnection#(DDR2Server server, DDR2Client client)(Empty);
         mkConnection(client, server);

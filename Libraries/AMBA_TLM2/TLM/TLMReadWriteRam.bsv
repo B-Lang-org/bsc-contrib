@@ -32,55 +32,55 @@ module mkTLMReadWriteRam#(parameter Bit#(4) id, Bool verbose) (TLMReadWriteRecvI
    Wire#(TLMResponse#(`TLM_TYPES)) read_out_wire  <- mkWire;
    Wire#(TLMRequest#(`TLM_TYPES))  write_in_wire  <- mkWire;
    Wire#(TLMResponse#(`TLM_TYPES)) write_out_wire <- mkWire;
-   
+
    RegFile#(Bit#(8), Bit#(data_size)) ram <- mkRegFileLoad("ram_init.text", 0, 255);
-   
-   rule read_op (read_in_wire matches tagged Descriptor .d 
+
+   rule read_op (read_in_wire matches tagged Descriptor .d
 		 &&& d.command == READ
 		 &&& d.burst_length == 1);
 
       TLMResponse#(`TLM_TYPES) response = createBasicTLMResponse();
       Bit#(10) addr = zExtend(d.addr);
       Bit#(8) mem_addr = grab_left(addr);
-      TLMData#(`TLM_TYPES) data = ram.sub(mem_addr); 
+      TLMData#(`TLM_TYPES) data = ram.sub(mem_addr);
       response.data = maskTLMData(d.byte_enable, data);
       response.status = SUCCESS;
       response.transaction_id = d.transaction_id;
       response.command = READ;
-      
+
       read_out_wire <= response;
-      
+
       if (verbose) $display("(%0d) TM (%0d) %0d Read  Op %h %h", $time, id, d.transaction_id, d.addr, response.data);
-      
+
    endrule
-   
-   rule write_op (write_in_wire matches tagged Descriptor .d 
+
+   rule write_op (write_in_wire matches tagged Descriptor .d
 		  &&& d.command == WRITE
 		  &&& d.burst_length == 1);
-      
+
       Bit#(10) addr = zExtend(d.addr);
       Bit#(8) mem_addr = grab_left(addr);
-      TLMData#(`TLM_TYPES) data_orig = ram.sub(mem_addr); 
+      TLMData#(`TLM_TYPES) data_orig = ram.sub(mem_addr);
       TLMData#(`TLM_TYPES) data_new  = overwriteTLMData(d.byte_enable, data_orig, d.data);
       ram.upd(mem_addr, data_new);
-      
+
       TLMResponse#(`TLM_TYPES) response = createBasicTLMResponse();
       response.status = SUCCESS;
       response.transaction_id = d.transaction_id;
       response.command = WRITE;
-      
+
       write_out_wire <= response;
-      
+
       if (verbose) $display("(%0d) TM (%0d) %0d Write Op %h %h", $time, id, d.transaction_id, d.addr, d.data);
-      
+
    endrule
-   
-   rule read_error_op (read_in_wire matches tagged Descriptor .d 
+
+   rule read_error_op (read_in_wire matches tagged Descriptor .d
 		       &&& (d.burst_length > 1));
       $display("(%0d) ERROR: TLMReadWriteRAM (%0d) (cannot handle ops with burst length > 1).", $time, id);
    endrule
-   
-   rule write_error_op (write_in_wire matches tagged Descriptor .d 
+
+   rule write_error_op (write_in_wire matches tagged Descriptor .d
 			&&& (d.burst_length > 1));
       $display("(%0d) ERROR: TLMReadWriteRAM (%0d) (cannot handle ops with burst length > 1).", $time, id);
    endrule
@@ -99,7 +99,7 @@ module mkTLMReadWriteRam#(parameter Bit#(4) id, Bool verbose) (TLMReadWriteRecvI
 	 endmethod
       endinterface
    endinterface
-   
+
    interface TLMRecvIFC write;
       interface Get tx;
 	 method get;
@@ -114,7 +114,7 @@ module mkTLMReadWriteRam#(parameter Bit#(4) id, Bool verbose) (TLMReadWriteRecvI
 	 endmethod
       endinterface
    endinterface
-   
+
 
 endmodule
 

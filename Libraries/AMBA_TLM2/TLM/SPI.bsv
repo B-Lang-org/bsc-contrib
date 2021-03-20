@@ -5,7 +5,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //  Filename      : SPI.bsv
-//  Description   : 
+//  Description   :
 ////////////////////////////////////////////////////////////////////////////////
 package SPI;
 
@@ -43,8 +43,8 @@ interface SPI#(`TLM_XTR_DCL);
    interface TLMRecvIFC#(`TLM_RR) write;
    (* prefix = "" *)
    interface SPI_Pins             spi;
-endinterface      
-      
+endinterface
+
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 ///
@@ -60,29 +60,29 @@ module mkSPI(SPI#(`TLM_XTR))
 	    , TLMResponseTC#(resp_t, `TLM_PRM)
 	    , Add#(4, _1, data_size)
 	    );
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Design Elements
    ////////////////////////////////////////////////////////////////////////////////
    FIFO#(req_t)                    fRdRequest          <- mkBypassFIFO;
    FIFO#(resp_t)                   fRdResponse         <- mkLFIFO;
-   
+
    FIFO#(req_t)                    fWrRequest          <- mkBypassFIFO;
    FIFO#(resp_t)                   fWrResponse         <- mkLFIFO;
-   
+
    Reg#(Bit#(1))                   rSSEL               <- mkReg(1);
    Reg#(Bit#(1))                   rMOSI               <- mkReg(1);
    Reg#(Bit#(1))                   rMISO               <- mkRegU;
    Reg#(Bit#(1))                   rSCLK               <- mkReg(0);
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Rules
    ////////////////////////////////////////////////////////////////////////////////
-   rule process_read_data(toTLMRequest(fRdRequest.first) matches tagged Descriptor .d &&& 
+   rule process_read_data(toTLMRequest(fRdRequest.first) matches tagged Descriptor .d &&&
 			  d.command matches READ
 			  );
       fRdRequest.deq;
-      
+
       TLMResponse#(`TLM_PRM) response = defaultValue;
       response.command        = READ;
       response.data           = cExtend({ rSSEL, rMOSI, rMISO, rSCLK });
@@ -91,22 +91,22 @@ module mkSPI(SPI#(`TLM_XTR))
       response.custom         = d.custom;
       fRdResponse.enq(fromTLMResponse(response));
    endrule
-   
+
    rule process_write_data(toTLMRequest(fWrRequest.first) matches tagged Descriptor .d &&&
 			   d.command matches WRITE
 			   );
       fWrRequest.deq;
-      
+
       rSCLK <= d.data[0];
       rMOSI <= d.data[2];
       rSSEL <= d.data[3];
-      
+
       TLMResponse#(`TLM_PRM) response = defaultValue;
       response.command        = WRITE;
       response.status         = SUCCESS;
       response.transaction_id = d.transaction_id;
       response.custom         = d.custom;
-      fWrResponse.enq(fromTLMResponse(response));      
+      fWrResponse.enq(fromTLMResponse(response));
    endrule
 
    ////////////////////////////////////////////////////////////////////////////////
@@ -121,7 +121,7 @@ module mkSPI(SPI#(`TLM_XTR))
       interface tx = toGet(fWrResponse);
       interface rx = toPut(fWrRequest);
    endinterface
-   
+
    interface SPI_Pins spi;
       method    Bit#(1)     ssel();
 	 return rSSEL;
@@ -135,8 +135,8 @@ module mkSPI(SPI#(`TLM_XTR))
       method    Bit#(1)     sck();
 	 return rSCLK;
       endmethod
-   endinterface      
-      
+   endinterface
+
 endmodule: mkSPI
 
 

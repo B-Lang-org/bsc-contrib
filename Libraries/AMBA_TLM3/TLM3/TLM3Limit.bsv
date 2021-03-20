@@ -26,12 +26,12 @@ module mkTLMLimitP#(Integer log_max, parameter UInt#(32) max_flight) (TLMTransfo
 	    Bits#(resp_t, s1));
 
    TLMTransformIFC#(req_t, resp_t) _ifc = ?;
-   if (log_max < 0) 
+   if (log_max < 0)
       _ifc <- mkTLMUnlimited;
    else
       _ifc <- mkTLMLimitPInternal(log_max, max_flight);
    return _ifc;
-endmodule   
+endmodule
 
 module mkTLMLimitPInternal#(Integer log_max, parameter UInt#(32) max_flight) (TLMTransformIFC#(req_t, resp_t))
    provisos(TLMRequestTC#(req_t, `TLM_PRM),

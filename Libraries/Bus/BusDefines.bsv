@@ -62,7 +62,7 @@ endtypeclass
 
 instance Arbitable#(BusSend#(a));
    module mkArbiterRequest#(BusSend#(a) bus_send) (ArbiterRequest_IFC);
-      
+
       method Bool request;
 	 return bus_send.valid;
       endmethod

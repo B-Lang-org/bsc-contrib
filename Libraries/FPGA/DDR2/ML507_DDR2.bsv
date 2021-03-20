@@ -64,7 +64,7 @@ module mkDDR2Burst4(
     Demarshaller#(DDR2ReqData) demarshaller <- mkDemarshaller();
     Reg#(Bool) wdataprepped <- mkReg(False);
     Counter#(TAdd#(TLog#(MaxPendingReads), 1)) readspending <- mkCounter(0);
-    
+
    SyncFIFOIfc#(DDR2LLReq) syncReq <- mkSyncFIFO(2, clk, rst, mig33.clk0_tb);
    FIFOF#(DDR2LLReq)    syncReqFastFIFO <- mkLFIFOF( clocked_by mig33.clk0_tb, reset_by mig33.rst0_tb);
 
@@ -72,8 +72,8 @@ module mkDDR2Burst4(
       syncReqFastFIFO.enq(syncReq.first);
       syncReq.deq;
    endrule
-   
-   
+
+
     // syncRData holds read data from the memory. This buffer must be large
     // enough to hold data from all outstanding requests.
     SyncFIFOIfc#(Bit#(128)) syncRData <- mkSyncFIFO(valueof(MaxPendingReads), mig33.clk0_tb, mig33.rst0_tb, clk);

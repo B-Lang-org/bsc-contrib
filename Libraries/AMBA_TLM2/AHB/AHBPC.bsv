@@ -12,11 +12,11 @@ import AHBDefines::*;
 ////////////////////////////////////////////////////////////////////////////////
 
 module mkAHBMasterPC#(AHBFabricMaster#(`TLM_PRM) master) (AHBFabricMaster#(`TLM_PRM));
-   
+
    Wire#(Bool)                 hready_wire <- mkBypassWire;
    Wire#(AHBResp)              hresp_wire  <- mkBypassWire;
    Wire#(AHBData#(`TLM_PRM)) hrdata_wire <- mkBypassWire;
-   Wire#(Bool)                 hgrant_wire <- mkBypassWire; 
+   Wire#(Bool)                 hgrant_wire <- mkBypassWire;
 
    if (genVerilog)
       begin
@@ -27,9 +27,9 @@ module mkAHBMasterPC#(AHBFabricMaster#(`TLM_PRM) master) (AHBFabricMaster#(`TLM_
 	 ////////////////////////////////////////////////////////////////////////////////
 	 /// Protocol Checker connections;
 	 ////////////////////////////////////////////////////////////////////////////////
-	 
+
 	 rule connect_check;
-	    
+
 	    check.hADDR(master.bus.hADDR);
 	    check.hWDATA(master.bus.hWDATA);
 	    check.hWRITE(master.bus.hWRITE);
@@ -37,21 +37,21 @@ module mkAHBMasterPC#(AHBFabricMaster#(`TLM_PRM) master) (AHBFabricMaster#(`TLM_
 	    check.hBURST(master.bus.hBURST);
 	    check.hSIZE(master.bus.hSIZE);
 	    check.hPROT(master.bus.hPROT);
-	    
+
 	    check.hRDATA(hrdata_wire);
 	    check.hREADY(hready_wire);
 	    check.hREADYOUT(hready_wire);
 	    check.hRESP(hresp_wire);
-	    
+
 	    check.hCLKEN(True);
 	    check.hGRANTx(hgrant_wire);
 	    check.hSELx(True);
 	    check.hLOCKx(False);
 	    check.hMASTLOCK(False);
-	    
+
 	 endrule
    end
-							    
+
    interface AHBMaster bus;
 	 // Inputs
 	 method Action hRDATA (value);
@@ -66,7 +66,7 @@ module mkAHBMasterPC#(AHBFabricMaster#(`TLM_PRM) master) (AHBFabricMaster#(`TLM_
 	    hready_wire <= value;
 	    master.bus.hREADY(value);
 	 endmethod
-      
+
 	 // Outputs
 	 method hADDR  = master.bus.hADDR;
 	 method hWDATA = master.bus.hWDATA;
@@ -85,7 +85,7 @@ module mkAHBMasterPC#(AHBFabricMaster#(`TLM_PRM) master) (AHBFabricMaster#(`TLM_
 	    master.arbiter.hGRANT(value);
 	 endmethod
       endinterface
-   
+
 endmodule
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -108,7 +108,7 @@ interface AHBPC_Ifc#(`TLM_PRM_DCL);
    method Action      hSIZE((* port = "HSIZE" *)    AHBSize     value);
    (* prefix = "", result = "unused6" *)
    method Action      hPROT((* port = "HPROT" *)    AHBProt     value);
-      
+
    // Master Inputs
    (* prefix = "", result = "unused7" *)
    method Action      hRDATA((* port = "HRDATA" *) AHBData#(`TLM_PRM) data);
@@ -118,8 +118,8 @@ interface AHBPC_Ifc#(`TLM_PRM_DCL);
    method Action      hREADYOUT((* port = "HREADYOUT" *) Bool value);
    (* prefix = "", result = "unused10" *)
    method Action      hRESP((* port = "HRESP" *) AHBResp response);
-      
-      
+
+
    // Other Inputs
    (* prefix = "", result = "unused11" *)
    method Action      hCLKEN((* port = "HCLKEN" *) Bool value);
@@ -131,7 +131,7 @@ interface AHBPC_Ifc#(`TLM_PRM_DCL);
    method Action      hLOCKx((* port = "HLOCKx" *) Bool value);
    (* prefix = "", result = "unused15" *)
    method Action      hMASTLOCK((* port = "HMASTLOCK" *) Bool value);
-      
+
 endinterface
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -147,8 +147,8 @@ typedef enum {PROVE, ASSUME, COVER, IGNORE} FVPropType deriving(Bounded, Bits, E
 typedef struct {Bool         enable_master;
 		Bool         enable_slave;
 		Bool         ignore_align;
-		AHBPropTypes master; 
-		AHBPropTypes slave; 
+		AHBPropTypes master;
+		AHBPropTypes slave;
 		} AHBPCPrms deriving (Eq);
 
 typedef struct {FVPropType err;
@@ -175,17 +175,17 @@ endinstance
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-import "BVI" AhbPC = 
+import "BVI" AhbPC =
 module mkAHBPC#(AHBPCPrms params) (AHBPC_Ifc#(`TLM_PRM));
-   
-   // Configure AhbPC for Master, Slave or both. 
+
+   // Configure AhbPC for Master, Slave or both.
    parameter P_ENABLE_MASTER  = pack(params.enable_master); // 0=disabled, 1=enabled.
    parameter P_ENABLE_SLAVE   = pack(params.enable_slave);  // 0=disabled, 1=enabled.
    parameter P_IGNORE_ALIGN   = pack(params.ignore_align);  // 0=disabled, 1=enabled.
-   
+
    parameter ADDRESS_WIDTH = valueOf(addr_size);
    parameter DATA_WIDTH    = valueOf(data_size);
-   
+
    // Formal Verification
    parameter ERRM_PropertyType = pack(params.master.err);
    parameter RECM_PropertyType = pack(params.master.rec);
@@ -210,33 +210,33 @@ module mkAHBPC#(AHBPCPrms params) (AHBPC_Ifc#(`TLM_PRM));
    parameter BURST_INCR_COUNTER_MAXVAL = -1 ; // _TYPE{1}
 
   -----/\----- EXCLUDED -----/\----- */
-   
+
 
    default_clock clk(HCLK);
    default_reset rst(HRESETn);
-  
-   method hADDR     (HADDR     )enable((*inhigh*)IGNORE00);    
-   method hWDATA    (HWDATA    )enable((*inhigh*)IGNORE01);    
-   method hWRITE    (HWRITE    )enable((*inhigh*)IGNORE02);    
-   method hTRANS    (HTRANS    )enable((*inhigh*)IGNORE03);    
-   method hBURST    (HBURST    )enable((*inhigh*)IGNORE04);    
-   method hSIZE     (HSIZE     )enable((*inhigh*)IGNORE05);    
-   method hPROT     (HPROT     )enable((*inhigh*)IGNORE06);    
-      
-   method hRDATA    (HRDATA    )enable((*inhigh*)IGNORE07);    
-   method hREADY    (HREADY    )enable((*inhigh*)IGNORE08);    
-   method hREADYOUT (HREADYOUT )enable((*inhigh*)IGNORE09);    
+
+   method hADDR     (HADDR     )enable((*inhigh*)IGNORE00);
+   method hWDATA    (HWDATA    )enable((*inhigh*)IGNORE01);
+   method hWRITE    (HWRITE    )enable((*inhigh*)IGNORE02);
+   method hTRANS    (HTRANS    )enable((*inhigh*)IGNORE03);
+   method hBURST    (HBURST    )enable((*inhigh*)IGNORE04);
+   method hSIZE     (HSIZE     )enable((*inhigh*)IGNORE05);
+   method hPROT     (HPROT     )enable((*inhigh*)IGNORE06);
+
+   method hRDATA    (HRDATA    )enable((*inhigh*)IGNORE07);
+   method hREADY    (HREADY    )enable((*inhigh*)IGNORE08);
+   method hREADYOUT (HREADYOUT )enable((*inhigh*)IGNORE09);
    method hRESP     (HRESP     )enable((*inhigh*)IGNORE10);
 
-   method hCLKEN    (HCLKEN    )enable((*inhigh*)IGNORE11);     
-   method hGRANTx   (HGRANTx   )enable((*inhigh*)IGNORE12);     
-   method hSELx     (HSELx     )enable((*inhigh*)IGNORE13);     
-   method hLOCKx    (HLOCKx    )enable((*inhigh*)IGNORE14);     
-   method hMASTLOCK (HMASTLOCK )enable((*inhigh*)IGNORE15);     
+   method hCLKEN    (HCLKEN    )enable((*inhigh*)IGNORE11);
+   method hGRANTx   (HGRANTx   )enable((*inhigh*)IGNORE12);
+   method hSELx     (HSELx     )enable((*inhigh*)IGNORE13);
+   method hLOCKx    (HLOCKx    )enable((*inhigh*)IGNORE14);
+   method hMASTLOCK (HMASTLOCK )enable((*inhigh*)IGNORE15);
 
    schedule (hADDR, hWDATA, hWRITE, hTRANS, hBURST, hSIZE, hPROT, hRDATA, hREADY, hREADYOUT, hRESP, hCLKEN, hGRANTx, hSELx, hLOCKx, hMASTLOCK) CF (hADDR, hWDATA, hWRITE, hTRANS, hBURST, hSIZE, hPROT, hRDATA, hREADY, hREADYOUT, hRESP, hCLKEN, hGRANTx, hSELx, hLOCKx, hMASTLOCK);
 
 endmodule
 
-   
+
 endpackage

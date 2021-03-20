@@ -36,9 +36,9 @@ typedef Bit#(4) AHBProt;
 typedef struct {
                 AHBWrite             command;
                 AHBSize              size;
-                AHBBurst             burst;   
+                AHBBurst             burst;
                 AHBTransfer          transfer;
-                AHBProt              prot;   
+                AHBProt              prot;
 		AHBAddr#(`TLM_PRM)   addr;
 		} AHBCtrl#(`TLM_PRM_DCL) `dv;
 
@@ -59,7 +59,7 @@ typedef struct {
 
 (* always_ready, always_enabled *)
 interface AHBMaster#(`TLM_PRM_DCL);
-   
+
    // Outputs
    (* result = "HADDR" *)
    method AHBAddr#(`TLM_PRM)  hADDR;
@@ -82,13 +82,13 @@ interface AHBMaster#(`TLM_PRM_DCL);
    method Action      hREADY((* port = "HREADY" *) Bool value);
    (* prefix = "", result = "unused2" *)
    method Action      hRESP((* port = "HRESP" *) AHBResp response);
- 
+
 endinterface
 
 
 (* always_ready, always_enabled *)
 interface AHBSlave#(`TLM_PRM_DCL);
-   
+
     // Inputs
    (* prefix = "", result = "unused0" *)
    method Action      hADDR((* port = "HADDR" *)    AHBAddr#(`TLM_PRM) addr);
@@ -104,7 +104,7 @@ interface AHBSlave#(`TLM_PRM_DCL);
    method Action      hSIZE((* port = "HSIZE" *)    AHBSize     value);
    (* prefix = "", result = "unused6" *)
    method Action      hPROT((* port = "HPROT" *)    AHBProt     value);
-   
+
    // Outputs
    (* result = "HRDATA" *)
    method AHBData#(`TLM_PRM) hRDATA;
@@ -112,7 +112,7 @@ interface AHBSlave#(`TLM_PRM_DCL);
    method Bool               hREADY;
    (* result = "HRESP" *)
    method AHBResp            hRESP;
-      
+
 endinterface
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -186,7 +186,7 @@ endinterface
 
 instance Connectable#(AHBMaster#(`TLM_PRM), AHBSlave#(`TLM_PRM));
    module mkConnection#(AHBMaster#(`TLM_PRM) m, AHBSlave#(`TLM_PRM) s )(Empty);
-      
+
       rule master_to_slave;
 	 s.hADDR(m.hADDR);
 	 s.hWDATA(m.hWDATA);
@@ -196,13 +196,13 @@ instance Connectable#(AHBMaster#(`TLM_PRM), AHBSlave#(`TLM_PRM));
 	 s.hSIZE(m.hSIZE);
 	 s.hPROT(m.hPROT);
       endrule
-      
+
       rule slave_to_master;
 	 m.hRDATA(s.hRDATA);
 	 m.hREADY(s.hREADY);
 	 m.hRESP(s.hRESP);
       endrule
-      
+
    endmodule
 endinstance
 
@@ -273,7 +273,7 @@ endinstance
 
 instance FShow#(AHBCtrl#(`TLM_PRM));
    function Fmt fshow (AHBCtrl#(`TLM_PRM) ctrl);
-      return ($format("<AHBCTRL ", 
+      return ($format("<AHBCTRL ",
 	      +
 	      fshow(ctrl.command)
 	      +
@@ -295,7 +295,7 @@ endinstance
 
 instance FShow#(AHBRequest#(`TLM_PRM));
    function Fmt fshow (AHBRequest#(`TLM_PRM) req);
-      return ($format("<AHBREQ ", 
+      return ($format("<AHBREQ ",
 	      +
 	      fshow(req.ctrl)
 	      +
@@ -309,7 +309,7 @@ endinstance
 
 instance FShow#(AHBResponse#(`TLM_PRM));
    function Fmt fshow (AHBResponse#(`TLM_PRM) resp);
-      return ($format("<AHBRESP ", 
+      return ($format("<AHBRESP ",
 	      +
 	      fshow(resp.status)
 	      +
@@ -328,9 +328,9 @@ endinstance
 
 function AHBCtrl#(`TLM_PRM) getAHBCtrl (RequestDescriptor#(`TLM_PRM) tlm_descriptor)
    provisos(AHBConvert#(AHBProt, cstm_type));
-   
+
    AHBCtrl#(`TLM_PRM) ctrl;
-   
+
    ctrl.command  = getAHBWrite(tlm_descriptor.command);
    ctrl.size     = getAHBSize(tlm_descriptor.burst_size);
    ctrl.burst    = getAHBBurst(tlm_descriptor);
@@ -339,7 +339,7 @@ function AHBCtrl#(`TLM_PRM) getAHBCtrl (RequestDescriptor#(`TLM_PRM) tlm_descrip
    ctrl.addr     = tlm_descriptor.addr;
 
    return ctrl;
-      
+
 endfunction
 
 function AHBWrite getAHBWrite(TLMCommand command);
@@ -393,11 +393,11 @@ function Integer getAHBCycleCount (AHBBurst burst);
 endfunction
 
 function AHBData#(`TLM_PRM) getAHBData (RequestDescriptor#(`TLM_PRM) tlm_descriptor);
-   
+
    AHBData#(`TLM_PRM) data = tlm_descriptor.data;
 
    return data;
-      
+
 endfunction
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -407,13 +407,13 @@ endfunction
 function RequestDescriptor#(`TLM_PRM) fromAHBCtrl (AHBCtrl#(`TLM_PRM) ctrl)
    provisos(DefaultValue#(RequestDescriptor#(`TLM_PRM)),
 	    AHBConvert#(AHBProt, cstm_type));
-   
+
    RequestDescriptor#(`TLM_PRM) desc = defaultValue;
-   
+
    Tuple2#(TLMBurstMode,  TLMUInt#(`TLM_PRM)) pair = fromAHBBurst(ctrl.burst);
    let burst_mode       = tpl_1(pair);
    let length           = tpl_2(pair);
-   
+
    desc.command         = fromAHBWrite(ctrl.command);
    desc.mode            = REGULAR;
    desc.addr            = ctrl.addr;
@@ -422,9 +422,9 @@ function RequestDescriptor#(`TLM_PRM) fromAHBCtrl (AHBCtrl#(`TLM_PRM) ctrl)
    desc.burst_size      = fromAHBSize(ctrl.size);
    desc.burst_mode      = burst_mode;
    desc.burst_length    = length;
-   
+
 /* -----\/----- EXCLUDED -----\/-----
-   
+
    desc.data            = 0; // added later
    desc.burst_length      = fromAxiLen(addr_cmd.len);
    desc.burst_mode      = fromAxiBurst(addr_cmd.burst);
@@ -434,9 +434,9 @@ function RequestDescriptor#(`TLM_PRM) fromAHBCtrl (AHBCtrl#(`TLM_PRM) ctrl)
    desc.transaction_id = fromAxiId(addr_cmd.id);
    desc.export_id = 0;
  -----/\----- EXCLUDED -----/\----- */
-   
+
    return desc;
-   
+
 endfunction
 
 function TLMCommand fromAHBWrite(AHBWrite command);
@@ -490,7 +490,7 @@ endfunction
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct {AHBProt              prot;   
+typedef struct {AHBProt              prot;
 		AHBResp              status;
 		} AHBCustom `dv;
 
@@ -587,21 +587,21 @@ endinstance
 
 instance Arbitable#(AHBMasterArbiter);
    module mkArbiterRequest#(AHBMasterArbiter ifc) (ArbiterRequest_IFC);
-      
+
       Reg#(Bool) grant_wire <- mkDWire(False);
-   
+
       rule every;
 	 ifc.hGRANT(grant_wire);
       endrule
-   
+
       method Bool request();
 	 return ifc.hBUSREQ;
       endmethod
-      
+
       method Bool lock();
 	 return ifc.hLOCK;
       endmethod
-		 
+
       method Action grant();
 	 grant_wire <= True;
       endmethod
