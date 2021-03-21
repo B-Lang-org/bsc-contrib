@@ -154,9 +154,9 @@ jobs:
       # Save test logs on failure so we can diagnose
       - name: Archive test logs
         if: failure()
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v2
         with:
-          name: logs-${{ matrix.os }}
+          name: test-logs-${{ matrix.os }}
           path: ../bsc-testsuite/testsuite/logs.tar.gz
 
   test-macOS:
