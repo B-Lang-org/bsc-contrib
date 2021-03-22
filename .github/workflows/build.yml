@@ -151,13 +151,19 @@ jobs:
           CCACHE_DIR: ${{ GITHUB.WORKSPACE }}/ccache
         run: ccache --show-stats
 
+      # Move the test logs to GITHUB.WORKSPACE
+      # because upload-artifact doesn't support relative paths
+      - name: Move test logs
+        if: failure()
+        run: mv ../bsc-testsuite/testsuite/logs.tar.gz .
+
       # Save test logs on failure so we can diagnose
       - name: Archive test logs
         if: failure()
         uses: actions/upload-artifact@v2
         with:
           name: test-logs-${{ matrix.os }}
-          path: ../bsc-testsuite/testsuite/logs.tar.gz
+          path: logs.tar.gz
 
   test-macOS:
     strategy:
@@ -233,10 +239,16 @@ jobs:
           CCACHE_DIR: ${{ GITHUB.WORKSPACE }}/ccache
         run: ccache --show-stats
 
+      # Move the test logs to GITHUB.WORKSPACE
+      # because upload-artifact doesn't support relative paths
+      - name: Move test logs
+        if: failure()
+        run: mv ../bsc-testsuite/testsuite/logs.tar.gz .
+
       # Save test logs on failure so we can diagnose
       - name: Archive test logs
         if: failure()
         uses: actions/upload-artifact@v2
         with:
           name: test-logs-${{ matrix.os }}
-          path: ../bsc-testsuite/testsuite/logs.tar.gz
+          path: logs.tar.gz
