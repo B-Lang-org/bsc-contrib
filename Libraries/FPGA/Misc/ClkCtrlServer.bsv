@@ -117,7 +117,7 @@ module mkClkCtrlServerWithCClk
 	  , Reset                 creset
 	  , ClkCtrlServerWithCClk ifc
 	  );
-   
+
    ClkCtrlServerCore core <- mkClkCtrlServerCore(cclock, creset);
 
    // Is a FIFO necessary?
@@ -187,7 +187,7 @@ module mkClkCtrlServerCore
    rule update_cycle;
       stamp <= stamp + 1;
    endrule
-   
+
    // ---------------
 
    Bool active = !stopped && (edges_to_allow[0] != 0);
@@ -203,7 +203,7 @@ module mkClkCtrlServerCore
       // XXX If we want, we can send a status when the edges get to 0
       // if (edges_to_allow[0] == 1)  send_status();
    endrule
-   
+
    // ---------------
 
    function Action send_status();
@@ -269,7 +269,7 @@ module mkClkCtrlServerCore
 
    method preedge = detected_edge._write;
    method allow_edge = active;
-   
+
 endmodule: mkClkCtrlServerCore
 
 // ===========================================================================

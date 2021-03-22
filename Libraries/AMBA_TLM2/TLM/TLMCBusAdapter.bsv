@@ -23,11 +23,11 @@ module mkTLMCBusAdapter#(function Bit#(caddr_size) mapTLMAddr(Bit#(addr_size) ad
    provisos(Bits#(TLMRequest#(`TLM_TYPES),  s0),
 	    Bits#(TLMResponse#(`TLM_TYPES), s1),
 	    Add#(ignore, caddr_size, addr_size));
-  
+
    Wire#(TLMRequest#(`TLM_TYPES))  tlm_in_wire   <- mkWire;
    Wire#(TLMResponse#(`TLM_TYPES)) tlm_out_wire  <- mkWire;
-   
-   rule read_op (tlm_in_wire matches tagged Descriptor .d 
+
+   rule read_op (tlm_in_wire matches tagged Descriptor .d
 		 &&& d.command matches READ
 		 &&& d.burst_length matches 1);
 
@@ -38,12 +38,12 @@ module mkTLMCBusAdapter#(function Bit#(caddr_size) mapTLMAddr(Bit#(addr_size) ad
       response.status = SUCCESS;
       response.command = READ;
       response.transaction_id = d.transaction_id;
-      
+
       tlm_out_wire <= response;
-      
+
    endrule
-   
-   rule write_op (tlm_in_wire matches tagged Descriptor .d 
+
+   rule write_op (tlm_in_wire matches tagged Descriptor .d
 		  &&& d.command matches WRITE
 		  &&& d.burst_length matches 1);
       TLMResponse#(`TLM_TYPES) response = unpack(0);
@@ -52,16 +52,16 @@ module mkTLMCBusAdapter#(function Bit#(caddr_size) mapTLMAddr(Bit#(addr_size) ad
       response.status = SUCCESS;
       response.command = WRITE;
       response.transaction_id = d.transaction_id;
-      
+
       tlm_out_wire <= response;
 
    endrule
-   
-   rule error_op (tlm_in_wire matches tagged Descriptor .d 
+
+   rule error_op (tlm_in_wire matches tagged Descriptor .d
 		  &&& (d.burst_length > 1));
       $display("(%5d) ERROR: TLMCbusAdapter (cant handle ops with burst length > 1).", $time);
    endrule
-   
+
    interface Get tx;
       method get;
 	 actionvalue
@@ -83,13 +83,13 @@ module mkTLMCBusAdapterToReadWrite#(function Bit#(caddr_size) mapTLMAddr(Bit#(ad
    provisos(Bits#(TLMRequest#(`TLM_TYPES),  s0),
 	    Bits#(TLMResponse#(`TLM_TYPES), s1),
 	    Add#(ignore, caddr_size, addr_size));
-   
+
    Wire#(TLMRequest#(`TLM_TYPES))  read_in_wire   <- mkWire;
    Wire#(TLMResponse#(`TLM_TYPES)) read_out_wire  <- mkWire;
    Wire#(TLMRequest#(`TLM_TYPES))  write_in_wire  <- mkWire;
    Wire#(TLMResponse#(`TLM_TYPES)) write_out_wire <- mkWire;
-   
-   rule read_op (read_in_wire matches tagged Descriptor .d 
+
+   rule read_op (read_in_wire matches tagged Descriptor .d
 		 &&& d.command matches READ
 		 &&& d.burst_length matches 1);
 
@@ -100,12 +100,12 @@ module mkTLMCBusAdapterToReadWrite#(function Bit#(caddr_size) mapTLMAddr(Bit#(ad
       response.status = SUCCESS;
       response.command = READ;
       response.transaction_id = d.transaction_id;
-      
+
       read_out_wire <= response;
-      
+
    endrule
-   
-   rule write_op (write_in_wire matches tagged Descriptor .d 
+
+   rule write_op (write_in_wire matches tagged Descriptor .d
 		  &&& d.command matches WRITE
 		  &&& d.burst_length matches 1);
       TLMResponse#(`TLM_TYPES) response = unpack(0);
@@ -114,24 +114,24 @@ module mkTLMCBusAdapterToReadWrite#(function Bit#(caddr_size) mapTLMAddr(Bit#(ad
       response.status = SUCCESS;
       response.command = WRITE;
       response.transaction_id = d.transaction_id;
-      
+
       write_out_wire <= response;
-      
-//      $display("[%0d] CBUS WRITE (%0d) %h %h", 
+
+//      $display("[%0d] CBUS WRITE (%0d) %h %h",
 //	 $time, d.transaction_id, d.addr, d.data);
 
    endrule
-   
-   rule read_error_op (read_in_wire matches tagged Descriptor .d 
+
+   rule read_error_op (read_in_wire matches tagged Descriptor .d
 		       &&& (d.burst_length > 1));
       $display("[%0d] ERROR: TLMCbusAdapter (cant handle ops with burst length > 1).", $time);
    endrule
-   
-   rule write_error_op (read_in_wire matches tagged Descriptor .d 
+
+   rule write_error_op (read_in_wire matches tagged Descriptor .d
 			&&& (d.burst_length > 1));
       $display("[%0d] ERROR: TLMCbusAdapter (cant handle ops with burst length > 1).", $time);
    endrule
-   
+
    interface TLMRecvIFC read;
       interface Get tx;
 	 method get;
@@ -146,7 +146,7 @@ module mkTLMCBusAdapterToReadWrite#(function Bit#(caddr_size) mapTLMAddr(Bit#(ad
 	 endmethod
       endinterface
    endinterface
-   
+
    interface TLMRecvIFC write;
       interface Get tx;
 	 method get;

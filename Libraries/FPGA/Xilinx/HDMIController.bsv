@@ -5,7 +5,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //  Filename      : HDMIController.bsv
-//  Description   : 
+//  Description   :
 ////////////////////////////////////////////////////////////////////////////////
 package HDMIController;
 
@@ -108,7 +108,7 @@ module mkHDMIController#(HDMIParams params)(HDMIController);
    /// Clocks & Resets
    ////////////////////////////////////////////////////////////////////////////////
    Clock                           pixelClock          <- exposeCurrentClock;
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Design Elements
    ////////////////////////////////////////////////////////////////////////////////
@@ -116,13 +116,13 @@ module mkHDMIController#(HDMIParams params)(HDMIController);
    Reg#(Bit#(8))                   rTemp               <- mkReg(0);
    SyncGenerator                   mHSyncGen           <- mkSyncGenerator(params.timing.h);
    SyncGenerator                   mVSyncGen           <- mkSyncGenerator(params.timing.v);
-   
+
    Reg#(Bit#(1))                   rInterrupt          <- mkReg(0);
    Reg#(Bit#(18))                  rDataOut            <- mkReg(18'h06480);
-   
+
    FIFO#(I2CRequest)               fI2CRequest         <- mkFIFO;
    FIFO#(I2CResponse)              fI2CResponse        <- mkFIFO;
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Rules
    ////////////////////////////////////////////////////////////////////////////////
@@ -142,21 +142,21 @@ module mkHDMIController#(HDMIParams params)(HDMIController);
 	    rTemp <= pack(response);
 	 endaction
       endseq
-      
+
       // Monitor/Device connected...  Program the controller now!
 
       fI2CRequest.enq(I2CRequest{ write: True, slaveaddr: 'h39, address: 'h01, data: 'h00 }); // 20-bit N used with CTS to regenerate the audio
       fI2CRequest.enq(I2CRequest{ write: True, slaveaddr: 'h39, address: 'h02, data: 'h18 }); // clock in the receiver.
       fI2CRequest.enq(I2CRequest{ write: True, slaveaddr: 'h39, address: 'h03, data: 'h00 });
-      
+
       fI2CRequest.enq(I2CRequest{ write: True, slaveaddr: 'h39, address: 'h15, data: 'h01 }); // I2S sampling frequency (do not use)
                                                                                             // InputID 16,20,24 bit YCbCr 4:2:2 (separate syncs)
-      
+
       fI2CRequest.enq(I2CRequest{ write: True, slaveaddr: 'h39, address: 'h16, data: 'hB5 }); // Output Format: 4:2:2
                                                  					    // Color Depth for Input Video (8-bit)
                                                  					    // Style-2 input pin assignments
                                                  					    // Output Colorspace for Black image/Range Clipping (YCbCr)
-      
+
       fI2CRequest.enq(I2CRequest{ write: True, slaveaddr: 'h39, address: 'h18, data: 'h46 }); // CSC Enable (Disabled)
       fI2CRequest.enq(I2CRequest{ write: True, slaveaddr: 'h39, address: 'h40, data: 'h80 }); // GC Packet Enable (Enabled)
       fI2CRequest.enq(I2CRequest{ write: True, slaveaddr: 'h39, address: 'h41, data: 'h10 }); // Powered Up, No Sync Adjustment.
@@ -193,16 +193,16 @@ module mkHDMIController#(HDMIParams params)(HDMIController);
       fI2CRequest.enq(I2CRequest{ write: False, slaveaddr: 'h39, address: 'h3e, data: 'h01 });
       fI2CRequest.enq(I2CRequest{ write: False, slaveaddr: 'h39, address: 'h3d, data: 'h01 });
       fI2CRequest.enq(I2CRequest{ write: False, slaveaddr: 'h39, address: 'h3c, data: 'h01 });
-*/      
+*/
       rInitialized <= True;
    endseq;
-   
+
    FSM                                       fsmInitHDMI    <- mkFSM(init_hdmi);
-   
+
    rule initialize_hdmi(!rInitialized && fsmInitHDMI.done);
       fsmInitHDMI.start;
    endrule
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    /// Interface Connections / Methods
    ////////////////////////////////////////////////////////////////////////////////
@@ -221,8 +221,8 @@ module mkHDMIController#(HDMIParams params)(HDMIController);
       interface request  = toGet(fI2CRequest);
       interface response = toPut(fI2CResponse);
    endinterface
-      
+
 endmodule: mkHDMIController
-   
+
 endpackage: HDMIController
 

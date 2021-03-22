@@ -71,7 +71,7 @@ typedef struct {
 
 instance DefaultValue#(AxiWrData#(`TLM_PRM));
    defaultValue = AxiWrData {
-      id:     0, 
+      id:     0,
       data:   ?,
       strb:   maxBound,
       last:   True
@@ -105,7 +105,7 @@ instance DefaultValue#(AxiWrResp#(`TLM_PRM));
       resp:   OKAY
       };
 endinstance
-			     
+
 
 ////////////////////////////////////////////////////////////////////////////////
 ///
@@ -761,7 +761,7 @@ endinstance
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct {		
+typedef struct {
 		AxiLock              lock;
 		AxiCache             cache;
 		AxiProt              prot;

@@ -27,65 +27,65 @@ endmodule
 
 module mkSizedDFIFOF#(Integer n, a dflt) (FIFOF#(a))
    provisos (Bits#(a,sa));
-   
+
    // If the queue contains n elements, they are in q[0]..q[n-1].  The head of
    // the queue (the "first" element) is in q[0], the tail in q[n-1].
-   
+
    Reg#(a) q[n];
    for (Integer i=0; i<n; i=i+1)
       q[i] <- mkReg(dflt);
    SCounter c <- mkSCounter(n);
-   
+
    PulseWire enqueueing <- mkPulseWire;
    Wire#(a)      x_wire <- mkWire;
    PulseWire dequeueing <- mkPulseWire;
-   
+
    let empty = c.isEq(0);
    let full  = c.isEq(n);
 
-   rule incCtr (enqueueing && !dequeueing); 
+   rule incCtr (enqueueing && !dequeueing);
       c.incr;
-      c.setNext(x_wire, q); 
+      c.setNext(x_wire, q);
    endrule
-   rule decCtr (dequeueing && !enqueueing); 
-      c.decr; 
+   rule decCtr (dequeueing && !enqueueing);
+      c.decr;
    endrule
    rule both (dequeueing && enqueueing);
-      c.set(x_wire, q); 
+      c.set(x_wire, q);
    endrule
-   
+
    method Action deq;
       if (!empty)
 	 begin
 	    dequeueing.send;
-	    for (Integer i=0; i<n; i=i+1) 
+	    for (Integer i=0; i<n; i=i+1)
 	       q[i] <= (i==(n - 1) ? dflt : q[i + 1]);
 	 end
    endmethod
-   
+
    method first; // no implicit conditions on first!!!
       return q[0];
    endmethod
-   
+
    method Action enq(x) if (!full);
       enqueueing.send;
       x_wire <= x;
    endmethod
-   
+
    method notEmpty = !empty;
    method notFull  = !full;
-   
+
    method Action clear;
       c.clear;
    endmethod
-endmodule      
+endmodule
 
 interface SCounter;
    method Action incr;
    method Action decr;
    method Bool isEq(Integer n);
-   method Action setNext (b value, Reg#(b) as[]); 
-   method Action set (b value, Reg#(b) as[]); 
+   method Action setNext (b value, Reg#(b) as[]);
+   method Action set (b value, Reg#(b) as[]);
    method Action clear;
 endinterface
 
@@ -93,8 +93,8 @@ module mkSCtr#(Reg#(UInt#(s)) c)(SCounter);
    method Action incr; c <= c+1; endmethod
    method Action decr; c <= c-1; endmethod
    method isEq(n) = (c==fromInteger(n));
-   method Action setNext (value, as a[]); a[c] <= value; endmethod 
-   method Action set (value, as a[]); a[c-1] <= value; endmethod 
+   method Action setNext (value, as a[]); a[c] <= value; endmethod
+   method Action set (value, as a[]); a[c-1] <= value; endmethod
    method Action clear; c <= 0; endmethod
 endmodule
 
@@ -126,13 +126,13 @@ endmodule
 
 module mkSizedBypassFIFOF#(Integer n)(FIFOF#(a))
    provisos (Bits#(a,sa));
-   
+
    FIFOF#(a) ff <- mkUGSizedFIFOF(n);
 
    RWire#(a) enqw <- mkRWire;
    Reg#(Bool) firstValid <- mkRevertingVirtualReg(True);
    PulseWire dequeueing <- mkPulseWire;
-   
+
    let empty = !ff.notEmpty;
    let full  = !ff.notFull;
    let enqueueing = isValid(enqw.wget);
@@ -141,7 +141,7 @@ module mkSizedBypassFIFOF#(Integer n)(FIFOF#(a))
    rule enqueue (enqueueing && !bypassing);
       ff.enq(validValue(enqw.wget));
    endrule
-   
+
    rule dequeue (dequeueing && !empty);
       ff.deq;
    endrule
@@ -150,22 +150,22 @@ module mkSizedBypassFIFOF#(Integer n)(FIFOF#(a))
       dequeueing.send;
       firstValid <= False;
    endmethod
-   
+
    method first if (firstValid && (!empty || enqueueing));
       return (empty ? validValue(enqw.wget) : ff.first);
    endmethod
-   
+
    method Action enq(x) if (!full);
       enqw.wset(x);
    endmethod
-   
+
    method Action clear;
       ff.clear;
    endmethod
-   
+
    method notEmpty = ff.notEmpty;
    method notFull  = ff.notFull;
-endmodule      
+endmodule
 
 ////////////////////////////////////////////////////////////////////////////////
 ///
@@ -176,12 +176,12 @@ module mkBypassFIFOLevel(FIFOLevelIfc#(a, fifoDepth))
 
    Integer ififoDepth = (valueOf(fifoDepth) < 3 ?
 			 (error ("mkFIFOLevel: fifoDepth must be greater than 2. " +
-                                 "Specified depth is " + 
-				 integerToString(valueOf(fifoDepth)) + 
+                                 "Specified depth is " +
+				 integerToString(valueOf(fifoDepth)) +
 				 "." )) : valueOf(fifoDepth));
-   
+
    FIFOF#(a) fifof <- mkSizedBypassFIFOF(ififoDepth);
-   
+
    Reg#(UInt#(cntSize)) count       <- mkReg(0);
    Reg#(Bool)           levelsValidEnq <- mkRevertingVirtualReg(True);
    Reg#(Bool)           levelsValidDeq <- mkRevertingVirtualReg(True);
@@ -189,13 +189,13 @@ module mkBypassFIFOLevel(FIFOLevelIfc#(a, fifoDepth))
    PulseWire      do_enq      <- mkPulseWire;
    PulseWire      do_deq      <- mkPulseWire;
    PulseWire      do_clr      <- mkPulseWire;
-   
+
    Bool levelsValid = levelsValidEnq && levelsValidDeq && levelsValidClr;
 
    rule do_incr (do_enq && !do_deq && !do_clr);
       count <= count + 1;
    endrule
-   
+
    rule do_decr (!do_enq && do_deq && !do_clr);
       count <= count - 1;
    endrule
@@ -205,7 +205,7 @@ module mkBypassFIFOLevel(FIFOLevelIfc#(a, fifoDepth))
       levelsValidEnq <= False;
       do_enq.send;
    endmethod
-   
+
    method Action deq;
       fifof.deq;
       levelsValidDeq <= False;
@@ -229,7 +229,7 @@ module mkBypassFIFOLevel(FIFOLevelIfc#(a, fifoDepth))
    method isGreaterThan (Integer c) if (levelsValid) ;
       return rangeTest(count, c, \> , 0, ififoDepth -1  , "isGreaterThan" ) ;
    endmethod
-   
+
 endmodule
 
 // Common function to test the validity arguments to methods
@@ -241,10 +241,10 @@ function Bool rangeTest( UInt#(cntSz) value,
                            Integer maxValue,
                            String methodName );
 
-     return ((comp >= minValue) && (comp <= maxValue )) ? 
+     return ((comp >= minValue) && (comp <= maxValue )) ?
                            (foperation (value,  fromInteger( comp ))) :
                            error( "Argument of " + methodName + " must be in the range of " +
-                                 integerToString( minValue) +  
+                                 integerToString( minValue) +
                                  " to " +
                                  integerToString( maxValue ) +
                                  "; " +
