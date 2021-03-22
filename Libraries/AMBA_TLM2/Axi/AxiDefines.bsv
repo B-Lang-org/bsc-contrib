@@ -569,12 +569,9 @@ function AxiWrData#(`TLM_PRM) getFirstAxiWrData (RequestDescriptor#(`TLM_PRM) tl
 endfunction
 
 function AxiByteEn#(`TLM_PRM) getAxiByteEn (RequestDescriptor#(`TLM_PRM) tlm_descriptor);
-   Bit#(TLog#(SizeOf#(AxiByteEn#(`TLM_PRM)))) addr = zExtend(tlm_descriptor.addr);
-   AxiByteEn#(`TLM_PRM) all_ones  = unpack('1);
-   AxiByteEn#(`TLM_PRM) all_zeros = unpack(0);
-   let tlm_byte_enable = tlm_descriptor.byte_enable;
-   let out = tlm_byte_enable;
-   return out;
+   // This function previously interpreted `1 or `0 as a request to calculate
+   // the byte enable, but the calculation was incorrect for some sizes
+   return tlm_descriptor.byte_enable;
 endfunction
 
 
