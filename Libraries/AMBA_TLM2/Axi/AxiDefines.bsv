@@ -569,8 +569,6 @@ function AxiWrData#(`TLM_PRM) getFirstAxiWrData (RequestDescriptor#(`TLM_PRM) tl
 endfunction
 
 function AxiByteEn#(`TLM_PRM) getAxiByteEn (RequestDescriptor#(`TLM_PRM) tlm_descriptor);
-   // This function previously interpreted `1 or `0 as a request to calculate
-   // the byte enable, but the calculation was incorrect for some sizes
    return tlm_descriptor.byte_enable;
 endfunction
 
