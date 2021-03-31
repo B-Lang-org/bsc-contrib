@@ -1,0 +1,20 @@
+package Test where
+
+import GenCRepr
+
+struct Foo =
+  x :: UInt 8
+  y :: Int 16
+  z :: Bit 256
+
+struct Bar =
+  b :: Bool
+  f :: Foo
+
+struct Baz = {}
+
+data Qux = QF Foo | QFB Foo Bar | Q
+
+{-# verilog mkTest #-}
+mkTest :: Module Empty
+mkTest = writeCDecls "test" ((error "proxy") :: (Foo, Bar, Baz))  -- Qux

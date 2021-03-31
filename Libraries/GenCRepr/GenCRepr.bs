@@ -1,0 +1,81 @@
+package GenCRepr where
+
+numCBytes :: Integer -> Maybe Integer
+numCBytes numBits =
+  if numBits < 8 then Just 1
+  else if numBits < 16 then Just 2
+  else if numBits < 32 then Just 4
+  else if numBits < 64 then Just 8
+  else Nothing
+
+class GenCRepr a where
+  genCType :: a -> (String, String)
+  genCDecl :: a -> Maybe String
+  genCDecl _ = Nothing
+
+instance GenCRepr (Bit n) where
+  genCType _ =
+    case numCBytes (valueOf n) of
+      Just b -> ("uint" +++ integerToString (b * 8) +++ "_t", "")
+      Nothing -> ("uint8_t", "[" +++ integerToString (((valueOf n - 1) / 8) + 1) +++ "]")
+
+instance GenCRepr (UInt n) where
+  genCType _ =
+    case numCBytes (valueOf n) of
+      Just b -> ("uint" +++ integerToString (b * 8) +++ "_t", "")
+      Nothing -> ("uint8_t", "[" +++ integerToString (((valueOf n - 1) / 8) + 1) +++ "]")
+
+instance GenCRepr (Int n) where
+  genCType _ =
+    case numCBytes (valueOf n) of
+      Just b -> ("int" +++ integerToString (b * 8) +++ "_t", "")
+      Nothing -> ("int8_t", "[" +++ integerToString (((valueOf n - 1) / 8) + 1) +++ "]")
+
+instance GenCRepr Bool where
+  genCType _ = ("_Bool", "")
+  
+
+instance (Generic a (Meta (MetaData name pkg 1) (Meta (MetaConsNamed cName cIdx numFields) bodyRepr)), GenCStructBody bodyRepr) => GenCRepr a where
+  genCType _ = (stringOf name, "")
+  genCDecl _ = Just $ "typedef struct " +++ stringOf name +++ " {\n" +++ genCStructBody ((error "proxy") :: bodyRepr) +++ "} " +++ stringOf name +++ ";"
+
+class GenCStructBody a where
+  genCStructBody :: a -> String
+
+instance (GenCStructBody a, GenCStructBody b) => GenCStructBody (a, b) where
+  genCStructBody _ = genCStructBody ((error "proxy") :: a) +++ genCStructBody ((error "proxy") :: b)
+
+instance GenCStructBody () where
+  genCStructBody _ = ""
+
+instance (GenCRepr a) => GenCStructBody (Meta (MetaField name idx) (Conc a)) where
+  genCStructBody _ =
+    let (lType, rType) = genCType ((error "proxy") :: a)
+    in "\t" +++ lType +++ " " +++ stringOf name +++ rType +++ ";\n"
+
+
+class GenCDecls a where
+  genCDecls :: a -> String
+
+instance (GenCDecls a, GenCDecls b) => GenCDecls (a, b) where
+  genCDecls _ = genCDecls ((error "proxy") :: a) +++ genCDecls ((error "proxy") :: b)
+
+instance GenCDecls () where
+  genCDecls _ = ""
+
+instance (GenCRepr a) => GenCDecls a where
+  genCDecls p =
+    case genCDecl p of
+      Just d -> d +++ "\n\n"
+      Nothing -> ""
+
+writeCDecls :: (GenCDecls tys) => String -> tys -> Module Empty
+writeCDecls baseName proxy = do
+  let decls = genCDecls proxy
+  let headerName = (baseName +++ ".h")
+  let headerContents = "#include <stdint.h>\n\n\n" +++ decls
+  h <- openFile headerName WriteMode
+  hPutStr h headerContents
+  hClose h
+  stdout <- openFile "/dev/stdout" WriteMode
+  hPutStrLn stdout ("Header file created: " +++ headerName)
