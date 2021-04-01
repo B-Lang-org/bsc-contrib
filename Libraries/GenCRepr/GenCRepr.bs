@@ -154,7 +154,7 @@ instance (Generic a (Meta (MetaData name pkg 1) (Meta (MetaConsNamed cName cIdx 
     stringOf name +++ " unpack_" +++ stringOf name +++ "(uint8_t **buf);",
     stringOf name +++ " unpack_" +++ stringOf name +++ "(uint8_t **buf) {\n" +++
     "\t" +++ stringOf name +++ " val;\n" +++
-    genCUnpackStructBody ((error "proxy") :: bodyRepr) +++
+    genCUnpackStructBody ((error "proxy") :: bodyRepr) False "" +++
     "\treturn val;\n" +++
     "}")
 
@@ -183,11 +183,19 @@ instance (Generic a (Meta (MetaData name pkg numCtors) bodyRepr),
 
   genCUnpack' _ _ val buf = val +++ " = unpack_" +++ stringOf name +++ "(" +++ buf +++ ");"
 
-  genCUnpackDecl' _ _ = Nothing -- TODO
+  genCUnpackDecl' _ _ = Just (
+    stringOf name +++ " unpack_" +++ stringOf name +++ "(uint8_t **buf);",
+    stringOf name +++ " unpack_" +++ stringOf name +++ "(uint8_t **buf) {\n" +++
+    "\t" +++ stringOf name +++ " val;\n" +++
+    "\tval.tag = **buf; (*buf)++;\n" +++
+    "\t" +++ genCUnpackUnionBody ((error "proxy") :: bodyRepr) (stringOf name) +++ " // Invalid tag, do nothing\n" +++
+    "\treturn val;\n" +++
+    "}")
 
 class GenCUnionBody a n | a -> n where
   genCEnumBody :: a -> String -> String
   genCUnionBody :: a -> String -> String
+  genCUnpackUnionBody :: a -> String -> String
 
 instance (GenCUnionBody a n1, GenCUnionBody b n2, Max n1 n2 n) =>
          GenCUnionBody (Either a b) n where
@@ -195,6 +203,8 @@ instance (GenCUnionBody a n1, GenCUnionBody b n2, Max n1 n2 n) =>
     genCEnumBody ((error "proxy") :: a) typeName +++ ", " +++ genCEnumBody ((error "proxy") :: b) typeName
   genCUnionBody _ typeName =
     genCUnionBody ((error "proxy") :: a) typeName +++ genCUnionBody  ((error "proxy") :: b) typeName
+  genCUnpackUnionBody _ typeName =
+    genCUnpackUnionBody ((error "proxy") :: a) typeName +++ " else " +++ genCUnpackUnionBody  ((error "proxy") :: b) typeName
 
 instance (GenCStructBody bodyRepr bodyBits, Add bodyBits 8 n) =>
          GenCUnionBody (Meta (MetaConsNamed ctorName ctorIdx numFields) bodyRepr) n where
@@ -204,6 +214,11 @@ instance (GenCStructBody bodyRepr bodyBits, Add bodyBits 8 n) =>
     genCStructBody ((error "proxy") :: bodyRepr) True +++
     "\t\t} " +++ stringOf ctorName +++ ";\n"
 
+  genCUnpackUnionBody _ typeName =
+    "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
+    genCUnpackStructBody ((error "proxy") :: bodyRepr) True (".contents." +++ stringOf ctorName) +++ "\n" +++
+    "\t}"
+
 instance (GenCStructBody bodyRepr bodyBits, Add bodyBits 8 n) =>
          GenCUnionBody (Meta (MetaConsAnon ctorName ctorIdx numFields) bodyRepr) n where
   genCEnumBody _ typeName = typeName +++ "_" +++ stringOf ctorName
@@ -212,6 +227,11 @@ instance (GenCStructBody bodyRepr bodyBits, Add bodyBits 8 n) =>
     genCStructBody ((error "proxy") :: bodyRepr) True +++
     "\t\t} " +++ stringOf ctorName +++ ";\n"
 
+  genCUnpackUnionBody _ typeName =
+    "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
+    genCUnpackStructBody ((error "proxy") :: bodyRepr) True (".contents." +++ stringOf ctorName) +++ "\n" +++
+    "\t}"
+
 instance (GenCRepr a fieldBits, Add fieldBits 8 n) =>
          GenCUnionBody (Meta (MetaConsAnon ctorName ctorIdx 1) (Meta (MetaField fieldName fieldIdx) (Conc a))) n where
   genCEnumBody _ typeName = typeName +++ "_" +++ stringOf ctorName
@@ -219,13 +239,18 @@ instance (GenCRepr a fieldBits, Add fieldBits 8 n) =>
     let (lType, rType) = genCType ((error "proxy") :: a)
     in "\t\t" +++ lType +++ " " +++ stringOf ctorName +++ rType +++ ";\n"
 
+  genCUnpackUnionBody _ typeName =
+    "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
+    "\t\t" +++ genCUnpack ((error "proxy") :: a) ("val.contents." +++ stringOf ctorName) "buf" +++ "\n" +++
+    "\t}"
+
 
 class GenCStructBody a n | a -> n where
   genCStructBody :: a -> Bool -> String
   packStructBody :: a -> Bit n
   genCPackStructBody :: a -> String
   unpackStructBody :: Bit n -> a
-  genCUnpackStructBody :: a -> String
+  genCUnpackStructBody :: a -> Bool -> String -> String
 
 instance (GenCStructBody a n1, GenCStructBody b n2,
           -- All data is byte-aligned for easier deserialization in C
@@ -243,15 +268,15 @@ instance (GenCStructBody a n1, GenCStructBody b n2,
   unpackStructBody bs =
     let (xbs, ybs) = (split bs) :: (Bit n1Padded, Bit n2)
     in (unpackStructBody $ truncate xbs, unpackStructBody ybs)
-  genCUnpackStructBody _ =
-    genCUnpackStructBody ((error "proxy") :: a) +++ genCUnpackStructBody ((error "proxy") :: b)
+  genCUnpackStructBody _ nested sel =
+    genCUnpackStructBody ((error "proxy") :: a) nested sel +++ genCUnpackStructBody ((error "proxy") :: b) nested sel
 
 instance GenCStructBody () 0 where
   genCStructBody _ _ = ""
   packStructBody () = 0'b0
   genCPackStructBody _ = ""
   unpackStructBody _ = ()
-  genCUnpackStructBody _ = ""
+  genCUnpackStructBody _ _ _ = ""
 
 instance (GenCRepr a n) => GenCStructBody (Meta (MetaField name idx) (Conc a)) n where
   genCStructBody _ nested =
@@ -260,11 +285,12 @@ instance (GenCRepr a n) => GenCStructBody (Meta (MetaField name idx) (Conc a)) n
 
   packStructBody (Meta (Conc x)) = pack x
   genCPackStructBody _ =
-    "\t" +++ genCPack ((error "proxy") :: a) ("val." +++ stringOf name)  "buf" +++ "\n"
+    "\t" +++ genCPack ((error "proxy") :: a) ("val." +++ stringOf name) "buf" +++ "\n"
 
   unpackStructBody x = Meta $ Conc $ unpack x
-  genCUnpackStructBody _ =
-    "\t" +++ genCUnpack ((error "proxy") :: a) ("val." +++ stringOf name)  "buf" +++ "\n"
+  genCUnpackStructBody _ nested sel =
+    (if nested then "\t" else "") +++
+    "\t" +++ genCUnpack ((error "proxy") :: a) ("val" +++ sel +++ "." +++ stringOf name) "buf" +++ "\n"
 
 
 -- Helper to allow a tuple of types to be all easily translated together
