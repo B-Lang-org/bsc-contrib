@@ -8,12 +8,20 @@ numCBytes numBits =
   else if numBits < 64 then Just 8
   else Nothing
 
+bitsToBytes :: Integer -> Integer
+bitsToBytes b = (((b - 1) / 8) + 1)
+
 genCIntType :: Bool -> Integer -> (String, String)
 genCIntType signed numBits =
   let prefix = if signed then "int" else "uint"
   in case numCBytes numBits of
     Just b -> (prefix +++ integerToString (b * 8) +++ "_t", "")
-    Nothing -> (prefix +++ "8_t", "[" +++ integerToString (((numBits - 1) / 8) + 1) +++ "]")
+    Nothing -> (prefix +++ "8_t", "[" +++ integerToString (bitsToBytes numBits) +++ "]")
+
+genCIntPack :: Integer -> String -> String -> String
+genCIntPack numBits val res =
+  "memcpy(*" +++ res +++ ", &" +++ val +++ ", " +++ integerToString (bitsToBytes numBits) +++ "); " +++
+  "*" +++ res +++ " += " +++ integerToString (bitsToBytes numBits) +++ ";"
 
 class GenCRepr a where
   genCType :: a -> (String, String)
@@ -21,65 +29,100 @@ class GenCRepr a where
   genCTypeDecl :: a -> Maybe String
   genCTypeDecl _ = Nothing
 
-  genCPack :: a -> Maybe (String, String)
-  genCPack _ = Nothing
+  genCPack :: a -> String -> String -> String
+
+  genCPackDecl :: a -> Maybe (String, String)
+  genCPackDecl _ = Nothing
 
 instance GenCRepr (Bit n) where
   genCType _ = genCIntType False (valueOf n)
+  genCPack _ = genCIntPack (valueOf n)
 
 instance GenCRepr (UInt n) where
   genCType _ = genCIntType False (valueOf n)
+  genCPack _ = genCIntPack (valueOf n)
 
 instance GenCRepr (Int n) where
   genCType _ = genCIntType True (valueOf n)
+  genCPack _ = genCIntPack (valueOf n)
 
 instance GenCRepr Bool where
   genCType _ = ("_Bool", "")
+
+  -- TODO: Booleans are each packed as a single byte
+  genCPack _ = genCIntPack 1
 
 instance (Generic a (Meta (MetaData name pkg 1) (Meta (MetaConsNamed cName cIdx numFields) bodyRepr)),
           GenCStructBody bodyRepr) => GenCRepr a where
   genCType _ = (stringOf name, "")
   genCTypeDecl _ = Just $ "typedef struct " +++ stringOf name +++ " {\n" +++ genCStructBody ((error "proxy") :: bodyRepr) +++ "} " +++ stringOf name +++ ";"
 
+  genCPack _ val res = "pack_" +++ stringOf name +++ "(" +++ val +++ ", " +++ res +++ ");";
+
+  genCPackDecl _ = Just (
+    "void pack_" +++ stringOf name +++ "(" +++ stringOf name +++ " val, uint8_t **buf);",
+    "void pack_" +++ stringOf name +++ "(" +++ stringOf name +++ " val, uint8_t **buf) {\n" +++ genCPackBody ((error "proxy") :: bodyRepr) +++ "}")
+
 class GenCStructBody a where
   genCStructBody :: a -> String
+  genCPackBody :: a -> String
 
 instance (GenCStructBody a, GenCStructBody b) => GenCStructBody (a, b) where
   genCStructBody _ = genCStructBody ((error "proxy") :: a) +++ genCStructBody ((error "proxy") :: b)
+  genCPackBody _ = genCPackBody ((error "proxy") :: a) +++ genCPackBody ((error "proxy") :: b)
 
 instance GenCStructBody () where
   genCStructBody _ = ""
+  genCPackBody _ = ""
 
 instance (GenCRepr a) => GenCStructBody (Meta (MetaField name idx) (Conc a)) where
   genCStructBody _ =
     let (lType, rType) = genCType ((error "proxy") :: a)
     in "\t" +++ lType +++ " " +++ stringOf name +++ rType +++ ";\n"
+  genCPackBody _ = "\t" +++ genCPack ((error "proxy") :: a) ("val." +++ stringOf name)  "buf" +++ "\n"
 
 
 -- Helper to allow a tuple of types to be all easily translated together
 class GenCDecls a where
-  genCTypeDecls :: a -> String
+  genCHeaderDecls :: a -> String
+  genCImplDecls :: a -> String
 
 instance (GenCDecls a, GenCDecls b) => GenCDecls (a, b) where
-  genCTypeDecls _ = genCTypeDecls ((error "proxy") :: a) +++ genCTypeDecls ((error "proxy") :: b)
+  genCHeaderDecls _ = genCHeaderDecls ((error "proxy") :: a) +++ genCHeaderDecls ((error "proxy") :: b)
+  genCImplDecls _ = genCImplDecls ((error "proxy") :: a) +++ genCImplDecls ((error "proxy") :: b)
 
 instance GenCDecls () where
-  genCTypeDecls _ = ""
+  genCHeaderDecls _ = ""
+  genCImplDecls _ = ""
 
 instance (GenCRepr a) => GenCDecls a where
-  genCTypeDecls p =
-    case genCTypeDecl p of
-      Just d -> d +++ "\n\n"
-      Nothing -> ""
+  genCHeaderDecls p =
+    (case genCTypeDecl p of
+        Just d -> d +++ "\n\n"
+        Nothing -> ""
+    ) +++
+    (case genCPackDecl p of
+       Just (d, _) -> d +++ "\n\n"
+       Nothing -> ""
+    )
+
+  genCImplDecls p =
+    (case genCPackDecl p of
+       Just (_, d) -> d +++ "\n\n"
+       Nothing -> ""
+    )
 
 -- Driver to all write C declarations for some types
 writeCDecls :: (GenCDecls tys) => String -> tys -> Module Empty
 writeCDecls baseName proxy = do
-  let typeDecls = genCTypeDecls proxy
   let headerName = (baseName +++ ".h")
   let implName = (baseName +++ ".c")
-  let headerContents = "#include <stdint.h>\n\n\n" +++ typeDecls
-  let implContents = "#include <stdlib.h>\n#include <string.h>\n\n#include \"" +++ headerName +++ "\"\n\n\n"
+  let headerContents =
+        "#include <stdint.h>\n\n\n" +++
+        genCHeaderDecls proxy
+  let implContents =
+        "#include <stdlib.h>\n#include <string.h>\n\n#include \"" +++ headerName +++ "\"\n\n\n" +++
+        genCImplDecls proxy
   stdout <- openFile "/dev/stdout" WriteMode
   h <- openFile headerName WriteMode
   hPutStr h headerContents
