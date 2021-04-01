@@ -28,62 +28,115 @@ genCIntUnpack numBits val buf =
   "memcpy(&" +++ val +++ ", *" +++ buf +++ ", " +++ integerToString (bitsToBytes numBits) +++ "); " +++
   "*" +++ buf +++ " += " +++ integerToString (bitsToBytes numBits) +++ ";"
 
-class GenCRepr a where
+class GenCRepr a n | a -> n where
   genCType :: a -> (String, String)
-  
+
   genCTypeDecl :: a -> Maybe String
   genCTypeDecl _ = Nothing
+
+  pack :: a -> Bit n
 
   genCPack :: a -> String -> String -> String
 
   genCPackDecl :: a -> Maybe (String, String)
   genCPackDecl _ = Nothing
 
+  unpack :: Bit n -> a
+
   genCUnpack :: a -> String -> String -> String
 
   genCUnpackDecl :: a -> Maybe (String, String)
   genCUnpackDecl _ = Nothing
 
-instance GenCRepr (Bit n) where
+instance GenCRepr (UInt n) n where
   genCType _ = genCIntType False (valueOf n)
+
+  pack = Prelude.pack
   genCPack _ = genCIntPack (valueOf n)
+
+  unpack = Prelude.unpack
   genCUnpack _ = genCIntUnpack (valueOf n)
 
-instance GenCRepr (UInt n) where
-  genCType _ = genCIntType False (valueOf n)
-  genCPack _ = genCIntPack (valueOf n)
-  genCUnpack _ = genCIntUnpack (valueOf n)
-
-instance GenCRepr (Int n) where
+instance GenCRepr (Int n) n where
   genCType _ = genCIntType True (valueOf n)
+
+  pack = Prelude.pack
   genCPack _ = genCIntPack (valueOf n)
+
+  unpack = Prelude.unpack
   genCUnpack _ = genCIntUnpack (valueOf n)
 
-instance GenCRepr Bool where
+-- Booleans are each packed as an entire byte, for now
+instance GenCRepr Bool 8 where
   genCType _ = ("_Bool", "")
 
-  -- TODO: Booleans are each packed as a single byte
+  pack x = extend $ Prelude.pack x
   genCPack _ = genCIntPack 1
+
+  unpack x = Prelude.unpack $ truncate x
   genCUnpack _ = genCIntUnpack 1
 
+instance (Generic a r, GenCRepr' a r n) => GenCRepr a n where
+  genCType p = genCType' p ((from p) :: r)
+  genCTypeDecl p = genCTypeDecl' p ((from p) :: r)
+  pack = pack' ((error "proxy") :: r)
+  genCPack p = genCPack' p ((from p) :: r)
+  genCPackDecl p = genCPackDecl' p ((from p) :: r)
+  unpack = unpack' ((error "proxy") :: r)
+  genCUnpack p = genCUnpack' p ((from p) :: r)
+  genCUnpackDecl p = genCUnpackDecl' p ((from p) :: r)
+
+-- Helper type class for coherent dispach on generic representation
+class GenCRepr' a r n | a r -> n where
+  genCType' :: a -> r -> (String, String)
+  genCTypeDecl' :: a -> r -> Maybe String
+
+  pack' :: r -> a -> Bit n
+  genCPack' :: a -> r -> String -> String -> String
+  genCPackDecl' :: a -> r -> Maybe (String, String)
+
+  unpack' :: r -> Bit n -> a
+  genCUnpack' :: a -> r -> String -> String -> String
+  genCUnpackDecl' :: a -> r -> Maybe (String, String)
+
+-- Default: serialize to Bits representation and pack as an integer
+instance (Generic a r, Bits a n) => GenCRepr' a r n where
+  genCType' _ _ = genCIntType False (valueOf n)
+  genCTypeDecl' _ _ = Nothing
+
+  pack' _ = Prelude.pack
+  genCPack' _ _ = genCIntPack (valueOf n)
+  genCPackDecl' _ _ = Nothing
+
+  unpack' _ = Prelude.unpack
+  genCUnpack' _ _ = genCIntUnpack (valueOf n)
+  genCUnpackDecl' _ _ = Nothing
+
 instance (Generic a (Meta (MetaData name pkg 1) (Meta (MetaConsNamed cName cIdx numFields) bodyRepr)),
-          GenCStructBody bodyRepr) => GenCRepr a where
-  genCType _ = (stringOf name, "")
-  genCTypeDecl _ = Just $ "typedef struct " +++ stringOf name +++ " {\n" +++
+          GenCStructBody bodyRepr n) =>
+         GenCRepr' a (Meta (MetaData name pkg 1) (Meta (MetaConsNamed cName cIdx numFields) bodyRepr)) n where
+  genCType' _ _ = (stringOf name, "")
+  genCTypeDecl' _ _ = Just $ "typedef struct " +++ stringOf name +++ " {\n" +++
     genCStructBody ((error "proxy") :: bodyRepr) +++
     "} " +++ stringOf name +++ ";"
 
-  genCPack _ val buf = "pack_" +++ stringOf name +++ "(" +++ val +++ ", " +++ buf +++ ");";
+  pack' _ x =
+    case from x of
+      (Meta (Meta y)) -> packBody y
 
-  genCPackDecl _ = Just (
+  genCPack' _ _ val buf = "pack_" +++ stringOf name +++ "(" +++ val +++ ", " +++ buf +++ ");";
+
+  genCPackDecl' _ _ = Just (
     "void pack_" +++ stringOf name +++ "(" +++ stringOf name +++ " val, uint8_t **buf);",
     "void pack_" +++ stringOf name +++ "(" +++ stringOf name +++ " val, uint8_t **buf) {\n" +++
     genCPackBody ((error "proxy") :: bodyRepr) +++
     "}")
 
-  genCUnpack _ val buf = val +++ " = unpack_" +++ stringOf name +++ "(" +++ buf +++ ");";
+  unpack' _ x = to $ Meta $ Meta $ unpackBody x
 
-  genCUnpackDecl _ = Just (
+  genCUnpack' _ _ val buf = val +++ " = unpack_" +++ stringOf name +++ "(" +++ buf +++ ");";
+
+  genCUnpackDecl' _ _ = Just (
     stringOf name +++ " unpack_" +++ stringOf name +++ "(uint8_t **buf);",
     stringOf name +++ " unpack_" +++ stringOf name +++ "(uint8_t **buf) {\n" +++
     "\t" +++ stringOf name +++ " val;\n" +++
@@ -91,27 +144,46 @@ instance (Generic a (Meta (MetaData name pkg 1) (Meta (MetaConsNamed cName cIdx 
     "\treturn val;\n" +++
     "}")
 
-class GenCStructBody a where
+class GenCStructBody a n | a -> n where
   genCStructBody :: a -> String
+  packBody :: a -> Bit n
   genCPackBody :: a -> String
+  unpackBody :: Bit n -> a
   genCUnpackBody :: a -> String
 
-instance (GenCStructBody a, GenCStructBody b) => GenCStructBody (a, b) where
+instance (GenCStructBody a n1, GenCStructBody b n2,
+          -- All data is byte-aligned for easier deserialization in C
+          Add n1' 1 n1, Div n1' 8 n1'', Add n1'' 1 n1Bytes, Mul n1Bytes 8 n1Padded,
+          Add n1Padded n2 n,
+          -- BSC isn't smart enough to infer this
+          Add n1 n1Pad n1Padded) =>
+         GenCStructBody (a, b) n where
   genCStructBody _ = genCStructBody ((error "proxy") :: a) +++ genCStructBody ((error "proxy") :: b)
+
+  packBody (x, y) = zeroExtend (packBody x) ++ packBody y
   genCPackBody _ = genCPackBody ((error "proxy") :: a) +++ genCPackBody ((error "proxy") :: b)
+
+  unpackBody bs =
+    let (xbs, ybs) = (split bs) :: (Bit n1Padded, Bit n2)
+    in (unpackBody $ truncate xbs, unpackBody ybs)
   genCUnpackBody _ = genCUnpackBody ((error "proxy") :: a) +++ genCUnpackBody ((error "proxy") :: b)
 
-instance GenCStructBody () where
+instance GenCStructBody () 0 where
   genCStructBody _ = ""
+  packBody () = 0'b0
   genCPackBody _ = ""
+  unpackBody _ = ()
   genCUnpackBody _ = ""
 
-instance (GenCRepr a) => GenCStructBody (Meta (MetaField name idx) (Conc a)) where
+instance (GenCRepr a n) => GenCStructBody (Meta (MetaField name idx) (Conc a)) n where
   genCStructBody _ =
     let (lType, rType) = genCType ((error "proxy") :: a)
     in "\t" +++ lType +++ " " +++ stringOf name +++ rType +++ ";\n"
 
+  packBody (Meta (Conc x)) = pack x
   genCPackBody _ = "\t" +++ genCPack ((error "proxy") :: a) ("val." +++ stringOf name)  "buf" +++ "\n"
+
+  unpackBody x = Meta $ Conc $ unpack x
   genCUnpackBody _ = "\t" +++ genCUnpack ((error "proxy") :: a) ("val." +++ stringOf name)  "buf" +++ "\n"
 
 
@@ -128,7 +200,7 @@ instance GenCDecls () where
   genCHeaderDecls _ = ""
   genCImplDecls _ = ""
 
-instance (GenCRepr a) => GenCDecls a where
+instance (GenCRepr a n) => GenCDecls a where
   genCHeaderDecls p =
     (case genCTypeDecl p of
         Just d -> d +++ "\n"

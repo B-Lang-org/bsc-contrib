@@ -9,6 +9,7 @@ struct Foo =
 
 struct Bar =
   b :: Bool
+  bs :: Bit 13
   f :: Foo
 
 struct Baz = {}
