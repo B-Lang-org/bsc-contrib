@@ -10,8 +10,9 @@ numCBytes numBits =
 
 class GenCRepr a where
   genCType :: a -> (String, String)
-  genCDecl :: a -> Maybe String
-  genCDecl _ = Nothing
+  
+  genCTypeDecl :: a -> Maybe String
+  genCTypeDecl _ = Nothing
 
 instance GenCRepr (Bit n) where
   genCType _ =
@@ -37,7 +38,7 @@ instance GenCRepr Bool where
 
 instance (Generic a (Meta (MetaData name pkg 1) (Meta (MetaConsNamed cName cIdx numFields) bodyRepr)), GenCStructBody bodyRepr) => GenCRepr a where
   genCType _ = (stringOf name, "")
-  genCDecl _ = Just $ "typedef struct " +++ stringOf name +++ " {\n" +++ genCStructBody ((error "proxy") :: bodyRepr) +++ "} " +++ stringOf name +++ ";"
+  genCTypeDecl _ = Just $ "typedef struct " +++ stringOf name +++ " {\n" +++ genCStructBody ((error "proxy") :: bodyRepr) +++ "} " +++ stringOf name +++ ";"
 
 class GenCStructBody a where
   genCStructBody :: a -> String
@@ -54,26 +55,28 @@ instance (GenCRepr a) => GenCStructBody (Meta (MetaField name idx) (Conc a)) whe
     in "\t" +++ lType +++ " " +++ stringOf name +++ rType +++ ";\n"
 
 
+-- Helper to allow a tuple of types to be all easily translated together
 class GenCDecls a where
-  genCDecls :: a -> String
+  genCTypeDecls :: a -> String
 
 instance (GenCDecls a, GenCDecls b) => GenCDecls (a, b) where
-  genCDecls _ = genCDecls ((error "proxy") :: a) +++ genCDecls ((error "proxy") :: b)
+  genCTypeDecls _ = genCTypeDecls ((error "proxy") :: a) +++ genCTypeDecls ((error "proxy") :: b)
 
 instance GenCDecls () where
-  genCDecls _ = ""
+  genCTypeDecls _ = ""
 
 instance (GenCRepr a) => GenCDecls a where
-  genCDecls p =
-    case genCDecl p of
+  genCTypeDecls p =
+    case genCTypeDecl p of
       Just d -> d +++ "\n\n"
       Nothing -> ""
 
+-- Driver to all write C declarations for some types
 writeCDecls :: (GenCDecls tys) => String -> tys -> Module Empty
 writeCDecls baseName proxy = do
-  let decls = genCDecls proxy
+  let typeDecls = genCTypeDecls proxy
   let headerName = (baseName +++ ".h")
-  let headerContents = "#include <stdint.h>\n\n\n" +++ decls
+  let headerContents = "#include <stdint.h>\n\n\n" +++ typeDecls
   h <- openFile headerName WriteMode
   hPutStr h headerContents
   hClose h
