@@ -27,8 +27,8 @@ unsigned int test_fn(unsigned long long in) {
   uint8_t out_buf[4], *out_ptr = &out_buf[0];
   pack_Thing(res, &out_ptr);
   for (int i = 0; i < 4; i++) {
-    out |= out_buf[i];
     out <<= 8;
+    out |= out_buf[i];
   }
   printf("Packed res: %x\n", out);
   return out;
