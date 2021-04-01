@@ -45,6 +45,6 @@ mkTest = module
 
   rules
     when True ==> do
-      actTestThing (ThingMsg {thing=Thing {x=1; y=2; z=0x1234;}; swapXY=False; deltaZ=8;})
-      actTestThing (ThingMsg {thing=Thing {x=1; y=2; z=0x1234;}; swapXY=True; deltaZ=negate 8;})
+      actTestThing (ThingMsg {thing=Thing {x=1; y=2; z=1234;}; swapXY=False; deltaZ=8;})
+      actTestThing (ThingMsg {thing=Thing {x=1; y=2; z=1234;}; swapXY=True; deltaZ=negate 8;})
       $finish

@@ -20,13 +20,27 @@ genCIntType signed numBits =
 
 genCIntPack :: Integer -> String -> String -> String
 genCIntPack numBits val buf =
-  "memcpy(*" +++ buf +++ ", &" +++ val +++ ", " +++ integerToString (bitsToBytes numBits) +++ "); " +++
-  "*" +++ buf +++ " += " +++ integerToString (bitsToBytes numBits) +++ ";"
+  let numBytes = bitsToBytes numBits
+      shiftPack :: Integer -> String
+      shiftPack n = if n >= numBytes then "" else
+           "**" +++ buf +++ " = 0xFF & (" +++ val +++ " >> " +++ integerToString (8 * (numBytes - n - 1)) +++ "); (*" +++ buf +++ ")++; " +++ shiftPack (n + 1)
+  in case numCBytes numBits of
+    Just _ -> shiftPack 0
+    Nothing ->
+      "memcpy(*" +++ buf +++ ", &" +++ val +++ ", " +++ integerToString numBytes +++ "); " +++
+      "*" +++ buf +++ " += " +++ integerToString numBytes +++ ";"
 
 genCIntUnpack :: Integer -> String -> String -> String
 genCIntUnpack numBits val buf =
-  "memcpy(&" +++ val +++ ", *" +++ buf +++ ", " +++ integerToString (bitsToBytes numBits) +++ "); " +++
-  "*" +++ buf +++ " += " +++ integerToString (bitsToBytes numBits) +++ ";"
+  let numBytes = bitsToBytes numBits
+      shiftUnpack :: Integer -> String
+      shiftUnpack n =
+        "((*" +++ buf +++ ")[" +++ integerToString n +++ "] << " +++ integerToString (8 * (numBytes - n - 1)) +++ ")" +++
+        if n >= numBytes - 1 then "" else " | " +++ shiftUnpack (n + 1)
+  in (case numCBytes numBits of
+        Just _ -> val +++ " = " +++ shiftUnpack 0 +++ ";"
+        Nothing -> "memcpy(&" +++ val +++ ", *" +++ buf +++ ", " +++ integerToString numBytes +++ "); "
+     ) +++ " *" +++ buf +++ " += " +++ integerToString numBytes +++ ";"
 
 class GenCRepr a n | a -> n where
   genCType :: a -> (String, String)
