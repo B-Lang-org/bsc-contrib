@@ -1,6 +1,8 @@
 package Test where
 
 import GenCRepr
+import TestFn
+import CShow
 
 struct Foo =
   x :: UInt 8
@@ -16,6 +18,33 @@ struct Baz = {}
 
 data Qux = QF Foo | QFB Foo Bar | Q
 
+struct Thing =
+  x :: UInt 8
+  y :: UInt 8
+  z :: Int 16
+
+struct ThingMsg =
+  thing :: Thing
+  swapXY :: Bool
+  deltaZ :: Int 8
+
+actTestThing :: ThingMsg -> Action
+actTestThing tm = do
+  $display (cshow tm)
+  let input = GenCRepr.pack tm
+  $display (cshow input)
+  let output :: Bit 32 = test_fn input
+  $display (cshow output)
+  let res :: Thing = GenCRepr.unpack output
+  $display (cshow res)
+
 {-# verilog mkTest #-}
 mkTest :: Module Empty
-mkTest = writeCDecls "test" ((error "proxy") :: (Foo, Bar, Baz))  -- Qux
+mkTest = module
+  writeCDecls "test" ((error "proxy") :: (Foo, Bar, Baz, Thing, ThingMsg))  -- Qux
+
+  rules
+    when True ==> do
+      actTestThing (ThingMsg {thing=Thing {x=1; y=2; z=1234;}; swapXY=False; deltaZ=8;})
+      actTestThing (ThingMsg {thing=Thing {x=1; y=2; z=1234;}; swapXY=True; deltaZ=negate 8;})
+      $finish

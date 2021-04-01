@@ -2,10 +2,10 @@ package GenCRepr where
 
 numCBytes :: Integer -> Maybe Integer
 numCBytes numBits =
-  if numBits < 8 then Just 1
-  else if numBits < 16 then Just 2
-  else if numBits < 32 then Just 4
-  else if numBits < 64 then Just 8
+  if numBits <= 8 then Just 1
+  else if numBits <= 16 then Just 2
+  else if numBits <= 32 then Just 4
+  else if numBits <= 64 then Just 8
   else Nothing
 
 bitsToBytes :: Integer -> Integer
@@ -153,8 +153,7 @@ class GenCStructBody a n | a -> n where
 
 instance (GenCStructBody a n1, GenCStructBody b n2,
           -- All data is byte-aligned for easier deserialization in C
-          Add n1' 1 n1, Div n1' 8 n1'', Add n1'' 1 n1Bytes, Mul n1Bytes 8 n1Padded,
-          Add n1Padded n2 n,
+          Div n1 8 n1Bytes, Mul n1Bytes 8 n1Padded, Add n1Padded n2 n,
           -- BSC isn't smart enough to infer this
           Add n1 n1Pad n1Padded) =>
          GenCStructBody (a, b) n where
