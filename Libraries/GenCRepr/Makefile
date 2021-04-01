@@ -22,3 +22,4 @@ clean:
 test: build
 	rm -rf $(BUILDDIR)/mkTest.ba
 	$(BSC) -u $(BSCFLAGS) -systemc Test.bs
+	$(CC) test.c -c

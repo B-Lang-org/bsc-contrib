@@ -8,35 +8,36 @@ numCBytes numBits =
   else if numBits < 64 then Just 8
   else Nothing
 
+genCIntType :: Bool -> Integer -> (String, String)
+genCIntType signed numBits =
+  let prefix = if signed then "int" else "uint"
+  in case numCBytes numBits of
+    Just b -> (prefix +++ integerToString (b * 8) +++ "_t", "")
+    Nothing -> (prefix +++ "8_t", "[" +++ integerToString (((numBits - 1) / 8) + 1) +++ "]")
+
 class GenCRepr a where
   genCType :: a -> (String, String)
   
   genCTypeDecl :: a -> Maybe String
   genCTypeDecl _ = Nothing
 
+  genCPack :: a -> Maybe (String, String)
+  genCPack _ = Nothing
+
 instance GenCRepr (Bit n) where
-  genCType _ =
-    case numCBytes (valueOf n) of
-      Just b -> ("uint" +++ integerToString (b * 8) +++ "_t", "")
-      Nothing -> ("uint8_t", "[" +++ integerToString (((valueOf n - 1) / 8) + 1) +++ "]")
+  genCType _ = genCIntType False (valueOf n)
 
 instance GenCRepr (UInt n) where
-  genCType _ =
-    case numCBytes (valueOf n) of
-      Just b -> ("uint" +++ integerToString (b * 8) +++ "_t", "")
-      Nothing -> ("uint8_t", "[" +++ integerToString (((valueOf n - 1) / 8) + 1) +++ "]")
+  genCType _ = genCIntType False (valueOf n)
 
 instance GenCRepr (Int n) where
-  genCType _ =
-    case numCBytes (valueOf n) of
-      Just b -> ("int" +++ integerToString (b * 8) +++ "_t", "")
-      Nothing -> ("int8_t", "[" +++ integerToString (((valueOf n - 1) / 8) + 1) +++ "]")
+  genCType _ = genCIntType True (valueOf n)
 
 instance GenCRepr Bool where
   genCType _ = ("_Bool", "")
-  
 
-instance (Generic a (Meta (MetaData name pkg 1) (Meta (MetaConsNamed cName cIdx numFields) bodyRepr)), GenCStructBody bodyRepr) => GenCRepr a where
+instance (Generic a (Meta (MetaData name pkg 1) (Meta (MetaConsNamed cName cIdx numFields) bodyRepr)),
+          GenCStructBody bodyRepr) => GenCRepr a where
   genCType _ = (stringOf name, "")
   genCTypeDecl _ = Just $ "typedef struct " +++ stringOf name +++ " {\n" +++ genCStructBody ((error "proxy") :: bodyRepr) +++ "} " +++ stringOf name +++ ";"
 
@@ -76,9 +77,16 @@ writeCDecls :: (GenCDecls tys) => String -> tys -> Module Empty
 writeCDecls baseName proxy = do
   let typeDecls = genCTypeDecls proxy
   let headerName = (baseName +++ ".h")
+  let implName = (baseName +++ ".c")
   let headerContents = "#include <stdint.h>\n\n\n" +++ typeDecls
+  let implContents = "#include <stdlib.h>\n#include <string.h>\n\n#include \"" +++ headerName +++ "\"\n\n\n"
+  stdout <- openFile "/dev/stdout" WriteMode
   h <- openFile headerName WriteMode
   hPutStr h headerContents
   hClose h
-  stdout <- openFile "/dev/stdout" WriteMode
   hPutStrLn stdout ("Header file created: " +++ headerName)
+  c <- openFile implName WriteMode
+  hPutStr c implContents
+  hClose c
+  hPutStrLn stdout ("C implementation file created: " +++ implName)
+  hClose stdout
