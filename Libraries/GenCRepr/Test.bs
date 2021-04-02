@@ -16,7 +16,7 @@ struct Bar =
 
 struct Baz = {}
 
-data Qux = QF Foo | QFB Foo Bar | Q | QI { x :: Int 8; y :: Int 8} | QU { u :: UInt 16 }
+data Qux = QA | QB | QC --QF Foo | QFB Foo Bar | Q | QI { x :: Int 8; y :: Int 8} | QU { u :: UInt 16 }
 
 struct Thing =
   x :: UInt 8

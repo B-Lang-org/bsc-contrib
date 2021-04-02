@@ -21,8 +21,8 @@ clean:
 .PHONY: test
 test: build
 	rm -rf $(BUILDDIR)/mkTest.ba
-	$(BSC) -u $(BSCFLAGS) -systemc TestFn.bsv
-	$(BSC) -u $(BSCFLAGS) -systemc Test.bs
+	$(BSC) -u $(BSCFLAGS) -sim TestFn.bsv
+	$(BSC) -u $(BSCFLAGS) -sim Test.bs
 	$(CC) test.c -c -g
 	$(CC) test_fn.c -c -g
 	$(BSC) -u $(BSCFLAGS) -sim -e mkTest -o test test.o test_fn.o

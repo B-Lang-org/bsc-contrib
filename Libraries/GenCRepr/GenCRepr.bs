@@ -159,9 +159,9 @@ instance (Generic a (Meta (MetaData name pkg 1) (Meta (MetaConsNamed cName cIdx 
     "}")
 
 instance (Generic a (Meta (MetaData name pkg numCtors) bodyRepr),
-          GenCUnionBody bodyRepr n,
+          GenCUnionBody 0 bodyRepr n,
           -- For simplicity the tag must fit in a single byte, for now.
-          Max numCtors 255 255) =>
+          Add 8 bodyBits n, Max numCtors 255 255) =>
          GenCRepr' a (Meta (MetaData name pkg numCtors) bodyRepr) n where
   genCType' _ _ = (stringOf name, "")
   genCTypeDecl' _ _ = Just $ "typedef struct " +++ stringOf name +++ " {\n" +++
@@ -186,7 +186,7 @@ instance (Generic a (Meta (MetaData name pkg numCtors) bodyRepr),
     "\t" +++ genCPackUnionBody ((error "proxy") :: bodyRepr) (stringOf name) +++ " // Invalid tag, do nothing\n" +++
     "}")
 
-  unpack' _ x = error "TODO"
+  unpack' _ x = to $ Meta $ uncurry unpackUnionBody $ split x
 
   genCUnpack' _ _ val buf = val +++ " = unpack_" +++ stringOf name +++ "(" +++ buf +++ ");"
 
@@ -199,33 +199,41 @@ instance (Generic a (Meta (MetaData name pkg numCtors) bodyRepr),
     "\treturn val;\n" +++
     "}")
 
-class GenCUnionBody a n | a -> n where
+class GenCUnionBody i a n | a -> i n where
   genCEnumBody :: a -> String -> String
   genCUnionBody :: a -> String -> String
 
   packUnionBody :: a -> Bit n
   genCPackUnionBody :: a -> String -> String
 
+  unpackUnionBody :: (Add 8 m n) => Bit 8 -> Bit m -> a
   genCUnpackUnionBody :: a -> String -> String
 
-instance (GenCUnionBody a n1, GenCUnionBody b n2, Max n1 n2 n,
+instance (Add i 1 i2,
+          GenCUnionBody i a n1, GenCUnionBody i2 b n2,
+          Max n1 n2 n,
+          Add 8 m1 n1, Add 8 m2 n2, Add m1 m1Pad n, Add m2 m2Pad n,
           Add n1 n1Pad n, Add n2 n2Pad n) =>
-         GenCUnionBody (Either a b) n where
+         GenCUnionBody i (Either a b) n where
   genCEnumBody _ typeName =
     genCEnumBody ((error "proxy") :: a) typeName +++ ", " +++ genCEnumBody ((error "proxy") :: b) typeName
   genCUnionBody _ typeName =
     genCUnionBody ((error "proxy") :: a) typeName +++ genCUnionBody  ((error "proxy") :: b) typeName
 
-  packUnionBody (Left x) = zeroExtend $ packUnionBody x
-  packUnionBody (Right x) = zeroExtend $ packUnionBody x
+  packUnionBody (Left x) = packUnionBody x ++ fromInteger 0
+  packUnionBody (Right x) = packUnionBody x ++ fromInteger 0
   genCPackUnionBody _ typeName =
     genCPackUnionBody ((error "proxy") :: a) typeName +++ " else " +++ genCPackUnionBody  ((error "proxy") :: b) typeName
 
+  unpackUnionBody tag body =
+    if tag == fromInteger (valueOf i)
+    then Left $ unpackUnionBody tag ((split body).fst :: Bit n1)
+    else Right $ unpackUnionBody tag ((split body).fst :: Bit n2)
   genCUnpackUnionBody _ typeName =
     genCUnpackUnionBody ((error "proxy") :: a) typeName +++ " else " +++ genCUnpackUnionBody  ((error "proxy") :: b) typeName
 
 instance (GenCStructBody bodyRepr bodyBits, Add 8 bodyBits n) =>
-         GenCUnionBody (Meta (MetaConsNamed ctorName ctorIdx numFields) bodyRepr) n where
+         GenCUnionBody i (Meta (MetaConsNamed ctorName ctorIdx numFields) bodyRepr) n where
   genCEnumBody _ typeName = typeName +++ "_" +++ stringOf ctorName
   genCUnionBody _ typeName =
     "\t\tstruct " +++ typeName +++ "_" +++ stringOf ctorName +++ " {\n" +++
@@ -244,7 +252,7 @@ instance (GenCStructBody bodyRepr bodyBits, Add 8 bodyBits n) =>
     "\t}"
 
 instance (GenCStructBody bodyRepr bodyBits, Add 8 bodyBits n) =>
-         GenCUnionBody (Meta (MetaConsAnon ctorName ctorIdx numFields) bodyRepr) n where
+         GenCUnionBody i (Meta (MetaConsAnon ctorName ctorIdx numFields) bodyRepr) n where
   genCEnumBody _ typeName = typeName +++ "_" +++ stringOf ctorName
   genCUnionBody _ typeName =
     "\t\tstruct " +++ typeName +++ "_" +++ stringOf ctorName +++ " {\n" +++
@@ -263,7 +271,7 @@ instance (GenCStructBody bodyRepr bodyBits, Add 8 bodyBits n) =>
     "\t}"
 
 instance (GenCRepr a fieldBits, Add 8 fieldBits n) =>
-         GenCUnionBody (Meta (MetaConsAnon ctorName ctorIdx 1) (Meta (MetaField fieldName fieldIdx) (Conc a))) n where
+         GenCUnionBody i (Meta (MetaConsAnon ctorName ctorIdx 1) (Meta (MetaField fieldName fieldIdx) (Conc a))) n where
   genCEnumBody _ typeName = typeName +++ "_" +++ stringOf ctorName
   genCUnionBody _ _ =
     let (lType, rType) = genCType ((error "proxy") :: a)
