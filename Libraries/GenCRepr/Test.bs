@@ -41,8 +41,8 @@ actTestThing tm = do
 {-# verilog mkTest #-}
 mkTest :: Module Empty
 mkTest = module
-  -- writeCDecls "test" ((error "proxy") :: (Foo, Bar, Baz, Qux, Thing, ThingMsg))
-  writeCDecls "test" ((error "proxy") :: Qux)
+  writeCDecls "test" ((error "proxy") :: (Foo, Bar, Baz, Thing, ThingMsg))
+  --writeCDecls "test" ((error "proxy") :: Qux)
 
   rules
     when True ==> do
