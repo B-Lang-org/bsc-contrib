@@ -16,7 +16,7 @@ struct Bar =
 
 struct Baz = {}
 
-data Qux = QA | QB | QC --QF Foo | QFB Foo Bar | Q | QI { x :: Int 8; y :: Int 8} | QU { u :: UInt 16 }
+data Qux = QA (UInt 16) | QB (UInt 8) | QC (UInt 32) --QF Foo | QFB Foo Bar | Q | QI { x :: Int 8; y :: Int 8} | QU { u :: UInt 16 }
 
 struct Thing =
   x :: UInt 8
@@ -41,7 +41,8 @@ actTestThing tm = do
 {-# verilog mkTest #-}
 mkTest :: Module Empty
 mkTest = module
-  writeCDecls "test" ((error "proxy") :: (Foo, Bar, Baz, Qux, Thing, ThingMsg))
+  -- writeCDecls "test" ((error "proxy") :: (Foo, Bar, Baz, Qux, Thing, ThingMsg))
+  writeCDecls "test" ((error "proxy") :: Qux)
 
   rules
     when True ==> do

@@ -181,20 +181,19 @@ instance (GenCStructBody bodyRepr n) =>
     "}")
 
 instance (GenCUnionBody 0 tagBytes bodyRepr bodyBytes,
-          Log numCtors tagBits, Div tagBits 8 tagBytes,
-          Add bodyBytes bodyBytes n) =>
+          Log numCtors tagBits, Div tagBits 8 tagBytes, Add tagBytes bodyBytes n) =>
          GenCRepr' (Meta (MetaData name pkg numCtors) bodyRepr) n where
   genCType' _ = (stringOf name, "")
   genCTypeDecl' _ = Just $ "typedef struct " +++ stringOf name +++ " {\n" +++
     "\tenum " +++ stringOf name +++ "_tag { " +++
-    genCEnumBody ((error "proxy") :: bodyRepr) (stringOf name) +++
+    genCEnumBody ((error "proxy") :: Bit 0) ((error "proxy") :: Bit tagBytes) ((error "proxy") :: bodyRepr) (stringOf name) +++
     " } tag;\n" +++
     "\tunion " +++ stringOf name +++ "_contents {\n" +++
-    genCUnionBody ((error "proxy") :: bodyRepr) (stringOf name) +++
+    genCUnionBody ((error "proxy") :: Bit 0) ((error "proxy") :: Bit tagBytes) ((error "proxy") :: bodyRepr) (stringOf name) +++
     "\t} contents;\n" +++
     "} " +++ stringOf name +++ ";"
 
-  pack' (Meta y) = packUnionBody y
+  pack' (Meta y) = packUnionBody ((error "proxy") :: Bit 0) ((error "proxy") :: Bit tagBytes) y
 
   genCPack' _ val buf = "pack_" +++ stringOf name +++ "(" +++ val +++ ", " +++ buf +++ ");"
 
@@ -202,11 +201,11 @@ instance (GenCUnionBody 0 tagBytes bodyRepr bodyBytes,
     "void pack_" +++ stringOf name +++ "(" +++ stringOf name +++ " val, uint8_t **buf);",
     "void pack_" +++ stringOf name +++ "(" +++ stringOf name +++ " val, uint8_t **buf) {\n" +++
     "\t" +++ genCIntPack (valueOf tagBytes) "val.tag" "buf" +++ "\n" +++
-    "\t" +++ genCPackUnionBody ((error "proxy") :: bodyRepr) (stringOf name) +++ " // Invalid tag, do nothing\n" +++
+    "\t" +++ genCPackUnionBody ((error "proxy") :: Bit 0) ((error "proxy") :: Bit tagBytes) ((error "proxy") :: bodyRepr) (stringOf name) +++ " // Invalid tag, do nothing\n" +++
     "}")
 
   unpack' x =
-    case unpackUnionBody x of
+    case unpackUnionBody ((error "proxy") :: Bit 0) ((error "proxy") :: Bit tagBytes) x of
       (res, extra) -> (Meta res, extra)
 
   genCUnpack' _ val buf = val +++ " = unpack_" +++ stringOf name +++ "(" +++ buf +++ ");"
@@ -216,64 +215,68 @@ instance (GenCUnionBody 0 tagBytes bodyRepr bodyBytes,
     stringOf name +++ " unpack_" +++ stringOf name +++ "(uint8_t **buf) {\n" +++
     "\t" +++ stringOf name +++ " val;\n" +++
     "\t" +++ genCIntUnpack (valueOf tagBytes) "val.tag" "buf" +++ "\n" +++
-    "\t" +++ genCUnpackUnionBody ((error "proxy") :: bodyRepr) (stringOf name) +++ " // Invalid tag, do nothing\n" +++
+    "\t" +++ genCUnpackUnionBody ((error "proxy") :: Bit 0) ((error "proxy") :: Bit tagBytes) ((error "proxy") :: bodyRepr) (stringOf name) +++ " // Invalid tag, do nothing\n" +++
     "\treturn val;\n" +++
     "}")
 
-class GenCUnionBody i nt a n | a -> i nt n where
-  genCEnumBody :: a -> String -> String
-  genCUnionBody :: a -> String -> String
+class GenCUnionBody i nt a n | i nt a -> n where
+  genCEnumBody :: Bit i -> Bit nt -> a -> String -> String
+  genCUnionBody :: Bit i -> Bit nt -> a -> String -> String
 
-  packUnionBody :: a -> ByteList
-  genCPackUnionBody :: a -> String -> String
+  packUnionBody :: Bit i -> Bit nt -> a -> ByteList
+  genCPackUnionBody :: Bit i -> Bit nt -> a -> String -> String
 
-  unpackUnionBody :: ByteList -> (a, ByteList)
-  genCUnpackUnionBody :: a -> String -> String
+  unpackUnionBody :: Bit i -> Bit nt -> ByteList -> (a, ByteList)
+  genCUnpackUnionBody :: Bit i -> Bit nt -> a -> String -> String
 
 instance (Add i 1 i2,
           GenCUnionBody i tagBytes a n1, GenCUnionBody i2 tagBytes b n2,
           Max n1 n2 n,
           Mul tagBytes 8 tagBits, ConvByteList tagBits) =>
          GenCUnionBody i tagBytes (Either a b) n where
-  genCEnumBody _ typeName =
-    genCEnumBody ((error "proxy") :: a) typeName +++ ", " +++ genCEnumBody ((error "proxy") :: b) typeName
-  genCUnionBody _ typeName =
-    genCUnionBody ((error "proxy") :: a) typeName +++ genCUnionBody  ((error "proxy") :: b) typeName
+  genCEnumBody _ _ _ typeName =
+    genCEnumBody ((error "proxy") :: Bit i) ((error "proxy") :: Bit tagBytes) ((error "proxy") :: a) typeName +++ ", " +++
+    genCEnumBody ((error "proxy") :: Bit i2) ((error "proxy") :: Bit tagBytes) ((error "proxy") :: b) typeName
+  genCUnionBody _ _ _ typeName =
+    genCUnionBody ((error "proxy") :: Bit i) ((error "proxy") :: Bit tagBytes) ((error "proxy") :: a) typeName +++
+    genCUnionBody ((error "proxy") :: Bit i2) ((error "proxy") :: Bit tagBytes) ((error "proxy") :: b) typeName
 
-  packUnionBody (Left x) = packUnionBody x
-  packUnionBody (Right x) = packUnionBody x
-  genCPackUnionBody _ typeName =
-    genCPackUnionBody ((error "proxy") :: a) typeName +++ " else " +++ genCPackUnionBody ((error "proxy") :: b) typeName
+  packUnionBody _ _ (Left x) = packUnionBody ((error "proxy") :: Bit i) ((error "proxy") :: Bit tagBytes) x
+  packUnionBody _ _ (Right x) = packUnionBody ((error "proxy") :: Bit i2) ((error "proxy") :: Bit tagBytes) x
+  genCPackUnionBody _ _ _ typeName =
+    genCPackUnionBody ((error "proxy") :: Bit i) ((error "proxy") :: Bit tagBytes) ((error "proxy") :: a) typeName +++ " else " +++
+    genCPackUnionBody ((error "proxy") :: Bit i2) ((error "proxy") :: Bit tagBytes) ((error "proxy") :: b) typeName
 
-  unpackUnionBody x =
+  unpackUnionBody _ _ x =
     if fromByteList (take (valueOf tagBytes) x) == ((fromInteger (valueOf i)) :: Bit tagBits)
-    then case unpackUnionBody x of
+    then case unpackUnionBody ((error "proxy") :: Bit i) ((error "proxy") :: Bit tagBytes) x of
       (res, extra) -> (Left res, extra)
-    else case unpackUnionBody x of
+    else case unpackUnionBody ((error "proxy") :: Bit i2) ((error "proxy") :: Bit tagBytes) x of
       (res, extra) -> (Right res, extra)
-  genCUnpackUnionBody _ typeName =
-    genCUnpackUnionBody ((error "proxy") :: a) typeName +++ " else " +++ genCUnpackUnionBody ((error "proxy") :: b) typeName
+  genCUnpackUnionBody _ _ _ typeName =
+    genCUnpackUnionBody ((error "proxy") :: Bit i) ((error "proxy") :: Bit tagBytes) ((error "proxy") :: a) typeName +++ " else " +++
+    genCUnpackUnionBody ((error "proxy") :: Bit i2) ((error "proxy") :: Bit tagBytes) ((error "proxy") :: b) typeName
 
 instance (GenCStructBody bodyRepr bodyBytes,
           Add tagBytes bodyBytes n, Mul tagBytes 8 tagBits, ConvByteList tagBits) =>
          GenCUnionBody i tagBytes (Meta (MetaConsNamed ctorName ctorIdx numFields) bodyRepr) n where
-  genCEnumBody _ typeName = typeName +++ "_" +++ stringOf ctorName
-  genCUnionBody _ typeName =
+  genCEnumBody _ _ _ typeName = typeName +++ "_" +++ stringOf ctorName
+  genCUnionBody _ _ _ typeName =
     "\t\tstruct " +++ typeName +++ "_" +++ stringOf ctorName +++ " {\n" +++
     genCStructBody ((error "proxy") :: bodyRepr) True +++
     "\t\t} " +++ stringOf ctorName +++ ";\n"
 
-  packUnionBody (Meta x) =
+  packUnionBody _ _ (Meta x) =
     append (toByteList (Prelude.pack ((fromInteger $ valueOf ctorIdx) :: UInt tagBits))) $ packStructBody x
-  genCPackUnionBody _ typeName =
+  genCPackUnionBody _ _ _ typeName =
     "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
     genCPackStructBody ((error "proxy") :: bodyRepr) True (".contents." +++ stringOf ctorName) +++ "\n" +++
     "\t}"
 
-  unpackUnionBody x =
+  unpackUnionBody _ _ x =
     case unpackStructBody $ drop (valueOf tagBytes) x of
       (res, extra) -> (Meta res, extra)
-  genCUnpackUnionBody _ typeName =
+  genCUnpackUnionBody _ _ _ typeName =
     "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
     genCUnpackStructBody ((error "proxy") :: bodyRepr) True (".contents." +++ stringOf ctorName) +++ "\n" +++
     "\t}"
@@ -281,43 +284,45 @@ instance (GenCStructBody bodyRepr bodyBytes,
 instance (GenCStructBody bodyRepr bodyBytes,
           Add tagBytes bodyBytes n, Mul tagBytes 8 tagBits, ConvByteList tagBits) =>
          GenCUnionBody i tagBytes (Meta (MetaConsAnon ctorName ctorIdx numFields) bodyRepr) n where
-  genCEnumBody _ typeName = typeName +++ "_" +++ stringOf ctorName
-  genCUnionBody _ typeName =
+  genCEnumBody _ _ _ typeName = typeName +++ "_" +++ stringOf ctorName
+  genCUnionBody _ _ _ typeName =
     "\t\tstruct " +++ typeName +++ "_" +++ stringOf ctorName +++ " {\n" +++
     genCStructBody ((error "proxy") :: bodyRepr) True +++
     "\t\t} " +++ stringOf ctorName +++ ";\n"
 
-  packUnionBody (Meta x) =
+  packUnionBody _ _ (Meta x) =
     append (toByteList (Prelude.pack ((fromInteger $ valueOf ctorIdx) :: UInt tagBits))) $ packStructBody x
-  genCPackUnionBody _ typeName =
+  genCPackUnionBody _ _ _ typeName =
     "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
     genCPackStructBody ((error "proxy") :: bodyRepr) True (".contents." +++ stringOf ctorName) +++ "\n" +++
     "\t}"
 
-  unpackUnionBody x =
+  unpackUnionBody _ _ x =
     case unpackStructBody $ drop (valueOf tagBytes) x of
       (res, extra) -> (Meta res, extra)
-  genCUnpackUnionBody _ typeName =
+  genCUnpackUnionBody _ _ _ typeName =
     "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
     genCUnpackStructBody ((error "proxy") :: bodyRepr) True (".contents." +++ stringOf ctorName) +++ "\n" +++
     "\t}"
 
 instance (GenCRepr a fieldBytes, Add tagBytes fieldBytes n, Mul tagBytes 8 tagBits, ConvByteList tagBits) =>
          GenCUnionBody i tagBytes (Meta (MetaConsAnon ctorName ctorIdx 1) (Meta (MetaField fieldName fieldIdx) (Conc a))) n where
-  genCEnumBody _ typeName = typeName +++ "_" +++ stringOf ctorName
-  genCUnionBody _ _ =
+  genCEnumBody _ _ _ typeName = typeName +++ "_" +++ stringOf ctorName
+  genCUnionBody _ _ _ _ =
     let (lType, rType) = genCType ((error "proxy") :: a)
     in "\t\t" +++ lType +++ " " +++ stringOf ctorName +++ rType +++ ";\n"
 
-  packUnionBody (Meta (Meta (Conc x))) =
+  packUnionBody _ _ (Meta (Meta (Conc x))) =
     append (toByteList $ Prelude.pack ((fromInteger $ valueOf ctorIdx) :: UInt tagBits)) $ pack x
-  genCPackUnionBody _ typeName =
+  genCPackUnionBody _ _ _ typeName =
     "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
     "\t\t" +++ genCPack ((error "proxy") :: a) ("val.contents." +++ stringOf ctorName) "buf" +++ "\n" +++
     "\t}"
 
-  unpackUnionBody x = unpack $ drop (valueOf tagBytes) x
-  genCUnpackUnionBody _ typeName =
+  unpackUnionBody _ _ x =
+    case unpack $ drop (valueOf tagBytes) x of
+      (res, extra) -> (Meta $ Meta $ Conc res, extra)
+  genCUnpackUnionBody _ _ _ typeName =
     "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
     "\t\t" +++ genCUnpack ((error "proxy") :: a) ("val.contents." +++ stringOf ctorName) "buf" +++ "\n" +++
     "\t}"
