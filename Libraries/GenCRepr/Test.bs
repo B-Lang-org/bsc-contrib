@@ -33,9 +33,9 @@ actTestThing tm = do
   $display (cshow tm)
   let input = GenCRepr.pack tm
   $display (cshow input)
-  let output = toByteList $ test_fn $ fromByteList input
+  let output = test_fn input
   $display (cshow output)
-  let (res, _) = (GenCRepr.unpack output) :: (Thing, ByteList)
+  let res = (GenCRepr.unpack output) :: Thing
   $display (cshow res)
 
 {-# verilog mkTest #-}

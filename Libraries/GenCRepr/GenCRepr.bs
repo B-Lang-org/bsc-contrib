@@ -65,57 +65,63 @@ class GenCRepr a n | a -> n where
   genCTypeDecl :: a -> Maybe String
   genCTypeDecl _ = Nothing
 
-  pack :: a -> ByteList
+  packBytes :: a -> ByteList
 
   genCPack :: a -> String -> String -> String
 
   genCPackDecl :: a -> Maybe (String, String)
   genCPackDecl _ = Nothing
 
-  unpack :: ByteList -> (a, ByteList)
+  unpackBytes :: ByteList -> (a, ByteList)
 
   genCUnpack :: a -> String -> String -> String
 
   genCUnpackDecl :: a -> Maybe (String, String)
   genCUnpackDecl _ = Nothing
 
+pack :: (GenCRepr a n, Mul n 8 m, ConvByteList m) => a -> Bit m
+pack x = fromByteList $ packBytes x
+
+unpack :: (GenCRepr a n, Mul n 8 m, ConvByteList m) => Bit m -> a
+unpack x = (unpackBytes $ toByteList x).fst
+
 instance (ConvByteList b, Div b 8 n) => GenCRepr (UInt b) n where
   genCType _ = genCIntType False (valueOf n)
 
-  pack x = toByteList $ Prelude.pack x
+  packBytes x = toByteList $ Prelude.pack x
   genCPack _ = genCIntPack (valueOf n)
 
-  unpack x = (Prelude.unpack $ fromByteList $ take (valueOf n) x, drop (valueOf n) x)
+  unpackBytes x = (Prelude.unpack $ fromByteList $ take (valueOf n) x, drop (valueOf n) x)
   genCUnpack _ = genCIntUnpack (valueOf n)
 
 instance (ConvByteList b, Div b 8 n) => GenCRepr (Int b) n where
   genCType _ = genCIntType True (valueOf n)
 
-  pack x = toByteList $ Prelude.pack x
+  packBytes x = toByteList $ Prelude.pack x
   genCPack _ = genCIntPack (valueOf n)
 
-  unpack x = (Prelude.unpack $ fromByteList $ take (valueOf n) x, drop (valueOf n) x)
+  unpackBytes x = (Prelude.unpack $ fromByteList $ take (valueOf n) x, drop (valueOf n) x)
   genCUnpack _ = genCIntUnpack (valueOf n)
 
 instance GenCRepr Bool 1 where
   genCType _ = ("_Bool", "")
 
-  pack x = zeroExtend (Prelude.pack x) :> Nil
+  packBytes x = zeroExtend (Prelude.pack x) :> Nil
   genCPack _ = genCIntPack 1
 
-  unpack x = (Prelude.unpack $ truncate $ head x, tail x)
+  unpackBytes x = (Prelude.unpack $ truncate $ head x, tail x)
   genCUnpack _ = genCIntUnpack 1
 
 instance (Generic a r, GenCRepr' r n) => GenCRepr a n where
   genCType _ = genCType' (_ :: r)
   genCTypeDecl _ = genCTypeDecl' (_ :: r)
 
-  pack x = pack' $ from x
+  packBytes x = packBytes' $ from x
   genCPack _ = genCPack' (_ :: r)
   genCPackDecl _ = genCPackDecl' (_ :: r)
 
-  unpack x =
-    case unpack' x of
+  unpackBytes x =
+    case unpackBytes' x of
       (res, extra) -> (to res, extra)
   genCUnpack _ = genCUnpack' (_ :: r)
   genCUnpackDecl _ = genCUnpackDecl' (_ :: r)
@@ -124,11 +130,11 @@ class GenCRepr' a n | a -> n where
   genCType' :: a -> (String, String)
   genCTypeDecl' :: a -> Maybe String
 
-  pack' :: a -> ByteList
+  packBytes' :: a -> ByteList
   genCPack' :: a -> String -> String -> String
   genCPackDecl' :: a -> Maybe (String, String)
 
-  unpack' :: ByteList -> (a, ByteList)
+  unpackBytes' :: ByteList -> (a, ByteList)
   genCUnpack' :: a -> String -> String -> String
   genCUnpackDecl' :: a -> Maybe (String, String)
 
@@ -139,11 +145,11 @@ instance (Bits a numBits, Div numBits 8 n, Mul n 8 numBitsPadded,
   genCType' _ = genCIntType False (valueOf n)
   genCTypeDecl' _ = Nothing
 
-  pack' (ConcPrim x) = toByteList $ ((Prelude.pack x ++ 0) :: Bit numBitsPadded)
+  packBytes' (ConcPrim x) = toByteList $ ((Prelude.pack x ++ 0) :: Bit numBitsPadded)
   genCPack' _ = genCIntPack (valueOf n)
   genCPackDecl' _ = Nothing
 
-  unpack' x =
+  unpackBytes' x =
     (ConcPrim $ Prelude.unpack (split ((fromByteList $ take (valueOf n) x) :: Bit numBitsPadded)).fst,
      drop (valueOf n) x)
   genCUnpack' _ = genCIntUnpack (valueOf n)
@@ -156,7 +162,7 @@ instance (GenCStructBody bodyRepr n) =>
     genCStructBody (_ :: bodyRepr) False +++
     "} " +++ stringOf name +++ ";"
 
-  pack' (Meta (Meta y)) = packStructBody y
+  packBytes' (Meta (Meta y)) = packStructBody y
 
   genCPack' _ val buf = "pack_" +++ stringOf name +++ "(" +++ val +++ ", " +++ buf +++ ");"
 
@@ -166,7 +172,7 @@ instance (GenCStructBody bodyRepr n) =>
     genCPackStructBody (_ :: bodyRepr) False "" +++
     "}")
 
-  unpack' x =
+  unpackBytes' x =
     case unpackStructBody x of
       (res, extra) -> (Meta $ Meta res, extra)
 
@@ -193,7 +199,7 @@ instance (GenCUnionBody tagBytes bodyRepr 0 bodyBytes,
     "\t} contents;\n" +++
     "} " +++ stringOf name +++ ";"
 
-  pack' (Meta y) = packUnionBody (_ :: Bit tagBytes) y
+  packBytes' (Meta y) = packUnionBody (_ :: Bit tagBytes) y
 
   genCPack' _ val buf = "pack_" +++ stringOf name +++ "(" +++ val +++ ", " +++ buf +++ ");"
 
@@ -204,7 +210,7 @@ instance (GenCUnionBody tagBytes bodyRepr 0 bodyBytes,
     "\t" +++ genCPackUnionBody (_ :: Bit tagBytes) (_ :: bodyRepr) (stringOf name) +++ " // Invalid tag, do nothing\n" +++
     "}")
 
-  unpack' x =
+  unpackBytes' x =
     case unpackUnionBody (_ :: Bit tagBytes) x of
       (res, extra) -> (Meta res, extra)
 
@@ -312,14 +318,14 @@ instance (GenCRepr a fieldBytes, Add tagBytes fieldBytes n, Mul tagBytes 8 tagBi
     in "\t\t" +++ lType +++ " " +++ stringOf ctorName +++ rType +++ ";\n"
 
   packUnionBody _ (Meta (Meta (Conc x))) =
-    append (toByteList $ Prelude.pack ((fromInteger $ valueOf ctorIdx) :: UInt tagBits)) $ pack x
+    append (toByteList $ Prelude.pack ((fromInteger $ valueOf ctorIdx) :: UInt tagBits)) $ packBytes x
   genCPackUnionBody _ _ typeName =
     "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
     "\t\t" +++ genCPack (_ :: a) ("val.contents." +++ stringOf ctorName) "buf" +++ "\n" +++
     "\t}"
 
   unpackUnionBody _ x =
-    case unpack $ drop (valueOf tagBytes) x of
+    case unpackBytes $ drop (valueOf tagBytes) x of
       (res, extra) -> (Meta $ Meta $ Conc res, extra)
   genCUnpackUnionBody _ _ typeName =
     "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
@@ -334,11 +340,7 @@ class GenCStructBody a n | a -> n where
   unpackStructBody :: ByteList -> (a, ByteList)
   genCUnpackStructBody :: a -> Bool -> String -> String
 
-instance (GenCStructBody a n1, GenCStructBody b n2,
-          -- All data is byte-aligned for easier deserialization in C
-          Div n1 8 n1Bytes, Mul n1Bytes 8 n1Padded, Add n1Padded n2 n,
-          -- BSC isn't smart enough to infer this
-          Add n1 n1Pad n1Padded) =>
+instance (GenCStructBody a n1, GenCStructBody b n2, Add n1 n2 n) =>
          GenCStructBody (a, b) n where
   genCStructBody _ nested =
     genCStructBody (_ :: a) nested +++ genCStructBody (_ :: b) nested
@@ -367,13 +369,13 @@ instance (GenCRepr a n) => GenCStructBody (Meta (MetaField name idx) (Conc a)) n
     let (lType, rType) = genCType (_ :: a)
     in (if nested then "\t\t" else "") +++ "\t" +++ lType +++ " " +++ stringOf name +++ rType +++ ";\n"
 
-  packStructBody (Meta (Conc x)) = pack x
+  packStructBody (Meta (Conc x)) = packBytes x
   genCPackStructBody _ nested sel =
     (if nested then "\t" else "") +++
     "\t" +++ genCPack (_ :: a) ("val" +++ sel +++ "." +++ stringOf name) "buf" +++ "\n"
 
   unpackStructBody x =
-    case unpack x of
+    case unpackBytes x of
       (res, extra) -> (Meta $ Conc res, extra)
   genCUnpackStructBody _ nested sel =
     (if nested then "\t" else "") +++
