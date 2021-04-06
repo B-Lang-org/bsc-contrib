@@ -180,20 +180,20 @@ instance (GenCStructBody bodyRepr n) =>
     "\treturn val;\n" +++
     "}")
 
-instance (GenCUnionBody 0 tagBytes bodyRepr bodyBytes,
+instance (GenCUnionBody tagBytes bodyRepr 0 bodyBytes,
           Log numCtors tagBits, Div tagBits 8 tagBytes, Add tagBytes bodyBytes n) =>
          GenCRepr' (Meta (MetaData name pkg numCtors) bodyRepr) n where
   genCType' _ = (stringOf name, "")
   genCTypeDecl' _ = Just $ "typedef struct " +++ stringOf name +++ " {\n" +++
     "\tenum " +++ stringOf name +++ "_tag { " +++
-    genCEnumBody (_ :: Bit 0) (_ :: Bit tagBytes) (_ :: bodyRepr) (stringOf name) +++
+    genCEnumBody (_ :: Bit tagBytes) (_ :: bodyRepr) (stringOf name) +++
     " } tag;\n" +++
     "\tunion " +++ stringOf name +++ "_contents {\n" +++
-    genCUnionBody (_ :: Bit 0) (_ :: Bit tagBytes) (_ :: bodyRepr) (stringOf name) +++
+    genCUnionBody (_ :: Bit tagBytes) (_ :: bodyRepr) (stringOf name) +++
     "\t} contents;\n" +++
     "} " +++ stringOf name +++ ";"
 
-  pack' (Meta y) = packUnionBody (_ :: Bit 0) (_ :: Bit tagBytes) y
+  pack' (Meta y) = packUnionBody (_ :: Bit tagBytes) y
 
   genCPack' _ val buf = "pack_" +++ stringOf name +++ "(" +++ val +++ ", " +++ buf +++ ");"
 
@@ -201,11 +201,11 @@ instance (GenCUnionBody 0 tagBytes bodyRepr bodyBytes,
     "void pack_" +++ stringOf name +++ "(" +++ stringOf name +++ " val, uint8_t **buf);",
     "void pack_" +++ stringOf name +++ "(" +++ stringOf name +++ " val, uint8_t **buf) {\n" +++
     "\t" +++ genCIntPack (valueOf tagBytes) "val.tag" "buf" +++ "\n" +++
-    "\t" +++ genCPackUnionBody (_ :: Bit 0) (_ :: Bit tagBytes) (_ :: bodyRepr) (stringOf name) +++ " // Invalid tag, do nothing\n" +++
+    "\t" +++ genCPackUnionBody (_ :: Bit tagBytes) (_ :: bodyRepr) (stringOf name) +++ " // Invalid tag, do nothing\n" +++
     "}")
 
   unpack' x =
-    case unpackUnionBody (_ :: Bit 0) (_ :: Bit tagBytes) x of
+    case unpackUnionBody (_ :: Bit tagBytes) x of
       (res, extra) -> (Meta res, extra)
 
   genCUnpack' _ val buf = val +++ " = unpack_" +++ stringOf name +++ "(" +++ buf +++ ");"
@@ -215,114 +215,113 @@ instance (GenCUnionBody 0 tagBytes bodyRepr bodyBytes,
     stringOf name +++ " unpack_" +++ stringOf name +++ "(uint8_t **buf) {\n" +++
     "\t" +++ stringOf name +++ " val;\n" +++
     "\t" +++ genCIntUnpack (valueOf tagBytes) "val.tag" "buf" +++ "\n" +++
-    "\t" +++ genCUnpackUnionBody (_ :: Bit 0) (_ :: Bit tagBytes) (_ :: bodyRepr) (stringOf name) +++ " // Invalid tag, do nothing\n" +++
+    "\t" +++ genCUnpackUnionBody (_ :: Bit tagBytes) (_ :: bodyRepr) (stringOf name) +++ " // Invalid tag, do nothing\n" +++
     "\treturn val;\n" +++
     "}")
 
-class GenCUnionBody i nt a n | i nt a -> n where
-  genCEnumBody :: Bit i -> Bit nt -> a -> String -> String
-  genCUnionBody :: Bit i -> Bit nt -> a -> String -> String
+class GenCUnionBody nt a i n | nt a -> i n where
+  genCEnumBody :: Bit nt -> a -> String -> String
+  genCUnionBody :: Bit nt -> a -> String -> String
 
-  packUnionBody :: Bit i -> Bit nt -> a -> ByteList
-  genCPackUnionBody :: Bit i -> Bit nt -> a -> String -> String
+  packUnionBody :: Bit nt -> a -> ByteList
+  genCPackUnionBody :: Bit nt -> a -> String -> String
 
-  unpackUnionBody :: Bit i -> Bit nt -> ByteList -> (a, ByteList)
-  genCUnpackUnionBody :: Bit i -> Bit nt -> a -> String -> String
+  unpackUnionBody :: Bit nt -> ByteList -> (a, ByteList)
+  genCUnpackUnionBody :: Bit nt -> a -> String -> String
 
-instance (Add i 1 i2,
-          GenCUnionBody i tagBytes a n1, GenCUnionBody i2 tagBytes b n2,
+instance (GenCUnionBody tagBytes a i1 n1, GenCUnionBody tagBytes b i2 n2,
           Max n1 n2 n,
           Mul tagBytes 8 tagBits, ConvByteList tagBits) =>
-         GenCUnionBody i tagBytes (Either a b) n where
-  genCEnumBody _ _ _ typeName =
-    genCEnumBody (_ :: Bit i) (_ :: Bit tagBytes) (_ :: a) typeName +++ ", " +++
-    genCEnumBody (_ :: Bit i2) (_ :: Bit tagBytes) (_ :: b) typeName
-  genCUnionBody _ _ _ typeName =
-    genCUnionBody (_ :: Bit i) (_ :: Bit tagBytes) (_ :: a) typeName +++
-    genCUnionBody (_ :: Bit i2) (_ :: Bit tagBytes) (_ :: b) typeName
+         GenCUnionBody tagBytes (Either a b) i1 n where
+  genCEnumBody _ _ typeName =
+    genCEnumBody (_ :: Bit tagBytes) (_ :: a) typeName +++ ", " +++
+    genCEnumBody (_ :: Bit tagBytes) (_ :: b) typeName
+  genCUnionBody _ _ typeName =
+    genCUnionBody (_ :: Bit tagBytes) (_ :: a) typeName +++
+    genCUnionBody (_ :: Bit tagBytes) (_ :: b) typeName
 
-  packUnionBody _ _ (Left x) = packUnionBody (_ :: Bit i) (_ :: Bit tagBytes) x
-  packUnionBody _ _ (Right x) = packUnionBody (_ :: Bit i2) (_ :: Bit tagBytes) x
-  genCPackUnionBody _ _ _ typeName =
-    genCPackUnionBody (_ :: Bit i) (_ :: Bit tagBytes) (_ :: a) typeName +++ " else " +++
-    genCPackUnionBody (_ :: Bit i2) (_ :: Bit tagBytes) (_ :: b) typeName
+  packUnionBody _ (Left x) = packUnionBody (_ :: Bit tagBytes) x
+  packUnionBody _ (Right x) = packUnionBody (_ :: Bit tagBytes) x
+  genCPackUnionBody _ _ typeName =
+    genCPackUnionBody (_ :: Bit tagBytes) (_ :: a) typeName +++ " else " +++
+    genCPackUnionBody (_ :: Bit tagBytes) (_ :: b) typeName
 
-  unpackUnionBody _ _ x =
-    if fromByteList (take (valueOf tagBytes) x) == ((fromInteger (valueOf i)) :: Bit tagBits)
-    then case unpackUnionBody (_ :: Bit i) (_ :: Bit tagBytes) x of
+  unpackUnionBody _ x =
+    if fromByteList (take (valueOf tagBytes) x) == ((fromInteger (valueOf i1)) :: Bit tagBits)
+    then case unpackUnionBody (_ :: Bit tagBytes) x of
       (res, extra) -> (Left res, extra)
-    else case unpackUnionBody (_ :: Bit i2) (_ :: Bit tagBytes) x of
+    else case unpackUnionBody (_ :: Bit tagBytes) x of
       (res, extra) -> (Right res, extra)
-  genCUnpackUnionBody _ _ _ typeName =
-    genCUnpackUnionBody (_ :: Bit i) (_ :: Bit tagBytes) (_ :: a) typeName +++ " else " +++
-    genCUnpackUnionBody (_ :: Bit i2) (_ :: Bit tagBytes) (_ :: b) typeName
+  genCUnpackUnionBody _ _ typeName =
+    genCUnpackUnionBody (_ :: Bit tagBytes) (_ :: a) typeName +++ " else " +++
+    genCUnpackUnionBody (_ :: Bit tagBytes) (_ :: b) typeName
 
 instance (GenCStructBody bodyRepr bodyBytes,
           Add tagBytes bodyBytes n, Mul tagBytes 8 tagBits, ConvByteList tagBits) =>
-         GenCUnionBody i tagBytes (Meta (MetaConsNamed ctorName ctorIdx numFields) bodyRepr) n where
-  genCEnumBody _ _ _ typeName = typeName +++ "_" +++ stringOf ctorName
-  genCUnionBody _ _ _ typeName =
+         GenCUnionBody tagBytes (Meta (MetaConsNamed ctorName ctorIdx numFields) bodyRepr) ctorIdx n where
+  genCEnumBody _ _ typeName = typeName +++ "_" +++ stringOf ctorName
+  genCUnionBody _ _ typeName =
     "\t\tstruct " +++ typeName +++ "_" +++ stringOf ctorName +++ " {\n" +++
     genCStructBody (_ :: bodyRepr) True +++
     "\t\t} " +++ stringOf ctorName +++ ";\n"
 
-  packUnionBody _ _ (Meta x) =
+  packUnionBody _ (Meta x) =
     append (toByteList (Prelude.pack ((fromInteger $ valueOf ctorIdx) :: UInt tagBits))) $ packStructBody x
-  genCPackUnionBody _ _ _ typeName =
+  genCPackUnionBody _ _ typeName =
     "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
     genCPackStructBody (_ :: bodyRepr) True (".contents." +++ stringOf ctorName) +++ "\n" +++
     "\t}"
 
-  unpackUnionBody _ _ x =
+  unpackUnionBody _ x =
     case unpackStructBody $ drop (valueOf tagBytes) x of
       (res, extra) -> (Meta res, extra)
-  genCUnpackUnionBody _ _ _ typeName =
+  genCUnpackUnionBody _ _ typeName =
     "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
     genCUnpackStructBody (_ :: bodyRepr) True (".contents." +++ stringOf ctorName) +++ "\n" +++
     "\t}"
 
 instance (GenCStructBody bodyRepr bodyBytes,
           Add tagBytes bodyBytes n, Mul tagBytes 8 tagBits, ConvByteList tagBits) =>
-         GenCUnionBody i tagBytes (Meta (MetaConsAnon ctorName ctorIdx numFields) bodyRepr) n where
-  genCEnumBody _ _ _ typeName = typeName +++ "_" +++ stringOf ctorName
-  genCUnionBody _ _ _ typeName =
+         GenCUnionBody tagBytes (Meta (MetaConsAnon ctorName ctorIdx numFields) bodyRepr) ctorIdx n where
+  genCEnumBody _ _ typeName = typeName +++ "_" +++ stringOf ctorName
+  genCUnionBody _ _ typeName =
     "\t\tstruct " +++ typeName +++ "_" +++ stringOf ctorName +++ " {\n" +++
     genCStructBody (_ :: bodyRepr) True +++
     "\t\t} " +++ stringOf ctorName +++ ";\n"
 
-  packUnionBody _ _ (Meta x) =
+  packUnionBody _ (Meta x) =
     append (toByteList (Prelude.pack ((fromInteger $ valueOf ctorIdx) :: UInt tagBits))) $ packStructBody x
-  genCPackUnionBody _ _ _ typeName =
+  genCPackUnionBody _ _ typeName =
     "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
     genCPackStructBody (_ :: bodyRepr) True (".contents." +++ stringOf ctorName) +++ "\n" +++
     "\t}"
 
-  unpackUnionBody _ _ x =
+  unpackUnionBody _ x =
     case unpackStructBody $ drop (valueOf tagBytes) x of
       (res, extra) -> (Meta res, extra)
-  genCUnpackUnionBody _ _ _ typeName =
+  genCUnpackUnionBody _ _ typeName =
     "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
     genCUnpackStructBody (_ :: bodyRepr) True (".contents." +++ stringOf ctorName) +++ "\n" +++
     "\t}"
 
 instance (GenCRepr a fieldBytes, Add tagBytes fieldBytes n, Mul tagBytes 8 tagBits, ConvByteList tagBits) =>
-         GenCUnionBody i tagBytes (Meta (MetaConsAnon ctorName ctorIdx 1) (Meta (MetaField fieldName fieldIdx) (Conc a))) n where
-  genCEnumBody _ _ _ typeName = typeName +++ "_" +++ stringOf ctorName
-  genCUnionBody _ _ _ _ =
+         GenCUnionBody tagBytes (Meta (MetaConsAnon ctorName ctorIdx 1) (Meta (MetaField fieldName fieldIdx) (Conc a))) ctorIdx n where
+  genCEnumBody _ _ typeName = typeName +++ "_" +++ stringOf ctorName
+  genCUnionBody _ _ _ =
     let (lType, rType) = genCType (_ :: a)
     in "\t\t" +++ lType +++ " " +++ stringOf ctorName +++ rType +++ ";\n"
 
-  packUnionBody _ _ (Meta (Meta (Conc x))) =
+  packUnionBody _ (Meta (Meta (Conc x))) =
     append (toByteList $ Prelude.pack ((fromInteger $ valueOf ctorIdx) :: UInt tagBits)) $ pack x
-  genCPackUnionBody _ _ _ typeName =
+  genCPackUnionBody _ _ typeName =
     "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
     "\t\t" +++ genCPack (_ :: a) ("val.contents." +++ stringOf ctorName) "buf" +++ "\n" +++
     "\t}"
 
-  unpackUnionBody _ _ x =
+  unpackUnionBody _ x =
     case unpack $ drop (valueOf tagBytes) x of
       (res, extra) -> (Meta $ Meta $ Conc res, extra)
-  genCUnpackUnionBody _ _ _ typeName =
+  genCUnpackUnionBody _ _ typeName =
     "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
     "\t\t" +++ genCUnpack (_ :: a) ("val.contents." +++ stringOf ctorName) "buf" +++ "\n" +++
     "\t}"
