@@ -189,7 +189,8 @@ instance (GenCStructBody bodyRepr n) =>
   genCType' _ = (stringOf name, "")
   genCTypeDecl' _ = Just $ "typedef struct " +++ stringOf name +++ " {\n" +++
     genCStructBody (_ :: bodyRepr) False +++
-    "} " +++ stringOf name +++ ";"
+    "} " +++ stringOf name +++ ";\n" +++
+    "enum { size_" +++ stringOf name +++ " = " +++ integerToString (valueOf n) +++ " };"
 
   packBytes' (Meta (Meta y)) = packStructBody y
 
@@ -220,7 +221,8 @@ instance (GenCStructBody bodyRepr n) =>
   genCType' _ = (stringOf name, "")
   genCTypeDecl' _ = Just $ "typedef struct " +++ stringOf name +++ " {\n" +++
     genCStructBody (_ :: bodyRepr) False +++
-    "} " +++ stringOf name +++ ";"
+    "} " +++ stringOf name +++ ";\n" +++
+    "enum { size_" +++ stringOf name +++ " = " +++ integerToString (valueOf n) +++ " };"
 
   packBytes' (Meta (Meta y)) = packStructBody y
 
@@ -257,7 +259,8 @@ instance (GenCUnionBody tagBytes bodyRepr 0 bodyBytes,
     "\tunion " +++ stringOf name +++ "_contents {\n" +++
     genCUnionBody (_ :: Bit tagBytes) (_ :: bodyRepr) (stringOf name) +++
     "\t} contents;\n" +++
-    "} " +++ stringOf name +++ ";"
+    "} " +++ stringOf name +++ ";\n" +++
+    "enum { size_" +++ stringOf name +++ " = " +++ integerToString (valueOf n) +++ " };"
 
   packBytes' (Meta y) = packUnionBody (_ :: Bit tagBytes) y
 

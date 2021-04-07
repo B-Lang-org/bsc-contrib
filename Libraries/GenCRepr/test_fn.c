@@ -4,8 +4,8 @@
 
 unsigned int test_fn(unsigned long long in) {
   printf("Called test_fn %llx\n", in);
-  uint8_t in_buf[6], *in_ptr = &in_buf[0];
-  for (int i = 5; i >= 0; i--) {
+  uint8_t in_buf[size_ThingMsg], *in_ptr = &in_buf[0];
+  for (int i = size_ThingMsg - 1; i >= 0; i--) {
     in_buf[i] = in & 0xFF;
     in >>= 8;
   }
@@ -24,9 +24,9 @@ unsigned int test_fn(unsigned long long in) {
   printf("res: %hhu %hhu %hd\n", res.x, res.y, res.z);
 
   unsigned int out = 0;
-  uint8_t out_buf[4], *out_ptr = &out_buf[0];
+  uint8_t out_buf[size_Thing], *out_ptr = &out_buf[0];
   pack_Thing(res, &out_ptr);
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < size_Thing; i++) {
     out <<= 8;
     out |= out_buf[i];
   }
