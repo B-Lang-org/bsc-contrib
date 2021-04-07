@@ -1,4 +1,4 @@
 
-import "BDPI" function Bit#(48) getInstr(UInt#(8) ic);
-import "BDPI" function Bit#(8) putResult(Bit#(48) res);
+import "BDPI" function ActionValue#(Bit#(48)) getInstr();
+import "BDPI" function Action putResult(Bit#(48) res);
 

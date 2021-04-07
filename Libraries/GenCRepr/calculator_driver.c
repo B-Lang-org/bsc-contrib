@@ -28,9 +28,11 @@ Instr instrs[] = {
   Instr_Halt
 };
 
-unsigned long long getInstr(unsigned char ic) {
-  //printf("getInstr called %d\n", ic);
+unsigned ic = 0;
+
+unsigned long long getInstr() {
   Instr i = ic < sizeof(instrs) / sizeof(Instr)? instrs[ic] : (Instr){Instr_NoOp};
+  ic++;
 
   unsigned long long out = 0;
   uint8_t out_buf[size_Instr], *out_ptr = &out_buf[0];
@@ -42,7 +44,7 @@ unsigned long long getInstr(unsigned char ic) {
   return out;
 }
 
-unsigned char putResult(unsigned long long in) {
+void putResult(unsigned long long in) {
   uint8_t in_buf[size_Result], *in_ptr = &in_buf[0];
   for (int i = size_Result - 1; i >= 0; i--) {
     in_buf[i] = in & 0xFF;
@@ -51,5 +53,4 @@ unsigned char putResult(unsigned long long in) {
   Result res = unpack_Result(&in_ptr);
 
   printf("========= Result %hx: %d =========\n", res.id, res.result);
-  return 42;
 }
