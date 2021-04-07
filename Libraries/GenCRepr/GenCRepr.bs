@@ -322,8 +322,7 @@ instance (GenCUnionBody tagBytes a i1 n1, GenCUnionBody tagBytes b i2 n2,
     genCUnpackUnionBody (_ :: Bit tagBytes) (_ :: a) typeName +++ " else " +++
     genCUnpackUnionBody (_ :: Bit tagBytes) (_ :: b) typeName
 
-instance (GenCStructBody bodyRepr bodyBytes,
-          Add tagBytes bodyBytes n, Mul tagBytes 8 tagBits, ConvByteList tagBits) =>
+instance (GenCStructBody bodyRepr n, Mul tagBytes 8 tagBits, ConvByteList tagBits) =>
          GenCUnionBody tagBytes (Meta (MetaConsNamed ctorName ctorIdx numFields) bodyRepr) ctorIdx n where
   genCEnumBody _ _ typeName = typeName +++ "_" +++ stringOf ctorName
   genCUnionBody _ _ typeName =
@@ -346,8 +345,7 @@ instance (GenCStructBody bodyRepr bodyBytes,
     genCUnpackStructBody (_ :: bodyRepr) True (".contents." +++ stringOf ctorName) +++ "\n" +++
     "\t}"
 
-instance (GenCStructBody bodyRepr bodyBytes,
-          Add tagBytes bodyBytes n, Mul tagBytes 8 tagBits, ConvByteList tagBits) =>
+instance (GenCStructBody bodyRepr n, Mul tagBytes 8 tagBits, ConvByteList tagBits) =>
          GenCUnionBody tagBytes (Meta (MetaConsAnon ctorName ctorIdx numFields) bodyRepr) ctorIdx n where
   genCEnumBody _ _ typeName = typeName +++ "_" +++ stringOf ctorName
   genCUnionBody _ _ typeName =
@@ -370,7 +368,7 @@ instance (GenCStructBody bodyRepr bodyBytes,
     genCUnpackStructBody (_ :: bodyRepr) True (".contents." +++ stringOf ctorName) +++ "\n" +++
     "\t}"
 
-instance (GenCRepr a fieldBytes, Add tagBytes fieldBytes n, Mul tagBytes 8 tagBits, ConvByteList tagBits) =>
+instance (GenCRepr a n, Mul tagBytes 8 tagBits, ConvByteList tagBits) =>
          GenCUnionBody tagBytes (Meta (MetaConsAnon ctorName ctorIdx 1) (Meta (MetaField fieldName fieldIdx) (Conc a))) ctorIdx n where
   genCEnumBody _ _ typeName = typeName +++ "_" +++ stringOf ctorName
   genCUnionBody _ _ _ =

@@ -20,6 +20,11 @@ data Qux = QF Foo | QFB Foo Bar | Q | QI { x :: Int 8; y :: Int 8} | QU { u :: U
 
 data Kaz = Kaz (UInt 12)
 
+data Op = Add | Sub | Mul | Div
+{-
+ores :: Bit 8
+ores = GenCRepr.pack Add
+-}
 struct Thing =
   x :: UInt 8
   y :: UInt 8
@@ -43,7 +48,7 @@ actTestThing tm = do
 {-# verilog mkTest #-}
 mkTest :: Module Empty
 mkTest = module
-  writeCDecls "test" (_ :: (Foo, Bar, Baz, Qux, Kaz, Thing, ThingMsg))
+  writeCDecls "test" (_ :: (Foo, Bar, Baz, Qux, Kaz, Op, Thing, ThingMsg))
 
   rules
     when True ==> do
