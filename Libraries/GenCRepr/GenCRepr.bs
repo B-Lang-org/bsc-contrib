@@ -12,6 +12,35 @@ instance ConvByteList 0 where
   toByteList _ = Nil
   fromByteList _ = 0
 
+-- TODO: Seems like there should be a better way...
+instance ConvByteList 1 where
+  toByteList bs = zeroExtend bs :> Nil
+  fromByteList (Cons h _) = truncate h
+
+instance ConvByteList 2 where
+  toByteList bs = zeroExtend bs :> Nil
+  fromByteList (Cons h _) = truncate h
+
+instance ConvByteList 3 where
+  toByteList bs = zeroExtend bs :> Nil
+  fromByteList (Cons h _) = truncate h
+
+instance ConvByteList 4 where
+  toByteList bs = zeroExtend bs :> Nil
+  fromByteList (Cons h _) = truncate h
+
+instance ConvByteList 5 where
+  toByteList bs = zeroExtend bs :> Nil
+  fromByteList (Cons h _) = truncate h
+
+instance ConvByteList 6 where
+  toByteList bs = zeroExtend bs :> Nil
+  fromByteList (Cons h _) = truncate h
+
+instance ConvByteList 7 where
+  toByteList bs = zeroExtend bs :> Nil
+  fromByteList (Cons h _) = truncate h
+
 instance (Add 8 m n, ConvByteList m) => ConvByteList n where
   toByteList bs =
     case split bs of
@@ -86,7 +115,7 @@ unpack :: (GenCRepr a n, Mul n 8 m, ConvByteList m) => Bit m -> a
 unpack x = (unpackBytes $ toByteList x).fst
 
 instance (ConvByteList b, Div b 8 n) => GenCRepr (UInt b) n where
-  genCType _ = genCIntType False (valueOf n)
+  genCType _ = genCIntType True (valueOf n)
 
   packBytes x = toByteList $ Prelude.pack x
   genCPack _ = genCIntPack (valueOf n)
@@ -157,6 +186,37 @@ instance (Bits a numBits, Div numBits 8 n, Mul n 8 numBitsPadded,
 
 instance (GenCStructBody bodyRepr n) =>
          GenCRepr' (Meta (MetaData name pkg 1) (Meta (MetaConsNamed cName cIdx numFields) bodyRepr)) n where
+  genCType' _ = (stringOf name, "")
+  genCTypeDecl' _ = Just $ "typedef struct " +++ stringOf name +++ " {\n" +++
+    genCStructBody (_ :: bodyRepr) False +++
+    "} " +++ stringOf name +++ ";"
+
+  packBytes' (Meta (Meta y)) = packStructBody y
+
+  genCPack' _ val buf = "pack_" +++ stringOf name +++ "(" +++ val +++ ", " +++ buf +++ ");"
+
+  genCPackDecl' _ = Just (
+    "void pack_" +++ stringOf name +++ "(" +++ stringOf name +++ " val, uint8_t **buf);",
+    "void pack_" +++ stringOf name +++ "(" +++ stringOf name +++ " val, uint8_t **buf) {\n" +++
+    genCPackStructBody (_ :: bodyRepr) False "" +++
+    "}")
+
+  unpackBytes' x =
+    case unpackStructBody x of
+      (res, extra) -> (Meta $ Meta res, extra)
+
+  genCUnpack' _ val buf = val +++ " = unpack_" +++ stringOf name +++ "(" +++ buf +++ ");"
+
+  genCUnpackDecl' _ = Just (
+    stringOf name +++ " unpack_" +++ stringOf name +++ "(uint8_t **buf);",
+    stringOf name +++ " unpack_" +++ stringOf name +++ "(uint8_t **buf) {\n" +++
+    "\t" +++ stringOf name +++ " val;\n" +++
+    genCUnpackStructBody (_ :: bodyRepr) False "" +++
+    "\treturn val;\n" +++
+    "}")
+
+instance (GenCStructBody bodyRepr n) =>
+         GenCRepr' (Meta (MetaData name pkg 1) (Meta (MetaConsAnon cName cIdx numFields) bodyRepr)) n where
   genCType' _ = (stringOf name, "")
   genCTypeDecl' _ = Just $ "typedef struct " +++ stringOf name +++ " {\n" +++
     genCStructBody (_ :: bodyRepr) False +++
