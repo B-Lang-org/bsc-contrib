@@ -1,0 +1,72 @@
+package Calculator where
+
+import GenCRepr
+import CalculatorIface
+import FIFO
+import RegFile
+import CShow
+
+type Addr = UInt 3
+type Val = Int 32
+type Id = UInt 16
+
+data Op = Add | Sub | Mul | Div
+  deriving (Eq, Bits)
+
+data Instr = Op { op :: Op; in1 :: Addr; in2 :: Addr; out :: Addr; }
+           | Put { a :: Addr; val :: Val; }
+           | Get { a :: Addr; id :: Id; }
+           | NoOp
+           | Halt
+  deriving (Eq, Bits)
+
+struct Result =
+  result :: Val
+  id :: Id
+ deriving (Eq, Bits)
+
+eval :: Op -> Val -> Val -> Val
+eval Add x y = x + y
+eval Sub x y = x - y
+eval Mul x y = x * y
+eval Div x y = x / y
+
+{-# verilog mkCalculator #-}
+mkCalculator :: Module Empty
+mkCalculator = module
+  writeCDecls "calculator" (_ :: (Op, Instr, Result))
+
+  haltIn :: Reg Bool <- mkReg False
+  instrs :: FIFO Instr <- mkFIFO
+  results :: FIFO Result <- mkFIFO
+  regs :: RegFile Addr Val <- mkRegFile 0 7
+
+  ic :: Reg (UInt 8) <- mkReg 0
+  hack :: Reg (Bit 8) <- mkReg 0
+
+  rules
+    when not haltIn ==> do
+      let i :: Instr = GenCRepr.unpack (getInstr ic)
+      ic := ic + 1
+      -- $display "Got instruction " (cshow i)
+      instrs.enq i
+      if i == Halt
+        then haltIn := True
+        else return ()
+
+    when True ==> do
+      let r :: Result = results.first
+      hack := (putResult (GenCRepr.pack r))
+      -- $display "Putting result " (cshow r)
+      results.deq
+
+    when True ==> do
+      let i :: Instr = instrs.first
+      -- $display "Evaluating instruction " (cshow i)
+      case i of
+        Op { op; in1; in2; out; } -> regs.upd out $ eval op (regs.sub in1) (regs.sub in2)
+        Put { a; val; } -> regs.upd a val
+        Get { a; id; } -> results.enq (Result { result = regs.sub a; id = id; })
+        NoOp -> return ()
+        Halt -> $finish
+      instrs.deq

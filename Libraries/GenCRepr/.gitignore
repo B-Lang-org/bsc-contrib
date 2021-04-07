@@ -3,5 +3,7 @@ mk*.*
 imported_BDPI_functions.h
 model_*
 *.o
+*.so
+*.out
 test.*
-test
+calculator.*
