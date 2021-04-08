@@ -34,7 +34,7 @@ fromByteList bytes =
 class GenCRepr a n | a -> n where
   -- Get the left and right C type expressions for a type's C representation; e.g.
   -- genCType (_ :: Int 16) = ("int16_t", "")
-  -- genCType (_ :: UInt 1024) = ("uint8_t", "*")
+  -- genCType (_ :: UInt 1024) = ("uint8_t", "[128]")
   genCType :: a -> (String, String)
 
   -- Compute Just the C declaration for a struct/data type,
