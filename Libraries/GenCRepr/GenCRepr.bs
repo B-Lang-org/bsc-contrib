@@ -114,7 +114,7 @@ genCIntUnpack numBytes val buf =
      ) +++ " *" +++ buf +++ " += " +++ integerToString numBytes +++ ";"
 
 instance (Div b 8 n) => GenCRepr (UInt b) n where
-  genCType _ = genCIntType True (valueOf n)
+  genCType _ = genCIntType False (valueOf n)
 
   packBytes x = toByteList $ Prelude.pack x
   genCPack _ = genCIntPack (valueOf n)
