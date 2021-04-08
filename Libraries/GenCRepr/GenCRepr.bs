@@ -4,49 +4,21 @@ import List
 
 type ByteList = List (Bit 8)
 
-class ConvByteList n where
-  toByteList :: Bit n -> ByteList
-  fromByteList :: ByteList -> Bit n
+toByteList :: Bit n -> ByteList
+toByteList bits =
+  let rec_fn :: Integer -> ByteList -> ByteList
+      rec_fn lo res =
+         if valueOf n <= lo + 8
+         then bits[valueOf n - 1:lo] :> res
+         else rec_fn (lo+8) (bits[lo + 7:lo] :> res)
+  in  rec_fn 0 Nil
 
-instance ConvByteList 0 where
-  toByteList _ = Nil
-  fromByteList _ = 0
-
--- TODO: Seems like there should be a better way...
-instance ConvByteList 1 where
-  toByteList bs = zeroExtend bs :> Nil
-  fromByteList (Cons h _) = truncate h
-
-instance ConvByteList 2 where
-  toByteList bs = zeroExtend bs :> Nil
-  fromByteList (Cons h _) = truncate h
-
-instance ConvByteList 3 where
-  toByteList bs = zeroExtend bs :> Nil
-  fromByteList (Cons h _) = truncate h
-
-instance ConvByteList 4 where
-  toByteList bs = zeroExtend bs :> Nil
-  fromByteList (Cons h _) = truncate h
-
-instance ConvByteList 5 where
-  toByteList bs = zeroExtend bs :> Nil
-  fromByteList (Cons h _) = truncate h
-
-instance ConvByteList 6 where
-  toByteList bs = zeroExtend bs :> Nil
-  fromByteList (Cons h _) = truncate h
-
-instance ConvByteList 7 where
-  toByteList bs = zeroExtend bs :> Nil
-  fromByteList (Cons h _) = truncate h
-
-instance (Add 8 m n, ConvByteList m) => ConvByteList n where
-  toByteList bs =
-    case split bs of
-      (h, t) -> h :> toByteList t
-  fromByteList (Cons h t) = h ++ fromByteList t
-  fromByteList Nil = 0
+fromByteList :: (Add 8 n k) => ByteList -> Bit n
+fromByteList bytes =
+  let rec_fn :: Integer -> ByteList -> Bit k -> Bit k
+      rec_fn _ Nil res = res
+      rec_fn lo (Cons b bs) res = rec_fn (lo+8) bs ((res << 8) | (zeroExtend b))
+  in  truncate (rec_fn 0 bytes 0)
 
 numCBytes :: Integer -> Maybe Integer
 numCBytes numBytes =
@@ -108,13 +80,13 @@ class GenCRepr a n | a -> n where
   genCUnpackDecl :: a -> Maybe (String, String)
   genCUnpackDecl _ = Nothing
 
-pack :: (GenCRepr a n, Mul n 8 m, ConvByteList m) => a -> Bit m
+pack :: (GenCRepr a n, Mul n 8 m) => a -> Bit m
 pack x = fromByteList $ packBytes x
 
-unpack :: (GenCRepr a n, Mul n 8 m, ConvByteList m) => Bit m -> a
+unpack :: (GenCRepr a n, Mul n 8 m) => Bit m -> a
 unpack x = (unpackBytes $ toByteList x).fst
 
-instance (ConvByteList b, Div b 8 n) => GenCRepr (UInt b) n where
+instance (Div b 8 n) => GenCRepr (UInt b) n where
   genCType _ = genCIntType True (valueOf n)
 
   packBytes x = toByteList $ Prelude.pack x
@@ -123,7 +95,7 @@ instance (ConvByteList b, Div b 8 n) => GenCRepr (UInt b) n where
   unpackBytes x = (Prelude.unpack $ fromByteList $ take (valueOf n) x, drop (valueOf n) x)
   genCUnpack _ = genCIntUnpack (valueOf n)
 
-instance (ConvByteList b, Div b 8 n) => GenCRepr (Int b) n where
+instance (Div b 8 n) => GenCRepr (Int b) n where
   genCType _ = genCIntType True (valueOf n)
 
   packBytes x = toByteList $ Prelude.pack x
@@ -169,7 +141,7 @@ class GenCRepr' a n | a -> n where
 
 -- Represent primitives as unsigned integers by default
 instance (Bits a numBits, Div numBits 8 n, Mul n 8 numBitsPadded,
-          Add numBits numPad numBitsPadded, ConvByteList numBitsPadded) =>
+          Add numBits numPad numBitsPadded) =>
          GenCRepr' (ConcPrim a) n where
   genCType' _ = genCIntType False (valueOf n)
   genCTypeDecl' _ = Nothing
@@ -300,7 +272,7 @@ class GenCUnionBody nt a i n | nt a -> i n where
 
 instance (GenCUnionBody tagBytes a i1 n1, GenCUnionBody tagBytes b i2 n2,
           Max n1 n2 n,
-          Mul tagBytes 8 tagBits, ConvByteList tagBits) =>
+          Mul tagBytes 8 tagBits) =>
          GenCUnionBody tagBytes (Either a b) i1 n where
   genCEnumBody _ _ typeName =
     genCEnumBody (_ :: Bit tagBytes) (_ :: a) typeName +++ ", " +++
@@ -325,7 +297,7 @@ instance (GenCUnionBody tagBytes a i1 n1, GenCUnionBody tagBytes b i2 n2,
     genCUnpackUnionBody (_ :: Bit tagBytes) (_ :: a) typeName +++ " else " +++
     genCUnpackUnionBody (_ :: Bit tagBytes) (_ :: b) typeName
 
-instance (GenCStructBody bodyRepr n, Mul tagBytes 8 tagBits, ConvByteList tagBits) =>
+instance (GenCStructBody bodyRepr n, Mul tagBytes 8 tagBits) =>
          GenCUnionBody tagBytes (Meta (MetaConsNamed ctorName ctorIdx numFields) bodyRepr) ctorIdx n where
   genCEnumBody _ _ typeName = typeName +++ "_" +++ stringOf ctorName
   genCUnionBody _ _ typeName =
@@ -348,7 +320,7 @@ instance (GenCStructBody bodyRepr n, Mul tagBytes 8 tagBits, ConvByteList tagBit
     genCUnpackStructBody (_ :: bodyRepr) True (".contents." +++ stringOf ctorName) +++ "\n" +++
     "\t}"
 
-instance (GenCStructBody bodyRepr n, Mul tagBytes 8 tagBits, ConvByteList tagBits) =>
+instance (GenCStructBody bodyRepr n, Mul tagBytes 8 tagBits) =>
          GenCUnionBody tagBytes (Meta (MetaConsAnon ctorName ctorIdx numFields) bodyRepr) ctorIdx n where
   genCEnumBody _ _ typeName = typeName +++ "_" +++ stringOf ctorName
   genCUnionBody _ _ typeName =
@@ -371,7 +343,7 @@ instance (GenCStructBody bodyRepr n, Mul tagBytes 8 tagBits, ConvByteList tagBit
     genCUnpackStructBody (_ :: bodyRepr) True (".contents." +++ stringOf ctorName) +++ "\n" +++
     "\t}"
 
-instance (GenCRepr a n, Mul tagBytes 8 tagBits, ConvByteList tagBits) =>
+instance (GenCRepr a n, Mul tagBytes 8 tagBits) =>
          GenCUnionBody tagBytes (Meta (MetaConsAnon ctorName ctorIdx 1) (Meta (MetaField fieldName fieldIdx) (Conc a))) ctorIdx n where
   genCEnumBody _ _ typeName = typeName +++ "_" +++ stringOf ctorName
   genCUnionBody _ _ _ =

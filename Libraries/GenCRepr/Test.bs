@@ -38,10 +38,12 @@ struct ThingMsg =
 actTestThing :: ThingMsg -> Action
 actTestThing tm = do
   $display (cshow tm)
+  $display (cshow $ GenCRepr.packBytes tm)
   let input = GenCRepr.pack tm
   $display (cshow input)
   let output = test_fn input
   $display (cshow output)
+  $display (cshow $ GenCRepr.toByteList output)
   let res = (GenCRepr.unpack output) :: Thing
   $display (cshow res)
 
@@ -52,6 +54,6 @@ mkTest = module
 
   rules
     when True ==> do
-      actTestThing (ThingMsg {thing=Thing {x=1; y=2; z=1234;}; swapXY=False; deltaZ=8;})
-      actTestThing (ThingMsg {thing=Thing {x=1; y=2; z=1234;}; swapXY=True; deltaZ=negate 8;})
+      actTestThing (ThingMsg {thing=Thing {x=1; y=2; z=0x1234;}; swapXY=False; deltaZ=8;})
+      actTestThing (ThingMsg {thing=Thing {x=1; y=2; z=0x1234;}; swapXY=True; deltaZ=negate 8;})
       $finish
