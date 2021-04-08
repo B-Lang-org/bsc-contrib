@@ -2,8 +2,14 @@ package GenCRepr where
 
 import List
 
+-- Data being packed and unpacked is variable-width for more efficient packing
+-- if sent in serial, and also byte aligned for easier handling in C.
+-- Thus the automatic packing and unpacking is done in terms of variable-width
+-- byte lists in Bluespec.
 type ByteList = List (Bit 8)
 
+-- Convert a fixed-width Bit value to a variable-width ByteList,
+-- inserts padding as needed to reach a multiple of 8.
 toByteList :: Bit n -> ByteList
 toByteList bits =
   let rec_fn :: Integer -> ByteList -> ByteList
@@ -13,6 +19,8 @@ toByteList bits =
          else rec_fn (lo+8) (bits[lo + 7:lo] :> res)
   in  rec_fn 0 Nil
 
+-- Convert a variable-width ByteList to a fixed-width Bit value,
+-- padding or truncating as needed.
 fromByteList :: (Add 8 n k) => ByteList -> Bit n
 fromByteList bytes =
   let rec_fn :: Integer -> ByteList -> Bit k -> Bit k
@@ -20,6 +28,54 @@ fromByteList bytes =
       rec_fn lo (Cons b bs) res = rec_fn (lo+8) bs ((res << 8) | (zeroExtend b))
   in  truncate (rec_fn 0 bytes 0)
 
+-- Class of types that can be represented and automatically packed/unpacked in C.
+-- n is the maximum number of bytes needed to pack a type.
+-- genC* methods in this class are parameterized by a proxy value to specify the type.
+class GenCRepr a n | a -> n where
+  -- Get the left and right C type expressions for a type's C representation; e.g.
+  -- genCType (_ :: Int 16) = ("int16_t", "")
+  -- genCType (_ :: UInt 1024) = ("uint8_t", "*")
+  genCType :: a -> (String, String)
+
+  -- Compute Just the C declaration for a struct/data type,
+  -- or Nothing for primitive types.
+  genCTypeDecl :: a -> Maybe String
+  genCTypeDecl _ = Nothing
+
+  -- Pack a value of type a into a ByteList of at most n bytes.
+  packBytes :: a -> ByteList
+
+  -- Compute the C statement to pack a value of type a,
+  -- given C expressions for the value and the result buffer.
+  genCPack :: a -> String -> String -> String
+
+  -- Compute Just the C prototype and implementation of the pack function for a
+  -- struct/data type, or Nothing for primitive types.
+  genCPackDecl :: a -> Maybe (String, String)
+  genCPackDecl _ = Nothing
+
+  -- Unpack a ByteList into a value of type a and excess bytes.
+  unpackBytes :: ByteList -> (a, ByteList)
+
+  -- Compute the C statement to unpack a value of type a,
+  -- given C expressions for the value and the result buffer.
+  genCUnpack :: a -> String -> String -> String
+
+  -- Compute Just the C prototype and implementation of the unpack function for a
+  -- struct/data type,  or Nothing for primitive types.
+  genCUnpackDecl :: a -> Maybe (String, String)
+  genCUnpackDecl _ = Nothing
+
+-- Pack a value into a Bit representation that is guaranteed to fit the type.
+pack :: (GenCRepr a n, Mul n 8 m) => a -> Bit m
+pack x = fromByteList $ packBytes x
+
+-- Unpack a value from a Bit representation that is guaranteed to fit the type.
+unpack :: (GenCRepr a n, Mul n 8 m) => Bit m -> a
+unpack x = (unpackBytes $ toByteList x).fst
+
+-- Helpers to determine the C types and packing/unpacking code for various
+-- integer types.
 numCBytes :: Integer -> Maybe Integer
 numCBytes numBytes =
   if numBytes <= 1 then Just 1
@@ -27,9 +83,6 @@ numCBytes numBytes =
   else if numBytes <= 4 then Just 4
   else if numBytes <= 8 then Just 8
   else Nothing
-
-bitsToBytes :: Integer -> Integer
-bitsToBytes b = (((b - 1) / 8) + 1)
 
 genCIntType :: Bool -> Integer -> (String, String)
 genCIntType signed numBytes =
@@ -59,32 +112,6 @@ genCIntUnpack numBytes val buf =
         Just _ -> val +++ " = " +++ shiftUnpack 0 +++ ";"
         Nothing -> "memcpy(&" +++ val +++ ", *" +++ buf +++ ", " +++ integerToString numBytes +++ "); "
      ) +++ " *" +++ buf +++ " += " +++ integerToString numBytes +++ ";"
-
-class GenCRepr a n | a -> n where
-  genCType :: a -> (String, String)
-
-  genCTypeDecl :: a -> Maybe String
-  genCTypeDecl _ = Nothing
-
-  packBytes :: a -> ByteList
-
-  genCPack :: a -> String -> String -> String
-
-  genCPackDecl :: a -> Maybe (String, String)
-  genCPackDecl _ = Nothing
-
-  unpackBytes :: ByteList -> (a, ByteList)
-
-  genCUnpack :: a -> String -> String -> String
-
-  genCUnpackDecl :: a -> Maybe (String, String)
-  genCUnpackDecl _ = Nothing
-
-pack :: (GenCRepr a n, Mul n 8 m) => a -> Bit m
-pack x = fromByteList $ packBytes x
-
-unpack :: (GenCRepr a n, Mul n 8 m) => Bit m -> a
-unpack x = (unpackBytes $ toByteList x).fst
 
 instance (Div b 8 n) => GenCRepr (UInt b) n where
   genCType _ = genCIntType True (valueOf n)
