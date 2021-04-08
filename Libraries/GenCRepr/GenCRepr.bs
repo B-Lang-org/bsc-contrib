@@ -113,6 +113,7 @@ genCIntUnpack numBytes val buf =
         Nothing -> "memcpy(&" +++ val +++ ", *" +++ buf +++ ", " +++ integerToString numBytes +++ "); "
      ) +++ " *" +++ buf +++ " += " +++ integerToString numBytes +++ ";"
 
+-- Explcit instances for specific primitive types
 instance (Div b 8 n) => GenCRepr (UInt b) n where
   genCType _ = genCIntType False (valueOf n)
 
@@ -140,6 +141,7 @@ instance GenCRepr Bool 1 where
   unpackBytes x = (Prelude.unpack $ truncate $ head x, tail x)
   genCUnpack _ = genCIntUnpack 1
 
+-- Default instance uses generics for arbitrary data types
 instance (Generic a r, GenCRepr' r n) => GenCRepr a n where
   genCType _ = genCType' (_ :: r)
   genCTypeDecl _ = genCTypeDecl' (_ :: r)
@@ -154,6 +156,7 @@ instance (Generic a r, GenCRepr' r n) => GenCRepr a n where
   genCUnpack _ = genCUnpack' (_ :: r)
   genCUnpackDecl _ = genCUnpackDecl' (_ :: r)
 
+-- Generic version of GenCRepr has instances for Generic representation types
 class GenCRepr' a n | a -> n where
   genCType' :: a -> (String, String)
   genCTypeDecl' :: a -> Maybe String
@@ -166,7 +169,7 @@ class GenCRepr' a n | a -> n where
   genCUnpack' :: a -> String -> String -> String
   genCUnpackDecl' :: a -> Maybe (String, String)
 
--- Represent primitives as unsigned integers by default
+-- Primitive types with Bits instances are represented like unsigned integers
 instance (Bits a numBits, Div numBits 8 n, Mul n 8 numBitsPadded,
           Add numBits numPad numBitsPadded) =>
          GenCRepr' (ConcPrim a) n where
@@ -183,6 +186,7 @@ instance (Bits a numBits, Div numBits 8 n, Mul n 8 numBitsPadded,
   genCUnpack' _ = genCIntUnpack (valueOf n)
   genCUnpackDecl' _ = Nothing
 
+-- Single constructor corresponds to flat struct
 instance (GenCStructBody bodyRepr n) =>
          GenCRepr' (Meta (MetaData name pkg 1) (Meta (MetaConsNamed cName cIdx numFields) bodyRepr)) n where
   genCType' _ = (stringOf name, "")
@@ -215,6 +219,7 @@ instance (GenCStructBody bodyRepr n) =>
     "\treturn val;\n" +++
     "}")
 
+-- Single-constructor data case, same as above
 instance (GenCStructBody bodyRepr n) =>
          GenCRepr' (Meta (MetaData name pkg 1) (Meta (MetaConsAnon cName cIdx numFields) bodyRepr)) n where
   genCType' _ = (stringOf name, "")
@@ -247,6 +252,7 @@ instance (GenCStructBody bodyRepr n) =>
     "\treturn val;\n" +++
     "}")
 
+-- Multi-constructor case, generate a tagged union
 instance (GenCUnionBody tagBytes bodyRepr 0 bodyBytes,
           Log numCtors tagBits, Div tagBits 8 tagBytes, Add tagBytes bodyBytes n) =>
          GenCRepr' (Meta (MetaData name pkg numCtors) bodyRepr) n where
@@ -287,6 +293,12 @@ instance (GenCUnionBody tagBytes bodyRepr 0 bodyBytes,
     "\treturn val;\n" +++
     "}")
 
+-- Helper type class to handle sum types.
+-- nt = number of tag bytes
+-- a = representation type of contents
+-- i = constructor index
+-- n = max number of bytes needed to pack any summand
+-- Code generation methods require proxy values for nt and a.
 class GenCUnionBody nt a i n | nt a -> i n where
   genCEnumBody :: Bit nt -> a -> String -> String
   genCUnionBody :: Bit nt -> a -> String -> String
@@ -297,6 +309,7 @@ class GenCUnionBody nt a i n | nt a -> i n where
   unpackUnionBody :: Bit nt -> ByteList -> (a, ByteList)
   genCUnpackUnionBody :: Bit nt -> a -> String -> String
 
+-- "sum" case, need to compare the tag with the index in unpacking
 instance (GenCUnionBody tagBytes a i1 n1, GenCUnionBody tagBytes b i2 n2,
           Max n1 n2 n,
           Mul tagBytes 8 tagBits) =>
@@ -324,6 +337,30 @@ instance (GenCUnionBody tagBytes a i1 n1, GenCUnionBody tagBytes b i2 n2,
     genCUnpackUnionBody (_ :: Bit tagBytes) (_ :: a) typeName +++ " else " +++
     genCUnpackUnionBody (_ :: Bit tagBytes) (_ :: b) typeName
 
+-- Special case for a constructor with a single anonymous field, don't create an inner struct
+instance (GenCRepr a n, Mul tagBytes 8 tagBits) =>
+         GenCUnionBody tagBytes (Meta (MetaConsAnon ctorName ctorIdx 1) (Meta (MetaField fieldName fieldIdx) (Conc a))) ctorIdx n where
+  genCEnumBody _ _ typeName = typeName +++ "_" +++ stringOf ctorName
+  genCUnionBody _ _ _ =
+    let (lType, rType) = genCType (_ :: a)
+    in "\t\t" +++ lType +++ " " +++ stringOf ctorName +++ rType +++ ";\n"
+
+  packUnionBody _ (Meta (Meta (Conc x))) =
+    append (toByteList $ Prelude.pack ((fromInteger $ valueOf ctorIdx) :: UInt tagBits)) $ packBytes x
+  genCPackUnionBody _ _ typeName =
+    "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
+    "\t\t" +++ genCPack (_ :: a) ("val.contents." +++ stringOf ctorName) "buf" +++ "\n" +++
+    "\t}"
+
+  unpackUnionBody _ x =
+    case unpackBytes $ drop (valueOf tagBytes) x of
+      (res, extra) -> (Meta $ Meta $ Conc res, extra)
+  genCUnpackUnionBody _ _ typeName =
+    "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
+    "\t\t" +++ genCUnpack (_ :: a) ("val.contents." +++ stringOf ctorName) "buf" +++ "\n" +++
+    "\t}"
+
+-- Instance for multiple named fields, represented by an inner struct
 instance (GenCStructBody bodyRepr n, Mul tagBytes 8 tagBits) =>
          GenCUnionBody tagBytes (Meta (MetaConsNamed ctorName ctorIdx numFields) bodyRepr) ctorIdx n where
   genCEnumBody _ _ typeName = typeName +++ "_" +++ stringOf ctorName
@@ -347,6 +384,7 @@ instance (GenCStructBody bodyRepr n, Mul tagBytes 8 tagBits) =>
     genCUnpackStructBody (_ :: bodyRepr) True (".contents." +++ stringOf ctorName) +++ "\n" +++
     "\t}"
 
+-- Instance for multiple anonymous fields, same as above
 instance (GenCStructBody bodyRepr n, Mul tagBytes 8 tagBits) =>
          GenCUnionBody tagBytes (Meta (MetaConsAnon ctorName ctorIdx numFields) bodyRepr) ctorIdx n where
   genCEnumBody _ _ typeName = typeName +++ "_" +++ stringOf ctorName
@@ -370,29 +408,10 @@ instance (GenCStructBody bodyRepr n, Mul tagBytes 8 tagBits) =>
     genCUnpackStructBody (_ :: bodyRepr) True (".contents." +++ stringOf ctorName) +++ "\n" +++
     "\t}"
 
-instance (GenCRepr a n, Mul tagBytes 8 tagBits) =>
-         GenCUnionBody tagBytes (Meta (MetaConsAnon ctorName ctorIdx 1) (Meta (MetaField fieldName fieldIdx) (Conc a))) ctorIdx n where
-  genCEnumBody _ _ typeName = typeName +++ "_" +++ stringOf ctorName
-  genCUnionBody _ _ _ =
-    let (lType, rType) = genCType (_ :: a)
-    in "\t\t" +++ lType +++ " " +++ stringOf ctorName +++ rType +++ ";\n"
-
-  packUnionBody _ (Meta (Meta (Conc x))) =
-    append (toByteList $ Prelude.pack ((fromInteger $ valueOf ctorIdx) :: UInt tagBits)) $ packBytes x
-  genCPackUnionBody _ _ typeName =
-    "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
-    "\t\t" +++ genCPack (_ :: a) ("val.contents." +++ stringOf ctorName) "buf" +++ "\n" +++
-    "\t}"
-
-  unpackUnionBody _ x =
-    case unpackBytes $ drop (valueOf tagBytes) x of
-      (res, extra) -> (Meta $ Meta $ Conc res, extra)
-  genCUnpackUnionBody _ _ typeName =
-    "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
-    "\t\t" +++ genCUnpack (_ :: a) ("val.contents." +++ stringOf ctorName) "buf" +++ "\n" +++
-    "\t}"
-
-
+-- Helper type class to handle product types.
+-- a = representation type of contents
+-- n = total max number of bytes needed to pack all fields
+-- Code generation methods require proxy values for nt and a.
 class GenCStructBody a n | a -> n where
   genCStructBody :: a -> Bool -> String
   packStructBody :: a -> ByteList
@@ -400,6 +419,7 @@ class GenCStructBody a n | a -> n where
   unpackStructBody :: ByteList -> (a, ByteList)
   genCUnpackStructBody :: a -> Bool -> String -> String
 
+-- "product" case
 instance (GenCStructBody a n1, GenCStructBody b n2, Add n1 n2 n) =>
          GenCStructBody (a, b) n where
   genCStructBody _ nested =
@@ -417,6 +437,7 @@ instance (GenCStructBody a n1, GenCStructBody b n2, Add n1 n2 n) =>
   genCUnpackStructBody _ nested sel =
     genCUnpackStructBody (_ :: a) nested sel +++ genCUnpackStructBody (_ :: b) nested sel
 
+-- empty case
 instance GenCStructBody () 0 where
   genCStructBody _ _ = ""
   packStructBody () = Nil
@@ -424,6 +445,7 @@ instance GenCStructBody () 0 where
   unpackStructBody x = ((), x)
   genCUnpackStructBody _ _ _ = ""
 
+-- Instance for a single concrete field, calls back to non-generic GenCRepr methods
 instance (GenCRepr a n) => GenCStructBody (Meta (MetaField name idx) (Conc a)) n where
   genCStructBody _ nested =
     let (lType, rType) = genCType (_ :: a)
