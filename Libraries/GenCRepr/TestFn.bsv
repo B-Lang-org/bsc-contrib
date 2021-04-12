@@ -1,3 +1,3 @@
 
-import "BDPI" function Bit#(32) test_fn(Bit#(48) arg);
+import "BDPI" function ActionValue#(Bit#(48)) test_fn(Bit#(64) arg);
      

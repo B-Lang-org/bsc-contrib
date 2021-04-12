@@ -1,6 +1,7 @@
 package GenCRepr where
 
 import List
+import qualified Vector
 
 -- Data being packed and unpacked is variable-width for more efficient packing
 -- if sent in serial, and also byte aligned for easier handling in C.
@@ -95,7 +96,8 @@ genCIntPack :: Integer -> String -> String -> String
 genCIntPack numBytes val buf =
   let shiftPack :: Integer -> String
       shiftPack n = if n >= numBytes then "" else
-           "**" +++ buf +++ " = 0xFF & (" +++ val +++ " >> " +++ integerToString (8 * (numBytes - n - 1)) +++ "); (*" +++ buf +++ ")++; " +++ shiftPack (n + 1)
+           "**" +++ buf +++ " = 0xFF & (" +++ val +++ " >> " +++ integerToString (8 * (numBytes - n - 1)) +++ "); (*" +++ buf +++ ")++;" +++
+           (if n < numBytes - 1 then " " else "") +++ shiftPack (n + 1)
   in case numCBytes numBytes of
     Just _ -> shiftPack 0
     Nothing ->
@@ -292,6 +294,38 @@ instance (GenCUnionBody tagBytes bodyRepr 0 bodyBytes,
     "\t" +++ genCUnpackUnionBody (_ :: Bit tagBytes) (_ :: bodyRepr) (stringOf name) +++ " // Invalid tag, do nothing\n" +++
     "\treturn val;\n" +++
     "}")
+
+-- Collections (ListN and Vector) are represented as arrays
+instance (GenCRepr a elemBytes, Mul elemBytes numElems n) =>
+         GenCRepr' (Meta (MetaData name pkg 1) (Vector.Vector numElems (Conc a))) n where
+  genCType' _ =
+    let (lType, rType) = genCType (_ :: a)
+    in (lType, "[" +++ integerToString (valueOf numElems) +++ "]" +++ rType)
+  genCTypeDecl' _ = Nothing
+
+  packBytes' (Meta x) = Vector.foldr append Nil $ Vector.map (\ (Conc a) -> packBytes a) x
+
+  genCPack' _ val buf = Vector.foldr (\ p1 p2 -> p1 +++ " " +++ p2) "" $ Vector.map
+    (\ i -> genCPack (_ :: a) (val +++ "[" +++ integerToString i +++ "]") buf)
+    (Vector.genList :: Vector.Vector numElems Integer)
+  genCPackDecl' _ = Nothing
+
+  unpackBytes' x =
+    let unpackElems :: ByteList -> Integer -> (List (Conc a), ByteList)
+        unpackElems bs 0 = (Nil, bs)
+        unpackElems bs n =
+          case unpackBytes bs of
+            (res1, extra1) ->
+              case unpackElems extra1 (n - 1) of
+                (res2, extra2) -> (Conc res1 :> res2, extra2)
+    in case unpackElems x (valueOf numElems) of
+      (res, extra) -> (Meta $ Vector.toVector res, extra)
+
+  genCUnpack' _ val buf = Vector.foldr (\ p1 p2 -> p1 +++ " " +++ p2) "" $ Vector.map
+    (\ i -> genCUnpack (_ :: a) (val +++ "[" +++ integerToString i +++ "]") buf)
+    (Vector.genList :: Vector.Vector numElems Integer)
+  genCUnpackDecl' _ = Nothing
+
 
 -- Helper type class to handle sum types.
 -- nt = number of tag bytes
