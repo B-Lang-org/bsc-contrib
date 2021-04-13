@@ -548,21 +548,19 @@ instance (GenCRepr a n) => GenCStructBody (Meta (MetaField name idx) (Conc a)) n
     "\t" +++ genCUnpack (_ :: a) ("val" +++ sel +++ "." +++ stringOf name) "buf" +++ "\n"
 
 
--- Helper to allow a tuple of types to be all easily translated together
+
+-- Extract all component declarations for a type using generics
 class GenCDecls a where
-  genCHeaderDecls :: a -> String
-  genCImplDecls :: a -> String
+  componentTypeNames :: a -> List String
+  genCHeaderDecls :: a -> List String -> String
+  genCImplDecls :: a -> List String -> String
 
-instance (GenCDecls a, GenCDecls b) => GenCDecls (a, b) where
-  genCHeaderDecls _ = genCHeaderDecls (_ :: a) +++ genCHeaderDecls (_ :: b)
-  genCImplDecls _ = genCImplDecls (_ :: a) +++ genCImplDecls (_ :: b)
+instance (GenCRepr a n, Generic a r, GenCDecls' r) => GenCDecls a where
+  componentTypeNames _ = typeName (_ :: a) :> componentTypeNames' (_ :: r)
 
-instance GenCDecls () where
-  genCHeaderDecls _ = ""
-  genCImplDecls _ = ""
-
-instance (GenCRepr a n) => GenCDecls a where
-  genCHeaderDecls p =
+  genCHeaderDecls p done =
+    if isJust $ find (\ t -> t == typeName (_ :: a)) done then "" else
+    genCHeaderDecls' (_ :: r) (typeName (_ :: a) :> done) +++
     (case genCTypeDecl p of
         Just d -> d +++ "\n"
         Nothing -> ""
@@ -576,7 +574,9 @@ instance (GenCRepr a n) => GenCDecls a where
        Nothing -> ""
     )
 
-  genCImplDecls p =
+  genCImplDecls p done =
+    if isJust $ find (\ t -> t == typeName (_ :: a)) done then "" else
+    genCImplDecls' (_ :: r) (typeName (_ :: a) :> done) +++
     (case genCPackDecl p of
        Just (_, d) -> d +++ "\n\n"
        Nothing -> ""
@@ -586,17 +586,74 @@ instance (GenCRepr a n) => GenCDecls a where
        Nothing -> ""
     )
 
+class GenCDecls' a where
+  componentTypeNames' :: a -> List String
+  genCHeaderDecls' :: a -> List String -> String
+  genCImplDecls' :: a -> List String -> String
+
+instance (GenCDecls' a) => GenCDecls' (Meta m a) where
+  componentTypeNames' _ = componentTypeNames' (_ :: a)
+  genCHeaderDecls' _ = genCHeaderDecls' (_ :: a)
+  genCImplDecls' _ = genCImplDecls' (_ :: a)
+
+instance (GenCDecls' a, GenCDecls' b) => GenCDecls' (Either a b) where
+  componentTypeNames' _ = componentTypeNames' (_ :: a) `append` componentTypeNames' (_ :: b)
+  genCHeaderDecls' _ done = genCHeaderDecls' (_ :: a) done +++ genCHeaderDecls' (_ :: b) (done `append` componentTypeNames' (_ :: a))
+  genCImplDecls' _ done = genCImplDecls' (_ :: a) done +++ genCImplDecls' (_ :: b) (done `append` componentTypeNames' (_ :: a))
+
+instance (GenCDecls' a, GenCDecls' b) => GenCDecls' (a, b) where
+  componentTypeNames' _ = componentTypeNames' (_ :: a) `append` componentTypeNames' (_ :: b)
+  genCHeaderDecls' _ done = genCHeaderDecls' (_ :: a) done +++ genCHeaderDecls' (_ :: b) (done `append` componentTypeNames' (_ :: a))
+  genCImplDecls' _ done = genCImplDecls' (_ :: a) done +++ genCImplDecls' (_ :: b) (done `append` componentTypeNames' (_ :: a))
+
+instance GenCDecls' () where
+  componentTypeNames' _ = nil
+  genCHeaderDecls' _ _ = ""
+  genCImplDecls' _ _ = ""
+
+instance (GenCDecls' a) => GenCDecls' (Vector.Vector n a) where
+  componentTypeNames' _ = componentTypeNames' (_ :: a)
+  genCHeaderDecls' _ = genCHeaderDecls' (_ :: a)
+  genCImplDecls' _ = genCImplDecls' (_ :: a)
+
+instance GenCDecls' (ConcPrim a) where
+  componentTypeNames' _ = nil
+  genCHeaderDecls' _ _ = ""
+  genCImplDecls' _ _ = ""
+
+instance (GenCDecls a) => GenCDecls' (Conc a) where
+  componentTypeNames' _ = componentTypeNames (_ :: a)
+  genCHeaderDecls' _ = genCHeaderDecls (_ :: a)
+  genCImplDecls' _ = genCImplDecls (_ :: a)
+
+-- Helper to allow a tuple of types to be all easily translated together
+class GenAllCDecls a where
+  genAllCHeaderDecls :: a -> List String -> String
+  genAllCImplDecls :: a -> List String -> String
+
+instance (GenCDecls a, GenAllCDecls b) => GenAllCDecls (a, b) where
+  genAllCHeaderDecls _ done = genCHeaderDecls (_ :: a) done +++ genAllCHeaderDecls (_ :: b) (done `append` componentTypeNames (_ :: a))
+  genAllCImplDecls _ done = genCImplDecls (_ :: a) done +++ genAllCImplDecls (_ :: b) (done `append` componentTypeNames (_ :: a))
+
+instance (GenCDecls a) => GenAllCDecls a where
+  genAllCHeaderDecls _ = genCHeaderDecls (_ :: a)
+  genAllCImplDecls _ = genCImplDecls (_ :: a)
+
+instance GenAllCDecls () where
+  genAllCHeaderDecls _ _ = ""
+  genAllCImplDecls _ _ = ""
+
 -- Driver to all write C declarations for some types
-writeCDecls :: (GenCDecls tys) => String -> tys -> Module Empty
+writeCDecls :: (GenAllCDecls tys) => String -> tys -> Module Empty
 writeCDecls baseName proxy = do
   let headerName = (baseName +++ ".h")
   let implName = (baseName +++ ".c")
   let headerContents =
         "#include <stdint.h>\n\n\n" +++
-        genCHeaderDecls proxy
+        genAllCHeaderDecls proxy nil
   let implContents =
         "#include <stdlib.h>\n#include <string.h>\n\n#include \"" +++ headerName +++ "\"\n\n\n" +++
-        genCImplDecls proxy
+        genAllCImplDecls proxy nil
   stdout <- openFile "/dev/stdout" WriteMode
   h <- openFile headerName WriteMode
   hPutStr h headerContents

@@ -34,7 +34,7 @@ eval Div x y = x / y
 {-# verilog mkCalculator #-}
 mkCalculator :: Module Empty
 mkCalculator = module
-  writeCDecls "calculator" (_ :: (Op, Instr, Result))
+  writeCDecls "calculator" (_ :: (Instr, Result))
 
   haltIn :: Reg Bool <- mkReg False
   instrs :: FIFO Instr <- mkFIFO
