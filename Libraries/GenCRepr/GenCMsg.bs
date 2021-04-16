@@ -1,0 +1,127 @@
+package GenCMsg where
+
+import GenCRepr
+import Vector
+import qualified List
+import FIFOF
+
+interface FIFOF_O a =
+  deq      :: Action
+  first    :: a
+  notEmpty :: Bool
+
+to_FIFOF_O :: FIFOF a -> FIFOF_O a
+to_FIFOF_O f = FIFOF_O {deq = f.deq; first = f.first; notEmpty = f.notEmpty;}
+
+interface FIFOF_I a =
+  enq      :: a -> Action
+  notFull  :: Bool
+
+to_FIFOF_I :: FIFOF a -> FIFOF_I a
+to_FIFOF_I f = FIFOF_I {enq = f.enq; notFull = f.notFull;}
+
+class FIFOs fifos ctobBytes ctobCount btocBytes btocCount | fifos -> ctobBytes ctobCount btocBytes btocCount where
+  mkFIFOs :: Vector ctobCount (Reg (UInt 8)) -> UInt 8 -> ByteList -> Action ->
+             Vector btocCount (Reg (UInt 8)) -> (UInt 8 -> ByteList -> Action) ->
+             Module fifos
+
+instance (Generic a r, FIFOs' r bcb ncb bbc nbc) => FIFOs a bcb ncb bbc nbc where
+  mkFIFOs ctobCredits ctobTag ctobBody deq btocCredits enq =
+    liftM to $ mkFIFOs' ctobCredits ctobTag ctobBody deq btocCredits enq
+
+class FIFOs' fifos ctobBytes ctobCount btocBytes btocCount | fifos -> ctobBytes ctobCount btocBytes btocCount where
+  mkFIFOs' :: Vector ctobCount (Reg (UInt 8)) -> UInt 8 -> ByteList -> Action ->
+              Vector btocCount (Reg (UInt 8)) -> (UInt 8 -> ByteList -> Action) ->
+              Module fifos
+
+instance (FIFOs' a bcb ncb bbc nbc) => FIFOs' (Meta m a) bcb ncb bbc nbc where
+  mkFIFOs' ctobCredits ctobTag ctobBody deq btocCredits enq =
+    liftM Meta $ mkFIFOs' ctobCredits ctobTag ctobBody deq btocCredits enq
+
+instance (FIFOs' a bcb1 ncb1 bbc1 nbc1, FIFOs' b bcb2 ncb2 bbc2 nbc2,
+          Max bcb1 bcb2 bcb, Max bbc1 bbc2 bbc,
+          Add bcb1 pcb1 bcb, Add bcb2 pcb2 bcb, Add bbc1 pbc1 bbc, Add bbc2 pbc2 bbc, 
+          Add ncb1 ncb2 ncb, Add nbc1 nbc2 nbc) =>
+         FIFOs' (a, b) bcb ncb bbc nbc where
+  mkFIFOs' ctobCredits ctobTag ctobBody deq btocCredits enq = liftM2 tuple2
+    (mkFIFOs' (take ctobCredits) ctobTag ctobBody deq 
+      (take btocCredits) (\ btocTag btocBody -> enq btocTag btocBody))
+    (mkFIFOs' (takeTail ctobCredits) ctobTag ctobBody deq 
+      (takeTail btocCredits) (\ btocTag btocBody -> enq btocTag btocBody))
+
+instance (GenCRepr a gcrBytes, Bits a bBits) =>
+         FIFOs' (Meta (MetaField name i) (Conc (FIFOF_O a))) gcrBytes 1 0 0 where
+  mkFIFOs' ctobCredits ctobTag ctobBody deq btocCredits enq = do
+    fifo :: FIFOF a
+    fifo <- mkSizedFIFOF 128
+    let credits :: Reg (UInt 8)
+        credits = head ctobCredits
+
+    return $ Meta $ Conc $ FIFOF_O {
+      first = fifo.first;
+      deq   = do { credits := credits + 1; fifo.deq };
+      notEmpty = fifo.notEmpty;
+    }
+
+instance (GenCRepr a gcrBytes, Bits a bBits) =>
+         FIFOs' (Meta (MetaField name i) (Conc (FIFOF_I a))) 0 0 gcrBytes 1 where
+  mkFIFOs' ctobCredits ctobTag ctobBody deq btocCredits enq = do
+    fifo :: FIFOF a
+    fifo <- mkSizedFIFOF 128
+    let credits :: Reg (UInt 8)
+        credits = head btocCredits
+
+    return $ Meta $ Conc $ to_FIFOF_I fifo
+
+interface MsgManager fifos ctobBytes btocBytes =
+  fifos :: fifos
+  putCToB :: Vector ctobBytes (Bit 8) -> Action
+  getBToC :: ActionValue (UInt (TLog btocBytes), Vector btocBytes (Bit 8))
+
+class GenCMsg fifos ctobBytes btocBytes where
+  mkMsgManager :: Module (MsgManager fifos ctobBytes btocBytes)
+
+instance (FIFOs fifos ctobBytes ctobCount btocBytes btocCount,
+          Add btocCount 1 ctobHead, Add ctobHead ctobBytes ctobTotalBytes,
+          Add ctobCount 1 btocHead, Add btocHead btocBytes btocTotalBytes) =>
+         GenCMsg fifos ctobTotalBytes btocTotalBytes where
+  mkMsgManager = module
+    ctobMsgs :: FIFOF (Vector ctobTotalBytes (Bit 8))
+    ctobMsgs <- mkFIFOF
+
+    ctobCredits :: Vector ctobCount (Reg (UInt 8))
+    ctobCredits <- replicateM $ mkReg 0
+
+    btocMsgs :: FIFOF (UInt (TLog btocTotalBytes), Vector btocTotalBytes (Bit 8))
+    btocMsgs <- mkFIFOF
+
+    btocCredits :: Vector btocCount (Reg (UInt 8))
+    btocCredits <- replicateM $ mkReg 128
+
+    let ctobTag :: UInt 8
+        ctobTag = unpack $ head ((drop ctobMsgs.first) :: Vector ctobHead (Bit 8))
+    let ctobBody :: ByteList
+        ctobBody = toList ((takeTail ctobMsgs.first) :: Vector ctobBytes (Bit 8))
+    let enq :: UInt 8 -> ByteList -> Action
+        enq btocTag btocBody = do
+          mapM_ (flip writeReg 0) ctobCredits
+          let packedCredits :: (Vector ctobCount (Bit 8))
+              packedCredits = map (\ c -> Prelude.pack (c :: Reg (UInt 8))) ctobCredits
+          let packedBody :: (Vector btocBytes (Bit 8))
+              packedBody = toVector
+                (btocBody `List.append` List.replicate (valueOf btocBytes - List.length btocBody) 0)
+          btocMsgs.enq
+            (fromInteger $ valueOf btocHead + List.length btocBody,
+             packedCredits `append` (Prelude.pack btocTag :> packedBody))
+    fifos :: fifos
+    fifos <- mkFIFOs ctobCredits ctobTag ctobBody ctobMsgs.deq btocCredits enq
+
+    interface
+      fifos = fifos
+      putCToB = ctobMsgs.enq
+      getBToC = do btocMsgs.deq; return btocMsgs.first
+
+
+{-
+genCMsg :: fifos -> String
+genCMsg -}
