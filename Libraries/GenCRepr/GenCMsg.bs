@@ -23,55 +23,75 @@ to_FIFOF_I f = FIFOF_I {enq = f.enq; notFull = f.notFull;}
 class FIFOs fifos ctobBytes ctobCount btocBytes btocCount | fifos -> ctobBytes ctobCount btocBytes btocCount where
   mkFIFOs :: Vector ctobCount (Reg (UInt 8)) -> UInt 8 -> ByteList -> Action ->
              Vector btocCount (Reg (UInt 8)) -> (UInt 8 -> ByteList -> Action) ->
-             Module fifos
+             Module (fifos, Rules)
 
 instance (Generic a r, FIFOs' r bcb ncb bbc nbc) => FIFOs a bcb ncb bbc nbc where
-  mkFIFOs ctobCredits ctobTag ctobBody deq btocCredits enq =
-    liftM to $ mkFIFOs' ctobCredits ctobTag ctobBody deq btocCredits enq
+  mkFIFOs ctobCredits ctobTag ctobBody deq btocCredits enq = do
+    (fifos, rs) <- mkFIFOs' ctobCredits ctobTag ctobBody deq btocCredits enq
+    return (to fifos, rs)
 
 class FIFOs' fifos ctobBytes ctobCount btocBytes btocCount | fifos -> ctobBytes ctobCount btocBytes btocCount where
   mkFIFOs' :: Vector ctobCount (Reg (UInt 8)) -> UInt 8 -> ByteList -> Action ->
               Vector btocCount (Reg (UInt 8)) -> (UInt 8 -> ByteList -> Action) ->
-              Module fifos
+              Module (fifos, Rules)
 
 instance (FIFOs' a bcb ncb bbc nbc) => FIFOs' (Meta m a) bcb ncb bbc nbc where
-  mkFIFOs' ctobCredits ctobTag ctobBody deq btocCredits enq =
-    liftM Meta $ mkFIFOs' ctobCredits ctobTag ctobBody deq btocCredits enq
+  mkFIFOs' ctobCredits ctobTag ctobBody deq btocCredits enq = do
+    (fifos, rs) <- mkFIFOs' ctobCredits ctobTag ctobBody deq btocCredits enq
+    return (Meta fifos, rs)
 
 instance (FIFOs' a bcb1 ncb1 bbc1 nbc1, FIFOs' b bcb2 ncb2 bbc2 nbc2,
           Max bcb1 bcb2 bcb, Max bbc1 bbc2 bbc,
           Add bcb1 pcb1 bcb, Add bcb2 pcb2 bcb, Add bbc1 pbc1 bbc, Add bbc2 pbc2 bbc, 
           Add ncb1 ncb2 ncb, Add nbc1 nbc2 nbc) =>
          FIFOs' (a, b) bcb ncb bbc nbc where
-  mkFIFOs' ctobCredits ctobTag ctobBody deq btocCredits enq = liftM2 tuple2
-    (mkFIFOs' (take ctobCredits) ctobTag ctobBody deq 
-      (take btocCredits) (\ btocTag btocBody -> enq btocTag btocBody))
-    (mkFIFOs' (takeTail ctobCredits) ctobTag ctobBody deq 
-      (takeTail btocCredits) (\ btocTag btocBody -> enq btocTag btocBody))
+  mkFIFOs' ctobCredits ctobTag ctobBody deq btocCredits enq = do
+    (fifos1, rs1) <- mkFIFOs'
+      (take ctobCredits) ctobTag ctobBody deq 
+      (take btocCredits) (\ btocTag btocBody -> enq btocTag btocBody)
+    (fifos2, rs2) <- mkFIFOs'
+      (takeTail ctobCredits) ctobTag ctobBody deq 
+      (takeTail btocCredits) (\ btocTag btocBody -> enq btocTag btocBody)
+    return ((fifos1, fifos2), rs1 <+ rs2)
 
 instance (GenCRepr a gcrBytes, Bits a bBits) =>
          FIFOs' (Meta (MetaField name i) (Conc (FIFOF_O a))) gcrBytes 1 0 0 where
-  mkFIFOs' ctobCredits ctobTag ctobBody deq btocCredits enq = do
+  mkFIFOs' ctobCredits ctobTag ctobBody deq _ _ = do
     fifo :: FIFOF a
     fifo <- mkSizedFIFOF 128
     let credits :: Reg (UInt 8)
         credits = head ctobCredits
 
-    return $ Meta $ Conc $ FIFOF_O {
+    let fifo_o = FIFOF_O {
       first = fifo.first;
       deq   = do { credits := credits + 1; fifo.deq };
       notEmpty = fifo.notEmpty;
     }
 
+    let rs =
+          rules
+            when ctobTag == fromInteger (valueOf i) ==> do
+              fifo.enq (unpackBytes ctobBody).fst
+              deq
+    
+    return (Meta $ Conc fifo_o, rs)
+
 instance (GenCRepr a gcrBytes, Bits a bBits) =>
          FIFOs' (Meta (MetaField name i) (Conc (FIFOF_I a))) 0 0 gcrBytes 1 where
-  mkFIFOs' ctobCredits ctobTag ctobBody deq btocCredits enq = do
+  mkFIFOs' _ _ _ _ btocCredits enq = do
     fifo :: FIFOF a
     fifo <- mkSizedFIFOF 128
     let credits :: Reg (UInt 8)
         credits = head btocCredits
 
-    return $ Meta $ Conc $ to_FIFOF_I fifo
+    let rs =
+          rules
+            when True ==> do
+              credits := credits - 1
+              enq (fromInteger $ valueOf i) $ packBytes fifo.first
+              fifo.deq
+
+    return (Meta $ Conc $ to_FIFOF_I fifo, rs)
 
 interface MsgManager fifos ctobBytes btocBytes =
   fifos :: fifos
@@ -83,6 +103,7 @@ class GenCMsg fifos ctobBytes btocBytes where
 
 instance (FIFOs fifos ctobBytes ctobCount btocBytes btocCount,
           Add btocCount 1 ctobHead, Add ctobHead ctobBytes ctobTotalBytes,
+          Add btocCount ctobRest ctobTotalBytes,
           Add ctobCount 1 btocHead, Add btocHead btocBytes btocTotalBytes) =>
          GenCMsg fifos ctobTotalBytes btocTotalBytes where
   mkMsgManager = module
@@ -102,6 +123,10 @@ instance (FIFOs fifos ctobBytes ctobCount btocBytes btocCount,
         ctobTag = unpack $ head ((drop ctobMsgs.first) :: Vector ctobHead (Bit 8))
     let ctobBody :: ByteList
         ctobBody = toList ((takeTail ctobMsgs.first) :: Vector ctobBytes (Bit 8))
+    let deq :: Action
+        deq = do
+          zipWithM_ (\ cr c -> writeReg cr (cr + Prelude.unpack c)) btocCredits (take ctobMsgs.first)
+          ctobMsgs.deq
     let enq :: UInt 8 -> ByteList -> Action
         enq btocTag btocBody = do
           mapM_ (flip writeReg 0) ctobCredits
@@ -113,8 +138,15 @@ instance (FIFOs fifos ctobBytes ctobCount btocBytes btocCount,
           btocMsgs.enq
             (fromInteger $ valueOf btocHead + List.length btocBody,
              packedCredits `append` (Prelude.pack btocTag :> packedBody))
-    fifos :: fifos
-    fifos <- mkFIFOs ctobCredits ctobTag ctobBody ctobMsgs.deq btocCredits enq
+    (fifos, rs) :: (fifos, Rules) <-
+        mkFIFOs ctobCredits ctobTag ctobBody deq btocCredits enq
+
+    let creditsOnlyTag = fromInteger $ valueOf ctobCount + valueOf btocCount
+    let handleCreditsOnly =
+          rules
+             when any (\ c -> readReg c > 0) ctobCredits ==> enq creditsOnlyTag List.nil
+             when ctobTag == creditsOnlyTag ==> deq
+    addRules $ rs <+ handleCreditsOnly
 
     interface
       fifos = fifos

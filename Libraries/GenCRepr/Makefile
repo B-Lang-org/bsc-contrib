@@ -11,6 +11,7 @@ include ../common.mk
 .PHONY: build
 build:
 	$(BSC) -u $(BSCFLAGS) $(notdir $(LIBNAME)).bs
+	$(BSC) -u $(BSCFLAGS) $(notdir GenCMsg).bs
 
 .PHONY: clean full_clean
 clean full_clean:
