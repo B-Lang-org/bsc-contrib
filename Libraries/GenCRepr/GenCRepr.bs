@@ -3,6 +3,27 @@ package GenCRepr where
 import List
 import qualified Vector
 
+-- State monad helper
+-- TODO: PR as a library in bsc
+data State s a = State (s -> (a, s))
+
+instance Monad (State s) where
+  return x = State $ \ s -> (x, s)
+  bind (State f) g = State $ \ s1 ->
+    case f s1 of
+      (x, s2) ->
+        case g x of
+          State h -> h s2
+
+runState :: State s a -> s -> (a, s)
+runState (State f) = f
+
+get :: State s s
+get = State $ \ s -> (s, s)
+
+put :: s -> State s ()
+put s = State $ \ _ -> ((), s)
+
 -- Data being packed and unpacked is variable-width for more efficient packing
 -- if sent in serial, and also byte aligned for easier handling in C.
 -- Thus the automatic packing and unpacking is done in terms of variable-width
@@ -60,6 +81,10 @@ class GenCRepr a n | a -> n where
 
   -- Unpack a ByteList into a value of type a and excess bytes.
   unpackBytes :: ByteList -> (a, ByteList)
+  unpackBytes = runState unpackBytesS
+
+  -- Monadic version of unpackBytes using the State monad
+  unpackBytesS :: State ByteList a
 
   -- Compute the C statement to unpack a value of type a,
   -- given C expressions for the value and the result buffer.
@@ -127,7 +152,8 @@ instance (Div b 8 n) => GenCRepr (UInt b) n where
   packBytes x = toByteList $ Prelude.pack x
   genCPack _ = genCIntPack (valueOf n)
 
-  unpackBytes x = (Prelude.unpack $ fromByteList $ take (valueOf n) x, drop (valueOf n) x)
+  unpackBytesS = State $ \ x ->
+    (Prelude.unpack $ fromByteList $ take (valueOf n) x, drop (valueOf n) x)
   genCUnpack _ = genCIntUnpack (valueOf n)
 
 instance (Div b 8 n) => GenCRepr (Int b) n where
@@ -138,7 +164,8 @@ instance (Div b 8 n) => GenCRepr (Int b) n where
   packBytes x = toByteList $ Prelude.pack x
   genCPack _ = genCIntPack (valueOf n)
 
-  unpackBytes x = (Prelude.unpack $ fromByteList $ take (valueOf n) x, drop (valueOf n) x)
+  unpackBytesS = State $ \ x ->
+    (Prelude.unpack $ fromByteList $ take (valueOf n) x, drop (valueOf n) x)
   genCUnpack _ = genCIntUnpack (valueOf n)
 
 instance GenCRepr Bool 1 where
@@ -149,7 +176,7 @@ instance GenCRepr Bool 1 where
   packBytes x = zeroExtend (Prelude.pack x) :> Nil
   genCPack _ = genCIntPack 1
 
-  unpackBytes x = (Prelude.unpack $ truncate $ head x, tail x)
+  unpackBytesS = State $ \ x -> (Prelude.unpack $ truncate $ head x, tail x)
   genCUnpack _ = genCIntUnpack 1
 
 -- Default instance uses generics for arbitrary data types
@@ -163,9 +190,8 @@ instance (Generic a r, GenCRepr' r n) => GenCRepr a n where
   genCPack _ = genCPack' (_ :: r)
   genCPackDecl _ = genCPackDecl' (_ :: r)
 
-  unpackBytes x =
-    case unpackBytes' x of
-      (res, extra) -> (to res, extra)
+  unpackBytes = runState $ liftM to unpackBytesS' -- TODO: Why doesn't the default work here?
+  unpackBytesS = liftM to unpackBytesS'
   genCUnpack _ = genCUnpack' (_ :: r)
   genCUnpackDecl _ = genCUnpackDecl' (_ :: r)
 
@@ -180,7 +206,7 @@ class GenCRepr' a n | a -> n where
   genCPack' :: a -> String -> String -> String
   genCPackDecl' :: a -> Maybe (String, String)
 
-  unpackBytes' :: ByteList -> (a, ByteList)
+  unpackBytesS' :: State ByteList a
   genCUnpack' :: a -> String -> String -> String
   genCUnpackDecl' :: a -> Maybe (String, String)
 
@@ -198,7 +224,7 @@ instance (Bits a numBits, Div numBits 8 n, Mul n 8 numBitsPadded,
   genCPack' _ = genCIntPack (valueOf n)
   genCPackDecl' _ = Nothing
 
-  unpackBytes' x =
+  unpackBytesS' = State $ \ x ->
     (ConcPrim $ Prelude.unpack (split ((fromByteList $ take (valueOf n) x) :: Bit numBitsPadded)).fst,
      drop (valueOf n) x)
   genCUnpack' _ = genCIntUnpack (valueOf n)
@@ -225,9 +251,7 @@ instance (GenCStructBody bodyRepr n, TypeNames ta) =>
     genCPackStructBody (_ :: bodyRepr) False "" +++
     "}")
 
-  unpackBytes' x =
-    case unpackStructBody x of
-      (res, extra) -> (Meta $ Meta res, extra)
+  unpackBytesS' = liftM Meta $ liftM Meta unpackStructBody
 
   genCUnpack' p val buf = val +++ " = unpack_" +++ typeName' p +++ "(" +++ buf +++ ");"
 
@@ -260,9 +284,7 @@ instance (GenCStructBody bodyRepr n, TypeNames ta) =>
     genCPackStructBody (_ :: bodyRepr) False "" +++
     "}")
 
-  unpackBytes' x =
-    case unpackStructBody x of
-      (res, extra) -> (Meta $ Meta res, extra)
+  unpackBytesS' = liftM Meta $ liftM Meta unpackStructBody
 
   genCUnpack' p val buf = val +++ " = unpack_" +++ typeName' p +++ "(" +++ buf +++ ");"
 
@@ -303,9 +325,7 @@ instance (GenCUnionBody tagBytes bodyRepr 0 bodyBytes, TypeNames ta,
     "\t" +++ genCPackUnionBody (_ :: Bit tagBytes) (_ :: bodyRepr) (typeName' p) +++ " // Invalid tag, do nothing\n" +++
     "}")
 
-  unpackBytes' x =
-    case unpackUnionBody (_ :: Bit tagBytes) x of
-      (res, extra) -> (Meta res, extra)
+  unpackBytesS' = liftM Meta $ unpackUnionBody (_ :: Bit tagBytes)
 
   genCUnpack' p val buf = val +++ " = unpack_" +++ typeName' p +++ "(" +++ buf +++ ");"
 
@@ -335,16 +355,14 @@ instance (GenCRepr a elemBytes, Mul elemBytes numElems n) =>
     (Vector.genList :: Vector.Vector numElems Integer)
   genCPackDecl' _ = Nothing
 
-  unpackBytes' x =
-    let unpackElems :: ByteList -> Integer -> (List (Conc a), ByteList)
-        unpackElems bs 0 = (Nil, bs)
-        unpackElems bs n =
-          case unpackBytes bs of
-            (res1, extra1) ->
-              case unpackElems extra1 (n - 1) of
-                (res2, extra2) -> (Conc res1 :> res2, extra2)
-    in case unpackElems x (valueOf numElems) of
-      (res, extra) -> (Meta $ Vector.toVector res, extra)
+  unpackBytesS' =
+    let unpackElems :: Integer -> State ByteList (List (Conc a))
+        unpackElems 0 = return Nil
+        unpackElems n = do
+          res1 <- unpackBytesS
+          res2 <- unpackElems (n - 1)
+          return $ Conc res1 :> res2
+    in liftM Meta $ liftM Vector.toVector $ unpackElems (valueOf numElems)
 
   genCUnpack' _ val buf = Vector.foldr (\ p1 p2 -> p1 +++ " " +++ p2) "" $ Vector.map
     (\ i -> genCUnpack (_ :: a) (val +++ "[" +++ integerToString i +++ "]") buf)
@@ -390,7 +408,7 @@ class GenCUnionBody nt a i n | nt a -> i n where
   packUnionBody :: Bit nt -> a -> ByteList
   genCPackUnionBody :: Bit nt -> a -> String -> String
 
-  unpackUnionBody :: Bit nt -> ByteList -> (a, ByteList)
+  unpackUnionBody :: Bit nt -> State ByteList a
   genCUnpackUnionBody :: Bit nt -> a -> String -> String
 
 -- "sum" case, need to compare the tag with the index in unpacking
@@ -411,12 +429,11 @@ instance (GenCUnionBody tagBytes a i1 n1, GenCUnionBody tagBytes b i2 n2,
     genCPackUnionBody (_ :: Bit tagBytes) (_ :: a) typeName +++ " else " +++
     genCPackUnionBody (_ :: Bit tagBytes) (_ :: b) typeName
 
-  unpackUnionBody _ x =
+  unpackUnionBody _ = do
+    x <- get
     if fromByteList (take (valueOf tagBytes) x) == ((fromInteger (valueOf i1)) :: Bit tagBits)
-    then case unpackUnionBody (_ :: Bit tagBytes) x of
-      (res, extra) -> (Left res, extra)
-    else case unpackUnionBody (_ :: Bit tagBytes) x of
-      (res, extra) -> (Right res, extra)
+    then liftM Left $ unpackUnionBody (_ :: Bit tagBytes)
+    else liftM Right $ unpackUnionBody (_ :: Bit tagBytes)
   genCUnpackUnionBody _ _ typeName =
     genCUnpackUnionBody (_ :: Bit tagBytes) (_ :: a) typeName +++ " else " +++
     genCUnpackUnionBody (_ :: Bit tagBytes) (_ :: b) typeName
@@ -436,9 +453,10 @@ instance (GenCRepr a n, Mul tagBytes 8 tagBits) =>
     "\t\t" +++ genCPack (_ :: a) ("val.contents." +++ stringOf ctorName) "buf" +++ "\n" +++
     "\t}"
 
-  unpackUnionBody _ x =
-    case unpackBytes $ drop (valueOf tagBytes) x of
-      (res, extra) -> (Meta $ Meta $ Conc res, extra)
+  unpackUnionBody _ = do
+    x <- get
+    put $ drop (valueOf tagBytes) x
+    liftM Meta $ liftM Meta $ liftM Conc unpackBytesS
   genCUnpackUnionBody _ _ typeName =
     "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
     "\t\t" +++ genCUnpack (_ :: a) ("val.contents." +++ stringOf ctorName) "buf" +++ "\n" +++
@@ -460,9 +478,10 @@ instance (GenCStructBody bodyRepr n, Mul tagBytes 8 tagBits) =>
     genCPackStructBody (_ :: bodyRepr) True (".contents." +++ stringOf ctorName) +++ "\n" +++
     "\t}"
 
-  unpackUnionBody _ x =
-    case unpackStructBody $ drop (valueOf tagBytes) x of
-      (res, extra) -> (Meta res, extra)
+  unpackUnionBody _ = do
+    x <- get
+    put $ drop (valueOf tagBytes) x
+    liftM Meta unpackStructBody
   genCUnpackUnionBody _ _ typeName =
     "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
     genCUnpackStructBody (_ :: bodyRepr) True (".contents." +++ stringOf ctorName) +++ "\n" +++
@@ -484,9 +503,10 @@ instance (GenCStructBody bodyRepr n, Mul tagBytes 8 tagBits) =>
     genCPackStructBody (_ :: bodyRepr) True (".contents." +++ stringOf ctorName) +++ "\n" +++
     "\t}"
 
-  unpackUnionBody _ x =
-    case unpackStructBody $ drop (valueOf tagBytes) x of
-      (res, extra) -> (Meta res, extra)
+  unpackUnionBody _ = do
+    x <- get
+    put $ drop (valueOf tagBytes) x
+    liftM Meta unpackStructBody
   genCUnpackUnionBody _ _ typeName =
     "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
     genCUnpackStructBody (_ :: bodyRepr) True (".contents." +++ stringOf ctorName) +++ "\n" +++
@@ -500,7 +520,7 @@ class GenCStructBody a n | a -> n where
   genCStructBody :: a -> Bool -> String
   packStructBody :: a -> ByteList
   genCPackStructBody :: a -> Bool -> String -> String
-  unpackStructBody :: ByteList -> (a, ByteList)
+  unpackStructBody :: State ByteList a
   genCUnpackStructBody :: a -> Bool -> String -> String
 
 -- "product" case
@@ -513,11 +533,7 @@ instance (GenCStructBody a n1, GenCStructBody b n2, Add n1 n2 n) =>
   genCPackStructBody _ nested sel =
     genCPackStructBody (_ :: a) nested sel +++ genCPackStructBody (_ :: b) nested sel
 
-  unpackStructBody x =
-    case unpackStructBody x of
-      (res1, extra1) ->
-        case unpackStructBody extra1 of
-          (res2, extra2) -> ((res1, res2), extra2)
+  unpackStructBody = liftM2 tuple2 unpackStructBody unpackStructBody
   genCUnpackStructBody _ nested sel =
     genCUnpackStructBody (_ :: a) nested sel +++ genCUnpackStructBody (_ :: b) nested sel
 
@@ -526,7 +542,7 @@ instance GenCStructBody () 0 where
   genCStructBody _ _ = ""
   packStructBody () = Nil
   genCPackStructBody _ _ _ = ""
-  unpackStructBody x = ((), x)
+  unpackStructBody = return ()
   genCUnpackStructBody _ _ _ = ""
 
 -- Instance for a single concrete field, calls back to non-generic GenCRepr methods
@@ -540,9 +556,7 @@ instance (GenCRepr a n) => GenCStructBody (Meta (MetaField name idx) (Conc a)) n
     (if nested then "\t" else "") +++
     "\t" +++ genCPack (_ :: a) ("val" +++ sel +++ "." +++ stringOf name) "buf" +++ "\n"
 
-  unpackStructBody x =
-    case unpackBytes x of
-      (res, extra) -> (Meta $ Conc res, extra)
+  unpackStructBody = liftM Meta $ liftM Conc unpackBytesS
   genCUnpackStructBody _ nested sel =
     (if nested then "\t" else "") +++
     "\t" +++ genCUnpack (_ :: a) ("val" +++ sel +++ "." +++ stringOf name) "buf" +++ "\n"
@@ -552,44 +566,54 @@ instance (GenCRepr a n) => GenCStructBody (Meta (MetaField name idx) (Conc a)) n
 -- Extract all component declarations for a type using generics
 class GenCDecls a where
   componentTypeNames :: a -> List String
-  genCHeaderDecls :: a -> List String -> String
-  genCImplDecls :: a -> List String -> String
+  genCHeaderDecls :: a -> State (List String) String
+  genCImplDecls :: a -> State (List String) String
 
 instance (GenCRepr a n, Generic a r, GenCDecls' r) => GenCDecls a where
   componentTypeNames _ = typeName (_ :: a) :> componentTypeNames' (_ :: r)
 
-  genCHeaderDecls p done =
-    if isJust $ find (\ t -> t == typeName (_ :: a)) done then "" else
-    genCHeaderDecls' (_ :: r) (typeName (_ :: a) :> done) +++
-    (case genCTypeDecl p of
-        Just d -> d +++ "\n"
-        Nothing -> ""
-    ) +++
-    (case genCPackDecl p of
-       Just (d, _) -> d +++ "\n"
-       Nothing -> ""
-    ) +++
-    (case genCUnpackDecl p of
-       Just (d, _) -> d +++ "\n\n"
-       Nothing -> ""
-    )
+  genCHeaderDecls p = do
+    done <- get
+    if isJust $ find (\ t -> t == typeName (_ :: a)) done
+      then return ""
+      else do
+      put $ typeName (_ :: a) :> done
+      deps <- genCHeaderDecls' (_ :: r)
+      return $ deps +++
+        (case genCTypeDecl p of
+           Just d -> d +++ "\n"
+           Nothing -> ""
+        ) +++
+        (case genCPackDecl p of
+           Just (d, _) -> d +++ "\n"
+           Nothing -> ""
+        ) +++
+        (case genCUnpackDecl p of
+           Just (d, _) -> d +++ "\n\n"
+           Nothing -> ""
+        )
 
-  genCImplDecls p done =
-    if isJust $ find (\ t -> t == typeName (_ :: a)) done then "" else
-    genCImplDecls' (_ :: r) (typeName (_ :: a) :> done) +++
-    (case genCPackDecl p of
-       Just (_, d) -> d +++ "\n\n"
-       Nothing -> ""
-    ) +++
-    (case genCUnpackDecl p of
-       Just (_, d) -> d +++ "\n\n"
-       Nothing -> ""
-    )
+  genCImplDecls p = do
+    done <- get
+    if isJust $ find (\ t -> t == typeName (_ :: a)) done
+      then return ""
+      else do
+      put $ typeName (_ :: a) :> done
+      deps <- genCImplDecls' (_ :: r)
+      return $ deps +++
+        (case genCPackDecl p of
+           Just (_, d) -> d +++ "\n\n"
+           Nothing -> ""
+        ) +++
+        (case genCUnpackDecl p of
+           Just (_, d) -> d +++ "\n\n"
+           Nothing -> ""
+        )
 
 class GenCDecls' a where
   componentTypeNames' :: a -> List String
-  genCHeaderDecls' :: a -> List String -> String
-  genCImplDecls' :: a -> List String -> String
+  genCHeaderDecls' :: a -> State (List String) String
+  genCImplDecls' :: a -> State (List String) String
 
 instance (GenCDecls' a) => GenCDecls' (Meta m a) where
   componentTypeNames' _ = componentTypeNames' (_ :: a)
@@ -598,18 +622,18 @@ instance (GenCDecls' a) => GenCDecls' (Meta m a) where
 
 instance (GenCDecls' a, GenCDecls' b) => GenCDecls' (Either a b) where
   componentTypeNames' _ = componentTypeNames' (_ :: a) `append` componentTypeNames' (_ :: b)
-  genCHeaderDecls' _ done = genCHeaderDecls' (_ :: a) done +++ genCHeaderDecls' (_ :: b) (done `append` componentTypeNames' (_ :: a))
-  genCImplDecls' _ done = genCImplDecls' (_ :: a) done +++ genCImplDecls' (_ :: b) (done `append` componentTypeNames' (_ :: a))
+  genCHeaderDecls' _ = liftM2 strConcat (genCHeaderDecls' (_ :: a)) (genCHeaderDecls' (_ :: b))
+  genCImplDecls' _ = liftM2 strConcat (genCImplDecls' (_ :: a)) (genCImplDecls' (_ :: b))
 
 instance (GenCDecls' a, GenCDecls' b) => GenCDecls' (a, b) where
   componentTypeNames' _ = componentTypeNames' (_ :: a) `append` componentTypeNames' (_ :: b)
-  genCHeaderDecls' _ done = genCHeaderDecls' (_ :: a) done +++ genCHeaderDecls' (_ :: b) (done `append` componentTypeNames' (_ :: a))
-  genCImplDecls' _ done = genCImplDecls' (_ :: a) done +++ genCImplDecls' (_ :: b) (done `append` componentTypeNames' (_ :: a))
+  genCHeaderDecls' _ = liftM2 strConcat (genCHeaderDecls' (_ :: a)) (genCHeaderDecls' (_ :: b))
+  genCImplDecls' _ = liftM2 strConcat (genCImplDecls' (_ :: a)) (genCImplDecls' (_ :: b))
 
 instance GenCDecls' () where
   componentTypeNames' _ = nil
-  genCHeaderDecls' _ _ = ""
-  genCImplDecls' _ _ = ""
+  genCHeaderDecls' _ = return ""
+  genCImplDecls' _ = return ""
 
 instance (GenCDecls' a) => GenCDecls' (Vector.Vector n a) where
   componentTypeNames' _ = componentTypeNames' (_ :: a)
@@ -618,8 +642,8 @@ instance (GenCDecls' a) => GenCDecls' (Vector.Vector n a) where
 
 instance GenCDecls' (ConcPrim a) where
   componentTypeNames' _ = nil
-  genCHeaderDecls' _ _ = ""
-  genCImplDecls' _ _ = ""
+  genCHeaderDecls' _ = return ""
+  genCImplDecls' _ = return ""
 
 instance (GenCDecls a) => GenCDecls' (Conc a) where
   componentTypeNames' _ = componentTypeNames (_ :: a)
@@ -628,20 +652,20 @@ instance (GenCDecls a) => GenCDecls' (Conc a) where
 
 -- Helper to allow a tuple of types to be all easily translated together
 class GenAllCDecls a where
-  genAllCHeaderDecls :: a -> List String -> String
-  genAllCImplDecls :: a -> List String -> String
+  genAllCHeaderDecls :: a -> State (List String) String
+  genAllCImplDecls :: a -> State (List String) String
 
 instance (GenCDecls a, GenAllCDecls b) => GenAllCDecls (a, b) where
-  genAllCHeaderDecls _ done = genCHeaderDecls (_ :: a) done +++ genAllCHeaderDecls (_ :: b) (done `append` componentTypeNames (_ :: a))
-  genAllCImplDecls _ done = genCImplDecls (_ :: a) done +++ genAllCImplDecls (_ :: b) (done `append` componentTypeNames (_ :: a))
+  genAllCHeaderDecls _ = liftM2 strConcat (genCHeaderDecls (_ :: a)) (genAllCHeaderDecls (_ :: b))
+  genAllCImplDecls _ = liftM2 strConcat (genCImplDecls (_ :: a)) (genAllCImplDecls (_ :: b))
 
 instance (GenCDecls a) => GenAllCDecls a where
   genAllCHeaderDecls _ = genCHeaderDecls (_ :: a)
   genAllCImplDecls _ = genCImplDecls (_ :: a)
 
 instance GenAllCDecls () where
-  genAllCHeaderDecls _ _ = ""
-  genAllCImplDecls _ _ = ""
+  genAllCHeaderDecls _ = return ""
+  genAllCImplDecls _ = return ""
 
 -- Driver to all write C declarations for some types
 writeCDecls :: (GenAllCDecls tys) => String -> tys -> Module Empty
@@ -650,10 +674,10 @@ writeCDecls baseName proxy = do
   let implName = (baseName +++ ".c")
   let headerContents =
         "#include <stdint.h>\n\n\n" +++
-        genAllCHeaderDecls proxy nil
+        (runState (genAllCHeaderDecls proxy) nil).fst
   let implContents =
         "#include <stdlib.h>\n#include <string.h>\n\n#include \"" +++ headerName +++ "\"\n\n\n" +++
-        genAllCImplDecls proxy nil
+        (runState (genAllCImplDecls proxy) nil).fst
   stdout <- openFile "/dev/stdout" WriteMode
   h <- openFile headerName WriteMode
   hPutStr h headerContents
