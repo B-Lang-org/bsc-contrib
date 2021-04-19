@@ -83,7 +83,7 @@ instance (FIFOs' a bcb1 ncb1 bbc1 nbc1, FIFOs' b bcb2 ncb2 bbc2 nbc2,
   genCMsgTypeImplDcls' _ = liftM2 strConcat (genCMsgTypeImplDcls' (_ :: a)) (genCMsgTypeImplDcls' (_ :: b))
   genCFIFOStructItems' _ = genCFIFOStructItems' (_ :: a) +++ genCFIFOStructItems' (_ :: b)
 
-instance FIFOs' () bcb ncb bbc nbc where
+instance FIFOs' () 0 0 0 0 where
   mkFIFOs' _ _ _ _ _ _ = return ((), emptyRules)
 
   genCMsgTypeHeaderDcls' _ = return ""
@@ -117,10 +117,10 @@ instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
   genCMsgTypeImplDcls' _ = genAllCImplDecls (_ :: a)
   genCFIFOStructItems' _ =
     let (lType, rType) = genCType (_ :: a)
-    in "\t" +++ lType +++ stringOf name +++ "_buf[" +++ integerToString ctobCFIFOSize +++ "]" +++ rType +++ ";\n" +++
-       "\tuint8_t" +++ stringOf name +++ "_head;\n" +++
-       "\tuint8_t" +++ stringOf name +++ "_size;\n" +++
-       "\tuint8_t" +++ stringOf name +++ "_credits;\n" +++
+    in "\t" +++ lType +++ " " +++ stringOf name +++ "_buf[" +++ integerToString ctobCFIFOSize +++ "]" +++ rType +++ ";\n" +++
+       "\tuint8_t " +++ stringOf name +++ "_head;\n" +++
+       "\tuint8_t " +++ stringOf name +++ "_size;\n" +++
+       "\tuint8_t " +++ stringOf name +++ "_credits;\n" +++
        "\n"
 
 -- B to C
@@ -145,18 +145,18 @@ instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
   genCMsgTypeImplDcls' _ = genAllCImplDecls (_ :: a)
   genCFIFOStructItems' _ =
     let (lType, rType) = genCType (_ :: a)
-    in "\t" +++ lType +++ stringOf name +++ "_buf[" +++ integerToString btocCFIFOSize +++ "]" +++ rType +++ ";\n" +++
-       "\tuint8_t" +++ stringOf name +++ "_head;\n" +++
-       "\tuint8_t" +++ stringOf name +++ "_size;\n" +++
-       "\tuint8_t" +++ stringOf name +++ "_credits;\n" +++
+    in "\t" +++ lType +++ " " +++ stringOf name +++ "_buf[" +++ integerToString btocCFIFOSize +++ "]" +++ rType +++ ";\n" +++
+       "\tuint8_t " +++ stringOf name +++ "_head;\n" +++
+       "\tuint8_t " +++ stringOf name +++ "_size;\n" +++
+       "\tuint8_t " +++ stringOf name +++ "_credits;\n" +++
        "\n"
 
 interface MsgManager fifos ctobBytes btocBytes =
   fifos :: fifos
   putCToB :: Vector ctobBytes (Bit 8) -> Action
-  getBToC :: ActionValue (UInt (TLog btocBytes), Vector btocBytes (Bit 8))
+  getBToC :: ActionValue (UInt (TLog (TAdd 1 btocBytes)), Vector btocBytes (Bit 8))
 
-class GenCMsg fifos ctobBytes btocBytes where
+class GenCMsg fifos ctobBytes btocBytes | fifos -> ctobBytes btocBytes where
   mkMsgManager :: Module (MsgManager fifos ctobBytes btocBytes)
   genCMsgHeaderDecls :: fifos -> State (List String) String
   genCMsgImplDecls :: fifos -> State (List String) String
@@ -174,7 +174,7 @@ instance (FIFOs fifos ctobBytes ctobCount btocBytes btocCount,
     ctobCredits :: Vector ctobCount (Reg (UInt 8))
     ctobCredits <- replicateM $ mkReg $ fromInteger ctobBFIFOSize
 
-    btocMsgs :: FIFOF (UInt (TLog btocTotalBytes), Vector btocTotalBytes (Bit 8))
+    btocMsgs :: FIFOF (UInt (TLog (TAdd 1 btocTotalBytes)), Vector btocTotalBytes (Bit 8))
     btocMsgs <- mkFIFOF
 
     btocCredits :: Vector btocCount (Reg (UInt 8))
@@ -227,8 +227,8 @@ instance (FIFOs fifos ctobBytes ctobCount btocBytes btocCount,
     return $ deps
 
 -- Driver to all write C declarations for a fifo interface
-writeCDecls :: (GenCMsg fifos ctobBytes btocBytes) => String -> fifos -> Module Empty
-writeCDecls baseName proxy = do
+writeCMsgDecls :: (GenCMsg fifos ctobBytes btocBytes) => String -> fifos -> Module Empty
+writeCMsgDecls baseName proxy = do
   let headerName = (baseName +++ ".h")
   let implName = (baseName +++ ".c")
   let headerContents =

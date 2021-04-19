@@ -1,0 +1,57 @@
+package Counter where
+
+import GenCRepr
+import GenCMsg
+--import CounterIface
+import FIFO
+import CShow
+
+type Id = Bit 8
+
+data Command = Num { id :: Id; val :: Int 16; }
+             | Reset (Int 16)
+             | Halt
+  deriving (Bits)
+
+struct Result a =
+  id :: Id
+  val :: a
+ deriving (Bits)
+
+interface CounterMsgs =
+  commands :: FIFOF_O Command
+  sums     :: FIFOF_I (Result (Int 16))
+  products :: FIFOF_I (Result (Int 32))
+
+{-# verilog mkCounter #-}
+mkCounter :: Module Empty
+mkCounter = module
+  writeCMsgDecls "counter" (_ :: CounterMsgs)
+
+  msgMgr <- mkMsgManager
+  let msgs :: CounterMsgs = msgMgr.fifos
+
+  sum :: Reg (Int 16) <- mkReg 0
+  product :: Reg (Int 32) <- mkReg 1
+  haltIn :: Reg Bool <- mkReg False
+
+  rules
+    when True ==> do
+      let c :: Command = msgs.commands.first
+      msgs.commands.deq
+      case c of
+        Num { id = id; val = val; } -> do
+          let newSum = sum + val
+          let newProduct = product * signExtend val
+          msgs.sums.enq (Result { id = id; val = newSum; })
+          msgs.products.enq (Result { id = id; val = newProduct; })
+          sum := newSum
+          product := newProduct
+        Reset val -> do
+          msgs.sums.enq (Result { id = 0xAB; val = val; })
+          msgs.products.enq (Result { id = 0xCD; val = signExtend val; })
+          sum := val
+          product := signExtend val
+        Halt -> haltIn := True
+
+    when haltIn ==> $finish -- TODO should be preempted

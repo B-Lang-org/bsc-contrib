@@ -38,3 +38,15 @@ demo: build
 	$(CC) calculator_driver.c -c -g
 	$(BSC) -u $(BSCFLAGS) -sim -e mkCalculator -o calculator.out calculator.o calculator_driver.o
 	./calculator.out
+
+.PHONY: msgdemo
+msgdemo: build
+	rm -rf $(BUILDDIR)/mkCounter.ba
+	#$(BSC) -u $(BSCFLAGS) -sim CounterIface.bsv
+	$(BSC) -u $(BSCFLAGS) -sim Counter.bs
+	$(CC) counter.c -c -g
+	$(CC) counter_driver.c -c -g
+	$(BSC) -u $(BSCFLAGS) -sim -e mkCounter -o counter.out counter.o counter_driver.o
+	./counter.out
+
+all: build test demo msgdemo
