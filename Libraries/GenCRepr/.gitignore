@@ -7,3 +7,4 @@ model_*
 *.out
 test.*
 calculator.*
+counter.*

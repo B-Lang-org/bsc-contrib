@@ -25,9 +25,9 @@ ctobBFIFOSize = 128
 btocBFIFOSize :: Integer
 btocBFIFOSize = 2
 ctobCFIFOSize :: Integer
-ctobCFIFOSize = 0x10
+ctobCFIFOSize = 16
 btocCFIFOSize :: Integer
-btocCFIFOSize = 0x80
+btocCFIFOSize = 128
 
 class FIFOs fifos ctobBytes ctobCount btocBytes btocCount | fifos -> ctobBytes ctobCount btocBytes btocCount where
   mkFIFOs :: Vector ctobCount (Reg (UInt 8)) -> UInt 8 -> ByteList -> Action ->
@@ -218,9 +218,22 @@ instance (FIFOs fifos ctobBytes ctobCount btocBytes btocCount,
     deps <- genCMsgTypeHeaderDcls (_ :: fifos)
     let structItems = genCFIFOStructItems (_ :: fifos)
     return $ deps +++
-      "typedef struct " +++ stringOf name +++ "{\n" +++
+      "typedef struct " +++ stringOf name +++ " {\n" +++
       structItems +++
-      "} " +++ stringOf name +++ ";\n"
+      "} " +++ stringOf name +++ ";\n" +++
+      "enum {\n" +++
+      "\tsize_ctob_" +++ stringOf name +++ " = " +++ integerToString (valueOf ctobTotalBytes) +++ ",\n" +++
+      "\tsize_btoc_" +++ stringOf name +++ " = " +++ integerToString (valueOf btocTotalBytes) +++ ",\n" +++
+      "};\n\n" +++
+      "// Initialize a message state struct.\n" +++
+      "void init_" +++ stringOf name +++ "(" +++ stringOf name +++ " *);\n\n" +++
+      "// Select and pack an available message.\n" +++
+      "// Returns the size of the encoded message, or 0 if there is no message to send.\n" +++
+      "size_t encode_" +++ stringOf name +++ "(" +++ stringOf name +++ " *, uint8_t buf[size_ctob_" +++ stringOf name +++ "]);\n\n" +++
+      "// Unpack an incoming message.\n" +++
+      "// Returns 1 if the message had a payload, or 0 if it is credits-only.\n" +++
+      "_Bool decode_" +++ stringOf name +++ "(" +++ stringOf name +++ " *, uint8_t buf[size_btoc_" +++ stringOf name +++ "]);\n" +++
+      "\n"
 
   genCMsgImplDecls _ = do
     deps <- genCMsgTypeImplDcls (_ :: fifos)
