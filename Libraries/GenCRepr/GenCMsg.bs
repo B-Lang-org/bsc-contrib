@@ -24,10 +24,10 @@ class FIFOs fifos ctobBytes ctobCount btocBytes btocCount | fifos -> ctobBytes c
   genCMsgTypeImplDcls :: fifos -> State (List String) String
   genCFIFOStructItems :: fifos -> String
   genCFIFOInitCredits :: fifos -> String
-  genCFIFOCollectBToCCredits :: fifos -> String
-  genCFIFOCollectCToBCredits :: fifos -> String
-  genCFIFOEncode :: fifos -> String
-  genCFIFODecode :: fifos -> String
+  genCFIFORestoreCredits :: fifos -> String
+  genCFIFOCollectCredits :: fifos -> String
+  genCFIFOEncode :: fifos -> Integer -> String
+  genCFIFODecode :: fifos -> Integer -> String
   genCFIFOHeaderDcls :: fifos -> String -> String
   genCFIFOImplDcls :: fifos -> String -> String
 
@@ -39,12 +39,11 @@ instance (Generic a r, FIFOs' r bcb ncb bbc nbc) => FIFOs a bcb ncb bbc nbc wher
   genCMsgTypeHeaderDcls _ = genCMsgTypeHeaderDcls' (_ :: r)
   genCMsgTypeImplDcls _ = genCMsgTypeImplDcls' (_ :: r)
   genCFIFOStructItems _ = genCFIFOStructItems' (_ :: r)
-  -- TODO
-  genCFIFOInitCredits _ = ""
-  genCFIFOCollectBToCCredits _ = ""
-  genCFIFOCollectCToBCredits _ = ""
-  genCFIFOEncode _ = ""
-  genCFIFODecode _ = ""
+  genCFIFOInitCredits _ = genCFIFOInitCredits' (_ :: r)
+  genCFIFORestoreCredits _ = genCFIFORestoreCredits' (_ :: r)
+  genCFIFOCollectCredits _ = genCFIFOCollectCredits' (_ :: r)
+  genCFIFOEncode _ = genCFIFOEncode' (_ :: r)
+  genCFIFODecode _ = genCFIFODecode' (_ :: r)
   genCFIFOHeaderDcls _ = genCFIFOHeaderDcls' (_ :: r)
   genCFIFOImplDcls _ = genCFIFOImplDcls' (_ :: r)
 
@@ -56,6 +55,11 @@ class FIFOs' fifos ctobBytes ctobCount btocBytes btocCount | fifos -> ctobBytes 
   genCMsgTypeHeaderDcls' :: fifos -> State (List String) String
   genCMsgTypeImplDcls' :: fifos -> State (List String) String
   genCFIFOStructItems' :: fifos -> String
+  genCFIFOInitCredits' :: fifos -> String
+  genCFIFORestoreCredits' :: fifos -> String
+  genCFIFOCollectCredits' :: fifos -> String
+  genCFIFOEncode' :: fifos -> Integer -> String
+  genCFIFODecode' :: fifos -> Integer -> String
   genCFIFOHeaderDcls' :: fifos -> String -> String
   genCFIFOImplDcls' :: fifos -> String -> String
 
@@ -67,6 +71,11 @@ instance (FIFOs' a bcb ncb bbc nbc) => FIFOs' (Meta m a) bcb ncb bbc nbc where
   genCMsgTypeHeaderDcls' _ = genCMsgTypeHeaderDcls' (_ :: a)
   genCMsgTypeImplDcls' _ = genCMsgTypeImplDcls' (_ :: a)
   genCFIFOStructItems' _ = genCFIFOStructItems' (_ :: a)
+  genCFIFOInitCredits' _ = genCFIFOInitCredits' (_ :: a)
+  genCFIFORestoreCredits' _ = genCFIFORestoreCredits' (_ :: a)
+  genCFIFOCollectCredits' _ = genCFIFOCollectCredits' (_ :: a)
+  genCFIFOEncode' _ = genCFIFOEncode' (_ :: a)
+  genCFIFODecode' _ = genCFIFODecode' (_ :: a)
   genCFIFOHeaderDcls' _ = genCFIFOHeaderDcls' (_ :: a)
   genCFIFOImplDcls' _ = genCFIFOImplDcls' (_ :: a)
 
@@ -87,6 +96,11 @@ instance (FIFOs' a bcb1 ncb1 bbc1 nbc1, FIFOs' b bcb2 ncb2 bbc2 nbc2,
   genCMsgTypeHeaderDcls' _ = liftM2 strConcat (genCMsgTypeHeaderDcls' (_ :: a)) (genCMsgTypeHeaderDcls' (_ :: b))
   genCMsgTypeImplDcls' _ = liftM2 strConcat (genCMsgTypeImplDcls' (_ :: a)) (genCMsgTypeImplDcls' (_ :: b))
   genCFIFOStructItems' _ = genCFIFOStructItems' (_ :: a) +++ genCFIFOStructItems' (_ :: b)
+  genCFIFOInitCredits' _ = genCFIFOInitCredits' (_ :: a) +++ genCFIFOInitCredits' (_ :: b)
+  genCFIFORestoreCredits' _ = genCFIFORestoreCredits' (_ :: a) +++ genCFIFORestoreCredits' (_ :: b)
+  genCFIFOCollectCredits' _ = genCFIFOCollectCredits' (_ :: a) +++ genCFIFOCollectCredits' (_ :: b)
+  genCFIFOEncode' _ nbc = genCFIFOEncode' (_ :: a) nbc +++ genCFIFOEncode' (_ :: b) nbc
+  genCFIFODecode' _ ncb = genCFIFODecode' (_ :: a) ncb +++ genCFIFODecode' (_ :: b) ncb
   genCFIFOHeaderDcls' _ name = genCFIFOHeaderDcls' (_ :: a) name +++ genCFIFOHeaderDcls' (_ :: b) name
   genCFIFOImplDcls' _ name = genCFIFOImplDcls' (_ :: a) name +++ genCFIFOImplDcls' (_ :: b) name
 
@@ -96,6 +110,11 @@ instance FIFOs' () 0 0 0 0 where
   genCMsgTypeHeaderDcls' _ = return ""
   genCMsgTypeImplDcls' _ = return ""
   genCFIFOStructItems' _ = ""
+  genCFIFOInitCredits' _ = ""
+  genCFIFORestoreCredits' _ = ""
+  genCFIFOCollectCredits' _ = ""
+  genCFIFOEncode' _ _ = ""
+  genCFIFODecode' _ _ = ""
   genCFIFOHeaderDcls' _ _ = ""
   genCFIFOImplDcls' _ _ = ""
 
@@ -132,6 +151,22 @@ instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
        "\tuint8_t " +++ stringOf name +++ "_size;\n" +++
        "\tuint8_t " +++ stringOf name +++ "_credits;\n" +++
        "\n"
+  genCFIFOInitCredits' _ = ""
+  genCFIFORestoreCredits' _ =
+    "\tstate->" +++ stringOf name +++ "_credits += buf[credits_index++];\n"
+  genCFIFOCollectCredits' _ = ""
+  genCFIFOEncode' _ btocCount =
+    "\tif (state->" +++ stringOf name +++ "_size > 0 && state->" +++ stringOf name +++ "_credits > 0) {\n" +++
+    "\t\tbuf[" +++ integerToString btocCount +++ "] = " +++ integerToString (valueOf i) +++ ";\n" +++
+    "\t\tuint8_t head_index = state->" +++ stringOf name +++ "_head % " +++ integerToString ctobCFIFOSize +++ ";\n" +++
+    "\t\tuint8_t *data_buf = buf + " +++ integerToString (btocCount + 1) +++ ", *pack_buf = data_buf;\n" +++
+    "\t\t" +++ genCPack (_ :: a) ("state->" +++ stringOf name +++ "_buf[head_index]") "&pack_buf" +++ "\n" +++
+    "\t\tstate->" +++ stringOf name +++ "_head++;\n" +++
+    "\t\tstate->" +++ stringOf name +++ "_size--;\n" +++
+    "\t\tstate->" +++ stringOf name +++ "_credits--;\n" +++
+    "\t\treturn pack_buf - data_buf;\n" +++
+    "\t}\n\n"
+  genCFIFODecode' _ _ = ""
 
   genCFIFOHeaderDcls' _ ifaceName =
     let (lType, rType) = genCType (_ :: a)
@@ -177,6 +212,23 @@ instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
        "\tuint8_t " +++ stringOf name +++ "_size;\n" +++
        "\tuint8_t " +++ stringOf name +++ "_credits;\n" +++
        "\n"
+  genCFIFOInitCredits' _ =
+    "\tstate->" +++ stringOf name +++ "_credits = " +++ integerToString btocCFIFOSize +++ ";\n"
+  genCFIFORestoreCredits' _ = ""
+  genCFIFOCollectCredits' _ =
+    "\ttotal_credits += state->" +++ stringOf name +++ "_credits;\n" +++
+    "\tbuf[credits_index++] = state->" +++ stringOf name +++ "_credits;\n" +++
+    "\tstate->" +++ stringOf name +++ "_credits = 0;\n\n"
+  genCFIFOEncode' _ _ = ""
+  genCFIFODecode' _ ctobCount =
+    "\tif (buf[" +++ integerToString ctobCount +++ "] == " +++ integerToString (valueOf i) +++ ") {\n" +++
+    "\t\tuint8_t tail_index = (state->" +++ stringOf name +++ "_head + state->" +++ stringOf name +++ "_size) % " +++ integerToString ctobCFIFOSize +++ ";\n" +++
+    "\t\tuint8_t *data_buf = buf + " +++ integerToString (ctobCount + 1) +++ ";\n" +++
+    "\t\t" +++ genCUnpack (_ :: a) ("state->" +++ stringOf name +++ "_buf[tail_index]") "&data_buf" +++ "\n" +++
+    "\t\tstate->" +++ stringOf name +++ "_size++;\n" +++
+    "\t\treturn 1;\n" +++
+    "\t}\n\n"
+  genCFIFODecode' _ _ = ""
 
   genCFIFOHeaderDcls' _ ifaceName =
     let (lType, rType) = genCType (_ :: a)
@@ -289,21 +341,26 @@ instance (FIFOs fifos ctobBytes ctobCount btocBytes btocCount,
       genCFIFOInitCredits (_ :: fifos) +++
       "}\n\n" +++
       "size_t encode_" +++ stringOf name +++ "(" +++ stringOf name +++ "_state *state , uint8_t buf[size_ctob_" +++ stringOf name +++ "]) {\n" +++
-      genCFIFOCollectBToCCredits (_ :: fifos) +++
-      "\t\n" +++
+      "\tuint32_t credits_index = 0;\n" +++
       "\tuint32_t total_credits = 0;\n" +++
-      "\tfor (unsigned i = 0; i < " +++ integerToString (valueOf btocCount) +++ "; i++) {\n" +++
-      "\t\ttotal_credits += buf[i];\n" +++
-      "\t}\n" +++
       "\t\n" +++
-      genCFIFOEncode (_ :: fifos) +++
+      genCFIFOCollectCredits (_ :: fifos) +++
+      genCFIFOEncode (_ :: fifos) (valueOf btocCount) +++
       "\t\n" +++
-      "\tif (total_credits != 0) {\n" +++
+      "\tif (total_credits > 0) {\n" +++
       "\t\tbuf[" +++ integerToString (valueOf btocCount) +++ "] = " +++ integerToString (valueOf btocCount + valueOf ctobCount) +++ ";\n" +++
       "\t\treturn " +++ integerToString (valueOf btocCount + 1) +++ ";\n" +++
       "\t}\n" +++
       "\t\n" +++
       "\treturn 0; // Nothing to send\n" +++
+      "}\n\n" +++
+      "_Bool decode_" +++ stringOf name +++ "(" +++ stringOf name +++ "_state *state , uint8_t buf[size_btoc_" +++ stringOf name +++ "]) {\n" +++
+      "\tuint32_t credits_index = 0;\n" +++
+      genCFIFORestoreCredits (_ :: fifos) +++
+      "\t\n" +++
+      genCFIFODecode (_ :: fifos) (valueOf ctobCount) +++
+      "\t\n" +++
+      "\treturn 0; // Message is credits-only\n" +++
       "}\n\n" +++
       genCFIFOImplDcls (_ :: fifos) (stringOf name) +++
       "\n"
