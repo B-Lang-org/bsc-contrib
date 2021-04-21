@@ -1,7 +1,7 @@
 PWD:=$(shell pwd)
 TOP:=$(PWD)/../..
 
-LIBNAME=GenCRepr
+LIBNAME=GenCMsg
 
 # Requires that TOP and LIBNAME be set
 # Sets BUILDDIR, and BSC and BSCFLAGS if not set
@@ -11,18 +11,16 @@ include ../common.mk
 .PHONY: build
 build:
 	$(BSC) -u $(BSCFLAGS) $(notdir $(LIBNAME)).bs
-	$(BSC) -u $(BSCFLAGS) $(notdir GenCMsg).bs
 
 .PHONY: clean full_clean
 clean full_clean:
 
 clean:
-	rm -rf model_*.* mk*.* *.o *.out *.so test.* test calculator.* calculator
+	rm -rf model_*.* mk*.* *.o *.out *.so test.* test calculator.* calculator counter.* counter
 
 .PHONY: test
 test: build
 	rm -rf $(BUILDDIR)/mkTest.ba
-	$(BSC) -u $(BSCFLAGS) -sim TestFn.bsv
 	$(BSC) -u $(BSCFLAGS) -sim Test.bs
 	$(CC) test.c -c -g
 	$(CC) test_fn.c -c -g
@@ -32,7 +30,6 @@ test: build
 .PHONY: demo
 demo: build
 	rm -rf $(BUILDDIR)/mkCalculator.ba
-	$(BSC) -u $(BSCFLAGS) -sim CalculatorIface.bsv
 	$(BSC) -u $(BSCFLAGS) -sim Calculator.bs
 	$(CC) calculator.c -c -g
 	$(CC) calculator_driver.c -c -g
@@ -42,7 +39,6 @@ demo: build
 .PHONY: msgdemo
 msgdemo: build
 	rm -rf $(BUILDDIR)/mkCounter.ba
-	#$(BSC) -u $(BSCFLAGS) -sim CounterIface.bsv
 	$(BSC) -u $(BSCFLAGS) -sim Counter.bs
 	$(CC) counter.c -c -g
 	$(CC) counter_driver.c -c -g
