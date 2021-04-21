@@ -136,7 +136,7 @@ instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
     let ruleName = "handle_ctob_" +++ stringOf name
     let rs =
           rules
-            ruleName: when ctobTag == fromInteger (valueOf i) ==> do
+            ruleName: when ctobTag == fromInteger (valueOf i + 1) ==> do
               fifo.enq (unpackBytes ctobBody).fst
               deq
     
@@ -157,7 +157,7 @@ instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
   genCFIFOCollectCredits' _ = ""
   genCFIFOEncode' _ btocCount =
     "\tif (state->" +++ stringOf name +++ "_size > 0 && state->" +++ stringOf name +++ "_credits > 0) {\n" +++
-    "\t\tbuf[" +++ integerToString btocCount +++ "] = " +++ integerToString (valueOf i) +++ ";\n" +++
+    "\t\tbuf[" +++ integerToString btocCount +++ "] = " +++ integerToString (valueOf i + 1) +++ ";\n" +++
     "\t\tuint8_t head_index = state->" +++ stringOf name +++ "_head % " +++ integerToString ctobCFIFOSize +++ ";\n" +++
     "\t\tuint8_t *data_buf = buf + " +++ integerToString (btocCount + 1) +++ ", *pack_buf = data_buf;\n" +++
     "\t\t" +++ genCPack (_ :: a) ("state->" +++ stringOf name +++ "_buf[head_index]") "&pack_buf" +++ "\n" +++
@@ -198,7 +198,7 @@ instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
           rules
             ruleName: when True ==> do
               credits := credits - 1
-              enq (fromInteger $ valueOf i) $ packBytes fifo.first
+              enq (fromInteger $ valueOf i + 1) $ packBytes fifo.first
               fifo.deq
 
     return (Meta $ Conc $ to_FIFOF_I fifo, rs)
@@ -221,7 +221,7 @@ instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
     "\tstate->" +++ stringOf name +++ "_credits = 0;\n\n"
   genCFIFOEncode' _ _ = ""
   genCFIFODecode' _ ctobCount =
-    "\tif (buf[" +++ integerToString ctobCount +++ "] == " +++ integerToString (valueOf i) +++ ") {\n" +++
+    "\tif (buf[" +++ integerToString ctobCount +++ "] == " +++ integerToString (valueOf i + 1) +++ ") {\n" +++
     "\t\tuint8_t tail_index = (state->" +++ stringOf name +++ "_head + state->" +++ stringOf name +++ "_size) % " +++ integerToString ctobCFIFOSize +++ ";\n" +++
     "\t\tuint8_t *data_buf = buf + " +++ integerToString (ctobCount + 1) +++ ";\n" +++
     "\t\t" +++ genCUnpack (_ :: a) ("state->" +++ stringOf name +++ "_buf[tail_index]") "&data_buf" +++ "\n" +++
@@ -299,11 +299,10 @@ instance (FIFOs fifos ctobBytes ctobCount btocBytes btocCount,
     (fifos, rs) :: (fifos, Rules) <-
         mkFIFOs ctobCredits ctobTag ctobBody deq btocCredits enq
 
-    let creditsOnlyTag = fromInteger $ valueOf ctobCount + valueOf btocCount
     let handleCreditsOnly =
           rules
-             "handle_ctob_credits_only": when any (\ c -> readReg c > 0) ctobCredits ==> enq creditsOnlyTag List.nil
-             "handle_btoc_credits_only": when ctobTag == creditsOnlyTag ==> deq
+             "handle_ctob_credits_only": when any (\ c -> readReg c > 0) ctobCredits ==> enq 0 List.nil
+             "handle_btoc_credits_only": when ctobTag == 0 ==> deq
     addRules $ rs <+ handleCreditsOnly
 
     interface
@@ -348,7 +347,7 @@ instance (FIFOs fifos ctobBytes ctobCount btocBytes btocCount,
       genCFIFOEncode (_ :: fifos) (valueOf btocCount) +++
       "\t\n" +++
       "\tif (total_credits > 0) {\n" +++
-      "\t\tbuf[" +++ integerToString (valueOf btocCount) +++ "] = " +++ integerToString (valueOf btocCount + valueOf ctobCount) +++ ";\n" +++
+      "\t\tbuf[" +++ integerToString (valueOf btocCount) +++ "] = 0;\n" +++
       "\t\treturn " +++ integerToString (valueOf btocCount + 1) +++ ";\n" +++
       "\t}\n" +++
       "\t\n" +++

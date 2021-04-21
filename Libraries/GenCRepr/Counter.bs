@@ -47,8 +47,6 @@ mkCounter = module
           sum := newSum
           product := newProduct
         Reset val -> do
-          msgs.sums.enq (Result { id = 0xAB; val = val; })
-          msgs.products.enq (Result { id = 0xCD; val = signExtend val; })
           sum := val
           product := signExtend val
         Halt -> $finish
