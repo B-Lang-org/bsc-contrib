@@ -3,7 +3,7 @@ package Counter where
 import GenCRepr
 import GenCMsg
 --import CounterIface
-import FIFO
+import Semi_FIFOF
 import CShow
 
 type Id = Bit 8
