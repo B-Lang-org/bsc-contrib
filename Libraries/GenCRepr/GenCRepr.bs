@@ -180,7 +180,8 @@ instance GenCRepr Bool 1 where
   genCUnpack _ = genCIntUnpack 1
 
 -- Default instance uses generics for arbitrary data types
-instance (Generic a r, GenCRepr' r n) => GenCRepr a n where
+-- TODO: Why do we need GenCRepr a n1?
+instance (Generic a r, GenCRepr' r n, GenCRepr a n1) => GenCRepr a n where
   typeName _ = typeName' (_ :: r)
 
   genCType _ = genCType' (_ :: r)
@@ -190,7 +191,6 @@ instance (Generic a r, GenCRepr' r n) => GenCRepr a n where
   genCPack _ = genCPack' (_ :: r)
   genCPackDecl _ = genCPackDecl' (_ :: r)
 
-  unpackBytes = runState $ liftM to unpackBytesS' -- TODO: Why doesn't the default work here?
   unpackBytesS = liftM to unpackBytesS'
   genCUnpack _ = genCUnpack' (_ :: r)
   genCUnpackDecl _ = genCUnpackDecl' (_ :: r)

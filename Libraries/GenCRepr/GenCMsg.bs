@@ -128,9 +128,10 @@ instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
       notEmpty = fifo.notEmpty;
     }
 
+    let ruleName = "handle_ctob_" +++ stringOf name
     let rs =
           rules
-            when ctobTag == fromInteger (valueOf i) ==> do
+            ruleName: when ctobTag == fromInteger (valueOf i) ==> do
               fifo.enq (unpackBytes ctobBody).fst
               deq
     
@@ -171,9 +172,10 @@ instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
     let credits :: Reg (UInt 8)
         credits = head btocCredits
 
+    let ruleName = "handle_btoc_" +++ stringOf name
     let rs =
           rules
-            when True ==> do
+            ruleName: when True ==> do
               credits := credits - 1
               enq (fromInteger $ valueOf i) $ packBytes fifo.first
               fifo.deq
@@ -262,8 +264,8 @@ instance (FIFOs fifos ctobBytes ctobCount btocBytes btocCount,
     let creditsOnlyTag = fromInteger $ valueOf ctobCount + valueOf btocCount
     let handleCreditsOnly =
           rules
-             when any (\ c -> readReg c > 0) ctobCredits ==> enq creditsOnlyTag List.nil
-             when ctobTag == creditsOnlyTag ==> deq
+             "handle_ctob_credits_only": when any (\ c -> readReg c > 0) ctobCredits ==> enq creditsOnlyTag List.nil
+             "handle_btoc_credits_only": when ctobTag == creditsOnlyTag ==> deq
     addRules $ rs <+ handleCreditsOnly
 
     interface

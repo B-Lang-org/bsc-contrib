@@ -33,10 +33,9 @@ mkCounter = module
 
   sum :: Reg (Int 16) <- mkReg 0
   product :: Reg (Int 32) <- mkReg 1
-  haltIn :: Reg Bool <- mkReg False
 
   rules
-    when True ==> do
+    "handle_command": when True ==> do
       let c :: Command = msgs.commands.first
       msgs.commands.deq
       case c of
@@ -52,6 +51,4 @@ mkCounter = module
           msgs.products.enq (Result { id = 0xCD; val = signExtend val; })
           sum := val
           product := signExtend val
-        Halt -> haltIn := True
-
-    when haltIn ==> $finish -- TODO should be preempted
+        Halt -> $finish
