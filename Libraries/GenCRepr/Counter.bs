@@ -7,8 +7,9 @@ import Semi_FIFOF
 import CShow
 import Vector
 
-type Id = Bit 16
+type Id = Bit 16 -- Try changing the size (will need to update in CounterIface.bsv)
 
+-- Try adding/reordering constructors
 data Command = Num { id :: Id; val :: Int 16; }
              | Reset (Int 16)
              | Halt
@@ -20,6 +21,7 @@ struct Result a =
  deriving (Bits)
 
 interface CounterMsgs =
+  -- In order of highest to lowest precedence, try changing the order!
   commands :: FIFOF_O Command
   sums     :: FIFOF_I (Result (Int 16))
   products :: FIFOF_I (Result (Int 32))
