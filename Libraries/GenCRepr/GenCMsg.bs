@@ -5,6 +5,7 @@ import Vector
 import qualified List
 import FIFOF
 import Semi_FIFOF
+import CShow
 
 ctobBFIFOSize :: Integer
 ctobBFIFOSize = 128
@@ -159,12 +160,12 @@ instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
     "\tif (state->" +++ stringOf name +++ "_size > 0 && state->" +++ stringOf name +++ "_credits > 0) {\n" +++
     "\t\tbuf[" +++ integerToString btocCount +++ "] = " +++ integerToString (valueOf i + 1) +++ ";\n" +++
     "\t\tuint8_t head_index = state->" +++ stringOf name +++ "_head % " +++ integerToString ctobCFIFOSize +++ ";\n" +++
-    "\t\tuint8_t *data_buf = buf + " +++ integerToString (btocCount + 1) +++ ", *pack_buf = data_buf;\n" +++
-    "\t\t" +++ genCPack (_ :: a) ("state->" +++ stringOf name +++ "_buf[head_index]") "&pack_buf" +++ "\n" +++
+    "\t\tuint8_t *data_buf = buf + " +++ integerToString (btocCount + 1) +++ ";\n" +++
+    "\t\t" +++ genCPack (_ :: a) ("state->" +++ stringOf name +++ "_buf[head_index]") "&data_buf" +++ "\n" +++
     "\t\tstate->" +++ stringOf name +++ "_head++;\n" +++
     "\t\tstate->" +++ stringOf name +++ "_size--;\n" +++
     "\t\tstate->" +++ stringOf name +++ "_credits--;\n" +++
-    "\t\treturn pack_buf - data_buf;\n" +++
+    "\t\treturn data_buf - buf;\n" +++
     "\t}\n\n"
   genCFIFODecode' _ _ = ""
 
@@ -250,8 +251,8 @@ instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
 
 interface MsgManager fifos ctobBytes btocBytes =
   fifos :: fifos
-  putCToB :: Vector ctobBytes (Bit 8) -> Action
-  getBToC :: ActionValue (UInt (TLog (TAdd 1 btocBytes)), Vector btocBytes (Bit 8))
+  ctobMsgs :: FIFOF_I (Vector ctobBytes (Bit 8))
+  btocMsgs :: FIFOF_O (UInt (TLog (TAdd 1 btocBytes)), Vector btocBytes (Bit 8))
 
 class GenCMsg fifos ctobBytes btocBytes | fifos -> ctobBytes btocBytes where
   mkMsgManager :: Module (MsgManager fifos ctobBytes btocBytes)
@@ -278,7 +279,7 @@ instance (FIFOs fifos ctobBytes ctobCount btocBytes btocCount,
     btocCredits <- replicateM $ mkReg 0
 
     let ctobTag :: UInt 8
-        ctobTag = unpack $ head ((drop ctobMsgs.first) :: Vector ctobHead (Bit 8))
+        ctobTag = Prelude.unpack $ ctobMsgs.first !! valueOf btocCount
     let ctobBody :: ByteList
         ctobBody = toList ((takeTail ctobMsgs.first) :: Vector ctobBytes (Bit 8))
     let deq :: Action
@@ -307,8 +308,8 @@ instance (FIFOs fifos ctobBytes ctobCount btocBytes btocCount,
 
     interface
       fifos = fifos
-      putCToB = ctobMsgs.enq
-      getBToC = do btocMsgs.deq; return btocMsgs.first
+      ctobMsgs = to_FIFOF_I ctobMsgs
+      btocMsgs = to_FIFOF_O btocMsgs
 
   genCMsgHeaderDecls _ = do
     deps <- genCMsgTypeHeaderDcls (_ :: fifos)
@@ -345,7 +346,6 @@ instance (FIFOs fifos ctobBytes ctobCount btocBytes btocCount,
       "\t\n" +++
       genCFIFOCollectCredits (_ :: fifos) +++
       genCFIFOEncode (_ :: fifos) (valueOf btocCount) +++
-      "\t\n" +++
       "\tif (total_credits > 0) {\n" +++
       "\t\tbuf[" +++ integerToString (valueOf btocCount) +++ "] = 0;\n" +++
       "\t\treturn " +++ integerToString (valueOf btocCount + 1) +++ ";\n" +++
@@ -358,7 +358,6 @@ instance (FIFOs fifos ctobBytes ctobCount btocBytes btocCount,
       genCFIFORestoreCredits (_ :: fifos) +++
       "\t\n" +++
       genCFIFODecode (_ :: fifos) (valueOf ctobCount) +++
-      "\t\n" +++
       "\treturn 0; // Message is credits-only\n" +++
       "}\n\n" +++
       genCFIFOImplDcls (_ :: fifos) (stringOf name) +++

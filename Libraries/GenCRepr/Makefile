@@ -16,7 +16,7 @@ build:
 clean full_clean:
 
 clean:
-	rm -rf model_*.* mk*.* *.o *.out *.so test.* test calculator.* calculator counter.* counter
+	rm -rf model_*.* mk*.* *.o *.bo *.ba *.out *.so test.* test calculator.* calculator counter.* counter
 
 .PHONY: test
 test: build
@@ -43,6 +43,6 @@ msgdemo: build
 	$(CC) counter.c -c -g
 	$(CC) counter_driver.c -c -g
 	$(BSC) -u $(BSCFLAGS) -sim -e mkCounter -o counter.out counter.o counter_driver.o
-	./counter.out
+	./counter.out -V counter.vcd
 
 all: build test demo msgdemo

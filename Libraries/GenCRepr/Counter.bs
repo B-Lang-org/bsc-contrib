@@ -2,9 +2,10 @@ package Counter where
 
 import GenCRepr
 import GenCMsg
---import CounterIface
+import CounterIface
 import Semi_FIFOF
 import CShow
+import Vector
 
 type Id = Bit 8
 
@@ -34,10 +35,17 @@ mkCounter = module
   sum :: Reg (Int 16) <- mkReg 0
   product :: Reg (Int 32) <- mkReg 1
 
+  checkMsg <- mkPulseWire
+
   rules
+    "check_msg": when True ==> do
+      x <- messageAvailable
+      if x then checkMsg.send else noAction
+
     "handle_command": when True ==> do
       let c :: Command = msgs.commands.first
       msgs.commands.deq
+      -- $display "Handling command " (cshow c)
       case c of
         Num { id = id; val = val; } -> do
           let newSum = sum + val
@@ -50,3 +58,15 @@ mkCounter = module
           sum := val
           product := signExtend val
         Halt -> $finish
+
+    "recieve_message": when checkMsg ==> do
+      m <- getMessage
+      let mBytes :: Vector 7 (Bit 8) = unpack m
+      -- $display "B recieved message " (cshow mBytes)
+      msgMgr.ctobMsgs.enq mBytes
+
+    "send_message": when True ==> do
+      let (_, mBytes) = msgMgr.btocMsgs.first
+      msgMgr.btocMsgs.deq
+      -- $display "B sending message " (cshow mBytes)
+      putMessage (pack mBytes)
