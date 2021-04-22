@@ -16,26 +16,28 @@ unsigned responses = 0;
 void runHostAction() {
   Result_int16 sumResult;
   if (dequeue_CounterMsgs_sums(&state, &sumResult)) {
-    printf("==== Sum %hhu: %hd ====\n", sumResult.id, sumResult.val);
+    printf("==== Sum %hu: %hd ====\n", sumResult.id, sumResult.val);
     responses++;
   }
   Result_int32 productResult;
   if (dequeue_CounterMsgs_products(&state, &productResult)) {
-    printf("==== Product %hhu: %hd ====\n", productResult.id, productResult.val);
+    printf("==== Product %hu: %hd ====\n", productResult.id, productResult.val);
     responses++;
   }
 
   for (unsigned i = 0; i < random() % 10; i++) {
     if (k >= NUM_ITERS) break;
 
+    uint16_t id = j + k * 6;
+
     // Send 5 sequential Val commands, followed by a Reset
-    Command command = {Command_Num, {.Num = {j + k * 5, j + 1}}};
+    Command command = {Command_Num, {.Num = {id, j + 1}}};
     if (j == 5) {
       command.tag = Command_Reset;
       command.contents.Reset = k + 2;
     }
     if (enqueue_CounterMsgs_commands(&state, command)) {
-      printf("Enqueued command\n");
+      printf("Enqueued command %hu\n", id);
       j++;
       if (j > 5) {
         j = 0;
@@ -44,8 +46,9 @@ void runHostAction() {
     } else break;
   }
 
-  // Halt after the expected number of commands have been recieved
+  // Halt after the expected number of responses have been recieved
   if (responses >= NUM_ITERS * 10) {
+    printf("Enqueued halt\n");
     enqueue_CounterMsgs_commands(&state, (Command){Command_Halt});
   }
 }
@@ -59,7 +62,8 @@ unsigned char messageAvailable() {
     initialized = true;
   }
 
-  // Run a step of the "host app" whenever availability is polled.
+  // Run a step of the "host app" whenever availability is polled, emulating an
+  // independent process on the host machine.
   // In reality this would be run from the same top-level event loop that is
   // listening on a serial port, or in a seperate thread of the host process.
   runHostAction();
