@@ -9,7 +9,7 @@ LIBNAME=AMBA_TLM3/TLM3
 include ../../common.mk
 
 # Requires files in Bus
-BSCFLAGS += -p +:$(BUILDDIR)/../../Bus
+BSCFLAGS += -p $(BUILDDIR)/../../Bus:+
 
 INSTALLFILES = \
 	ram_init.text \
