@@ -3,7 +3,6 @@ package Counter where
 import GenCRepr
 import GenCMsg
 import CounterIface
-import Semi_FIFOF
 import CShow
 import Vector
 

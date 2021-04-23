@@ -4,8 +4,22 @@ import GenCRepr
 import Vector
 import qualified List
 import FIFOF
-import Semi_FIFOF
 import CShow
+
+interface FIFOF_O a =
+  deq      :: Action
+  first    :: a
+  notEmpty :: Bool
+
+to_FIFOF_O :: FIFOF a -> FIFOF_O a
+to_FIFOF_O f = FIFOF_O {deq = f.deq; first = f.first; notEmpty = f.notEmpty;}
+
+interface FIFOF_I a =
+  enq      :: a -> Action
+  notFull  :: Bool
+
+to_FIFOF_I :: FIFOF a -> FIFOF_I a
+to_FIFOF_I f = FIFOF_I {enq = f.enq; notFull = f.notFull;}
 
 rxBFIFOSize :: Integer
 rxBFIFOSize = 128
