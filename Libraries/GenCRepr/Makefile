@@ -43,6 +43,13 @@ msgdemo: build
 	$(CC) counter.c -c -g
 	$(CC) counter_driver.c -c -g
 	$(BSC) -u $(BSCFLAGS) -sim -e mkCounter -o counter.out counter.o counter_driver.o
-	./counter.out -V counter.vcd
+	./counter.out
+
+.PHONY: msgdemo
+b2bmsgdemo: build
+	rm -rf $(BUILDDIR)/mkCounterB2B.ba
+	$(BSC) -u $(BSCFLAGS) -sim CounterB2B.bs
+	$(BSC) -u $(BSCFLAGS) -sim -e mkCounterB2B -o counterb2b.out
+	./counterb2b.out
 
 all: build test demo msgdemo
