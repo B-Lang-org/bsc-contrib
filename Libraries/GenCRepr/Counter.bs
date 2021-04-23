@@ -21,7 +21,7 @@ struct Result a =
  deriving (Bits)
 
 interface CounterMsgs =
-  -- In order of highest to lowest precedence, try changing the order!
+  -- In order of highest to lowest urgency, try changing the order!
   commands :: FIFOF_O Command
   sums     :: FIFOF_I (Result (Int 16))
   products :: FIFOF_I (Result (Int 32))
@@ -59,10 +59,10 @@ mkCounter = module
       m <- getMessage
       let mBytes = unpack m
       -- $display "B recieved message " (cshow mBytes)
-      msgMgr.ctobMsgs.enq mBytes
+      msgMgr.rxMsgs.enq mBytes
 
     "send_message": when True ==> do
-      let (_, mBytes) = msgMgr.btocMsgs.first
-      msgMgr.btocMsgs.deq
+      let (_, mBytes) = msgMgr.txMsgs.first
+      msgMgr.txMsgs.deq
       -- $display "B sending message " (cshow mBytes)
       putMessage (pack mBytes)

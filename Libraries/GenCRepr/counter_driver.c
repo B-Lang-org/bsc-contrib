@@ -53,7 +53,7 @@ void runHostAction() {
   }
 }
 
-uint8_t out_buf[size_ctob_CounterMsgs] = {0};
+uint8_t out_buf[size_tx_CounterMsgs] = {0};
 bool avail = false;
 
 unsigned char messageAvailable() {
@@ -89,7 +89,7 @@ unsigned long long getMessage() {
   //printf("C sending message %hhx %hhx %hhx %hhx %hhx %hhx %hhx\n", out_buf[0], out_buf[1], out_buf[2], out_buf[3], out_buf[4], out_buf[5], out_buf[6]);
 
   unsigned long long out = 0;
-  for (int i = 0; i < size_ctob_CounterMsgs; i++) {
+  for (int i = 0; i < size_tx_CounterMsgs; i++) {
     out <<= 8;
     out |= out_buf[i];
   }
@@ -105,8 +105,8 @@ unsigned char putMessage(unsigned long long in) {
     initialized = true;
   }
 
-  uint8_t in_buf[size_btoc_CounterMsgs];
-  for (int i = size_btoc_CounterMsgs - 1; i >= 0; i--) {
+  uint8_t in_buf[size_rx_CounterMsgs];
+  for (int i = size_rx_CounterMsgs - 1; i >= 0; i--) {
     in_buf[i] = in & 0xFF;
     in >>= 8;
   }
