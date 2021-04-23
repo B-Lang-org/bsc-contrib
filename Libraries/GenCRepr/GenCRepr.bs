@@ -373,10 +373,10 @@ instance (GenCRepr a elemBytes, Mul elemBytes numElems n) =>
 class TypeNames a where
   typeNames :: a -> String
 
-instance (GenCRepr a n, TypeNames b) => TypeNames (a, b) where
+instance (GenCRepr a n, TypeNames b) => TypeNames (StarArg a, b) where
   typeNames _ = "_" +++ typeName (_ :: a) +++ typeNames (_ :: b)
 
-instance (GenCRepr a n) => TypeNames a where
+instance (GenCRepr a n) => TypeNames (StarArg a) where
   typeNames _ = "_" +++ typeName (_ :: a)
 
 instance (TypeNames b) => TypeNames (NumArg n, b) where
