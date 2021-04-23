@@ -20,10 +20,11 @@ struct Result a =
  deriving (Bits)
 
 interface CounterMsgs =
-  -- In order of highest to lowest urgency, try changing the order!
-  commands :: Rx Command
-  sums     :: Tx (Result (Int 16))
-  products :: Tx (Result (Int 32))
+  -- In order of highest to lowest urgency
+  -- Try changing the order and FIFO sizes
+  commands :: Rx 128 16 Command
+  sums     :: Tx 128 2 (Result (Int 16))
+  products :: Tx 128 2 (Result (Int 32))
 
 {-# verilog mkCounter #-}
 mkCounter :: Module Empty
