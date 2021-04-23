@@ -21,9 +21,9 @@ struct Result a =
 
 interface CounterMsgs =
   -- In order of highest to lowest urgency, try changing the order!
-  commands :: FIFOF_O Command
-  sums     :: FIFOF_I (Result (Int 16))
-  products :: FIFOF_I (Result (Int 32))
+  commands :: Rx Command
+  sums     :: Tx (Result (Int 16))
+  products :: Tx (Result (Int 32))
 
 {-# verilog mkCounter #-}
 mkCounter :: Module Empty
@@ -58,10 +58,9 @@ mkCounter = module
       m <- getMessage
       let mBytes = unpack m
       -- $display "B recieved message " (cshow mBytes)
-      msgMgr.rxMsgs.enq mBytes
+      msgMgr.putMsg mBytes
 
     "send_message": when True ==> do
-      let (_, mBytes) = msgMgr.txMsgs.first
-      msgMgr.txMsgs.deq
+      (_, mBytes) <- msgMgr.getMsg
       -- $display "B sending message " (cshow mBytes)
       putMessage (pack mBytes)

@@ -6,20 +6,20 @@ import qualified List
 import FIFOF
 import CShow
 
-interface FIFOF_O a =
+interface Rx a =
   deq      :: Action
   first    :: a
   notEmpty :: Bool
 
-to_FIFOF_O :: FIFOF a -> FIFOF_O a
-to_FIFOF_O f = FIFOF_O {deq = f.deq; first = f.first; notEmpty = f.notEmpty;}
+toRx :: FIFOF a -> Rx a
+toRx f = Rx {deq = f.deq; first = f.first; notEmpty = f.notEmpty;}
 
-interface FIFOF_I a =
+interface Tx a =
   enq      :: a -> Action
   notFull  :: Bool
 
-to_FIFOF_I :: FIFOF a -> FIFOF_I a
-to_FIFOF_I f = FIFOF_I {enq = f.enq; notFull = f.notFull;}
+toTx :: FIFOF a -> Tx a
+toTx f = Tx {enq = f.enq; notFull = f.notFull;}
 
 rxBFIFOSize :: Integer
 rxBFIFOSize = 128
@@ -135,14 +135,14 @@ instance FIFOs' () 0 0 0 0 where
 
 -- C to B
 instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
-         FIFOs' (Meta (MetaField name i) (Conc (FIFOF_O a))) gcrBytes 1 0 0 where
+         FIFOs' (Meta (MetaField name i) (Conc (Rx a))) gcrBytes 1 0 0 where
   mkFIFOs' rxCredits rxTag rxBody deq _ _ = do
     fifo :: FIFOF a
     fifo <- mkSizedFIFOF rxBFIFOSize
     let credits :: Reg (UInt 8)
         credits = head rxCredits
 
-    let fifo_o = FIFOF_O {
+    let fifo_o = Rx {
       first = fifo.first;
       deq   = do { credits := credits + 1; fifo.deq };
       notEmpty = fifo.notEmpty;
@@ -201,7 +201,7 @@ instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
 
 -- B to C
 instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
-         FIFOs' (Meta (MetaField name i) (Conc (FIFOF_I a))) 0 0 gcrBytes 1 where
+         FIFOs' (Meta (MetaField name i) (Conc (Tx a))) 0 0 gcrBytes 1 where
   mkFIFOs' _ _ _ _ txCredits enq = do
     fifo :: FIFOF a
     fifo <- mkSizedFIFOF txBFIFOSize
@@ -216,7 +216,7 @@ instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
               enq (fromInteger $ valueOf i + 1) $ packBytes fifo.first
               fifo.deq
 
-    return (Meta $ Conc $ to_FIFOF_I fifo, rs)
+    return (Meta $ Conc $ toTx fifo, rs)
 
   genCMsgTypeHeaderDcls' _ = genAllCHeaderDecls (_ :: a)
   genCMsgTypeImplDcls' _ = genAllCImplDecls (_ :: a)
@@ -265,8 +265,8 @@ instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
 
 interface MsgManager fifos rxBytes txBytes =
   fifos :: fifos
-  rxMsgs :: FIFOF_I (Vector rxBytes (Bit 8))
-  txMsgs :: FIFOF_O (UInt (TLog (TAdd 1 txBytes)), Vector txBytes (Bit 8))
+  putMsg :: Vector rxBytes (Bit 8) -> Action
+  getMsg :: ActionValue (UInt (TLog (TAdd 1 txBytes)), Vector txBytes (Bit 8))
 
 class GenCMsg fifos rxBytes txBytes | fifos -> rxBytes txBytes where
   mkMsgManager :: Module (MsgManager fifos rxBytes txBytes)
@@ -322,8 +322,8 @@ instance (FIFOs fifos rxBytes rxCount txBytes txCount,
 
     interface
       fifos = fifos
-      rxMsgs = to_FIFOF_I rxMsgs
-      txMsgs = to_FIFOF_O txMsgs
+      putMsg = rxMsgs.enq
+      getMsg = do txMsgs.deq; return txMsgs.first
 
   genCMsgHeaderDecls _ = do
     deps <- genCMsgTypeHeaderDcls (_ :: fifos)
