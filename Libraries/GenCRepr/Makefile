@@ -52,4 +52,4 @@ b2bmsgdemo: build
 	$(BSC) -u $(BSCFLAGS) -sim -e mkCounterB2B -o counterb2b.out
 	./counterb2b.out
 
-all: build test demo msgdemo
+all: build test demo msgdemo b2bmsgdemo

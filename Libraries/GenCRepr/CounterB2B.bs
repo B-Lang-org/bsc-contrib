@@ -20,9 +20,9 @@ struct Result a =
 interface CounterMsgs i o =
   -- In order of highest to lowest urgency
   -- Try changing the order and FIFO sizes
-  commands :: i 128 16 Command
-  sums     :: o 128 2 (Result (Int 16))
-  products :: o 128 2 (Result (Int 32))
+  commands :: i 8 2 Command
+  sums     :: o 8 2 (Result (Int 16))
+  products :: o 8 2 (Result (Int 32))
 
 interface CounterDevice =
   putMsg :: (GenCMsg (CounterMsgs Rx Tx) rxBytes txBytes) => Vector rxBytes (Bit 8) -> Action
