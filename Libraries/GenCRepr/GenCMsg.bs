@@ -290,6 +290,7 @@ instance (FIFOs fifos rxBytes rxCount txBytes txCount,
           Add txCount 1 rxHead, Add rxHead rxBytes rxTotalBytes,
           Add txCount rxRest rxTotalBytes,
           Add rxCount 1 txHead, Add txHead txBytes txTotalBytes,
+          ByteListToVector txBytes,
           Generic fifos (Meta (MetaData name pkg ta 1) r)) =>
          GenCMsg fifos rxTotalBytes txTotalBytes where
   mkMsgManager = module
@@ -319,13 +320,11 @@ instance (FIFOs fifos rxBytes rxCount txBytes txCount,
           let packedCredits :: (Vector rxCount (Bit 8))
               packedCredits = map (\ c -> Prelude.pack (c :: Reg (UInt 8))) rxCredits
           let packedBody :: (Vector txBytes (Bit 8))
-              packedBody = toVector
-                (txBody `List.append` List.replicate (valueOf txBytes - List.length txBody) 0)
+              packedBody = byteListToVector txBody
           txMsgs.enq
             (fromInteger $ valueOf txHead + List.length txBody,
              packedCredits `append` (Prelude.pack txTag :> packedBody))
-    (fifos, rs) :: (fifos, Rules) <-
-        mkFIFOs rxCredits rxTag rxBody deq txCredits enq
+    (fifos, rs) :: (fifos, Rules) <- mkFIFOs rxCredits rxTag rxBody deq txCredits enq
 
     let handleCreditsOnly =
           rules

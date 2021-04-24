@@ -50,6 +50,18 @@ fromByteList bytes =
       rec_fn lo (Cons b bs) res = rec_fn (lo+8) bs ((res << 8) | (zeroExtend b))
   in  truncate (rec_fn 0 bytes 0)
 
+-- Convert a variable-width ByteList to or from a fixed-width Vector n (Bit 8),
+-- padding or truncating as needed.
+class ByteListToVector n where
+  byteListToVector :: ByteList -> Vector.Vector n (Bit 8)
+
+instance ByteListToVector 0 where
+  byteListToVector _ = Vector.nil
+
+instance (Add n1 1 n, ByteListToVector n1) => ByteListToVector n where
+  byteListToVector (Cons b bs) = b `Vector.cons` byteListToVector bs
+  byteListToVector Nil = Vector.replicate 0
+
 -- Class of types that can be represented and automatically packed/unpacked in C.
 -- n is the maximum number of bytes needed to pack a type.
 -- genC* methods in this class are parameterized by a proxy value to specify the type.
