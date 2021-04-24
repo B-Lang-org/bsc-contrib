@@ -27,6 +27,120 @@ toRx f = Rx {deq = f.deq; first = f.first; notEmpty = f.notEmpty;}
 toTx :: FIFOF a -> Tx ns nd a
 toTx f = Tx {enq = f.enq; notFull = f.notFull;}
 
+interface MsgManager fifos rxBytes txBytes =
+  fifos :: fifos
+  putMsg :: Vector rxBytes (Bit 8) -> Action
+  getMsg :: ActionValue (UInt (TLog (TAdd 1 txBytes)), Vector txBytes (Bit 8))
+
+class GenCMsg fifos rxBytes txBytes | fifos -> rxBytes txBytes where
+  mkMsgManager :: Module (MsgManager fifos rxBytes txBytes)
+  genCMsgHeaderDecls :: fifos -> State (List String) String
+  genCMsgImplDecls :: fifos -> State (List String) String
+
+instance (FIFOs fifos rxBytes rxCount txBytes txCount,
+          Add txCount 1 rxHead, Add rxHead rxBytes rxTotalBytes,
+          Add txCount rxRest rxTotalBytes,
+          Add rxCount 1 txHead, Add txHead txBytes txTotalBytes,
+          ByteListToVector txBytes,
+          Generic fifos (Meta (MetaData name pkg ta 1) r)) =>
+         GenCMsg fifos rxTotalBytes txTotalBytes where
+  mkMsgManager = module
+    rxMsgs :: FIFOF (Vector rxTotalBytes (Bit 8))
+    rxMsgs <- mkFIFOF
+
+    rxCredits :: Vector rxCount (Reg (UInt 8))
+    rxCredits <- mkRxCredits (_ :: fifos)
+
+    txMsgs :: FIFOF (UInt (TLog (TAdd 1 txTotalBytes)), Vector txTotalBytes (Bit 8))
+    txMsgs <- mkFIFOF
+
+    txCredits :: Vector txCount (Reg (UInt 8))
+    txCredits <- mkTxCredits (_ :: fifos)
+
+    let rxTag :: UInt 8
+        rxTag = Prelude.unpack $ rxMsgs.first !! valueOf txCount
+    let rxBody :: ByteList
+        rxBody = toList ((takeTail rxMsgs.first) :: Vector rxBytes (Bit 8))
+    let deq :: Action
+        deq = do
+          zipWithM_ (\ cr c -> writeReg cr (cr + Prelude.unpack c)) txCredits (take rxMsgs.first)
+          rxMsgs.deq
+    let enq :: UInt 8 -> ByteList -> Action
+        enq txTag txBody = do
+          mapM_ (flip writeReg 0) rxCredits
+          let packedCredits :: (Vector rxCount (Bit 8))
+              packedCredits = map (\ c -> Prelude.pack (c :: Reg (UInt 8))) rxCredits
+          let packedBody :: (Vector txBytes (Bit 8))
+              packedBody = byteListToVector txBody
+          txMsgs.enq
+            (fromInteger $ valueOf txHead + List.length txBody,
+             packedCredits `append` (Prelude.pack txTag :> packedBody))
+    (fifos, rs) :: (fifos, Rules) <- mkFIFOs rxCredits rxTag rxBody deq txCredits enq
+
+    let handleCreditsOnly =
+          rules
+             "handle_rx_credits_only": when any (\ c -> readReg c > 0) rxCredits ==> enq 0 List.nil
+             "handle_tx_credits_only": when rxTag == 0 ==> deq
+    addRules $ rs <+ handleCreditsOnly
+
+    interface
+      fifos = fifos
+      putMsg = rxMsgs.enq
+      getMsg = do txMsgs.deq; return txMsgs.first
+
+  genCMsgHeaderDecls _ = do
+    deps <- genCMsgTypeHeaderDcls (_ :: fifos)
+    let structItems = genCFIFOStructItems (_ :: fifos)
+    return $ deps +++
+      "typedef struct " +++ stringOf name +++ "_state {\n" +++
+      structItems +++
+      "} " +++ stringOf name +++ "_state;\n" +++
+      "enum {\n" +++
+      -- Note that tx/rx nomenclature is flipped in generated C code
+      "\tsize_tx_" +++ stringOf name +++ " = " +++ integerToString (valueOf rxTotalBytes) +++ ",\n" +++
+      "\tsize_rx_" +++ stringOf name +++ " = " +++ integerToString (valueOf txTotalBytes) +++ ",\n" +++
+      "};\n\n" +++
+      "// Initialize a message state struct.\n" +++
+      "void init_" +++ stringOf name +++ "(" +++ stringOf name +++ "_state *);\n\n" +++
+      "// Select and pack an available message.\n" +++
+      "// Returns the size of the encoded message, or 0 if there is no message to send.\n" +++
+      "size_t encode_" +++ stringOf name +++ "(" +++ stringOf name +++ "_state *, uint8_t buf[size_tx_" +++ stringOf name +++ "]);\n\n" +++
+      "// Unpack an incoming message.\n" +++
+      "// Returns 1 if the message had a payload, or 0 if it is credits-only.\n" +++
+      "_Bool decode_" +++ stringOf name +++ "(" +++ stringOf name +++ "_state *, uint8_t buf[size_rx_" +++ stringOf name +++ "]);\n\n" +++
+      genCFIFOHeaderDcls (_ :: fifos) (stringOf name) +++
+      "\n"
+
+  genCMsgImplDecls _ = do
+    deps <- genCMsgTypeImplDcls (_ :: fifos)
+    return $ deps +++
+      "void init_" +++ stringOf name +++ "(" +++ stringOf name +++ "_state *state) {\n" +++
+      "\tmemset(state, 0, sizeof(" +++ stringOf name +++ "_state));\n" +++
+      genCFIFOInitCredits (_ :: fifos) +++
+      "}\n\n" +++
+      "size_t encode_" +++ stringOf name +++ "(" +++ stringOf name +++ "_state *state, uint8_t buf[size_rx_" +++ stringOf name +++ "]) {\n" +++
+      "\tuint32_t credits_index = 0;\n" +++
+      "\tuint32_t total_credits = 0;\n" +++
+      "\t\n" +++
+      genCFIFOCollectCredits (_ :: fifos) +++
+      genCFIFOEncode (_ :: fifos) (valueOf txCount) +++
+      "\tif (total_credits > 0) {\n" +++
+      "\t\tbuf[" +++ integerToString (valueOf txCount) +++ "] = 0;\n" +++
+      "\t\treturn " +++ integerToString (valueOf txCount + 1) +++ ";\n" +++
+      "\t}\n" +++
+      "\t\n" +++
+      "\treturn 0; // Nothing to send\n" +++
+      "}\n\n" +++
+      "_Bool decode_" +++ stringOf name +++ "(" +++ stringOf name +++ "_state *state, uint8_t buf[size_tx_" +++ stringOf name +++ "]) {\n" +++
+      "\tuint32_t credits_index = 0;\n" +++
+      genCFIFORestoreCredits (_ :: fifos) +++
+      "\t\n" +++
+      genCFIFODecode (_ :: fifos) (valueOf rxCount) +++
+      "\treturn 0; // Message is credits-only\n" +++
+      "}\n\n" +++
+      genCFIFOImplDcls (_ :: fifos) (stringOf name) +++
+      "\n"
+
 class FIFOs fifos rxBytes rxCount txBytes txCount | fifos -> rxBytes rxCount txBytes txCount where
   mkRxCredits :: fifos -> Module (Vector rxCount (Reg (UInt 8)))
   mkTxCredits :: fifos -> Module (Vector txCount (Reg (UInt 8)))
@@ -275,120 +389,6 @@ instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
        "\tstate->" +++ stringOf name +++ "_credits++;\n" +++
        "\treturn 1;\n" +++
        "}\n\n"
-
-interface MsgManager fifos rxBytes txBytes =
-  fifos :: fifos
-  putMsg :: Vector rxBytes (Bit 8) -> Action
-  getMsg :: ActionValue (UInt (TLog (TAdd 1 txBytes)), Vector txBytes (Bit 8))
-
-class GenCMsg fifos rxBytes txBytes | fifos -> rxBytes txBytes where
-  mkMsgManager :: Module (MsgManager fifos rxBytes txBytes)
-  genCMsgHeaderDecls :: fifos -> State (List String) String
-  genCMsgImplDecls :: fifos -> State (List String) String
-
-instance (FIFOs fifos rxBytes rxCount txBytes txCount,
-          Add txCount 1 rxHead, Add rxHead rxBytes rxTotalBytes,
-          Add txCount rxRest rxTotalBytes,
-          Add rxCount 1 txHead, Add txHead txBytes txTotalBytes,
-          ByteListToVector txBytes,
-          Generic fifos (Meta (MetaData name pkg ta 1) r)) =>
-         GenCMsg fifos rxTotalBytes txTotalBytes where
-  mkMsgManager = module
-    rxMsgs :: FIFOF (Vector rxTotalBytes (Bit 8))
-    rxMsgs <- mkFIFOF
-
-    rxCredits :: Vector rxCount (Reg (UInt 8))
-    rxCredits <- mkRxCredits (_ :: fifos)
-
-    txMsgs :: FIFOF (UInt (TLog (TAdd 1 txTotalBytes)), Vector txTotalBytes (Bit 8))
-    txMsgs <- mkFIFOF
-
-    txCredits :: Vector txCount (Reg (UInt 8))
-    txCredits <- mkTxCredits (_ :: fifos)
-
-    let rxTag :: UInt 8
-        rxTag = Prelude.unpack $ rxMsgs.first !! valueOf txCount
-    let rxBody :: ByteList
-        rxBody = toList ((takeTail rxMsgs.first) :: Vector rxBytes (Bit 8))
-    let deq :: Action
-        deq = do
-          zipWithM_ (\ cr c -> writeReg cr (cr + Prelude.unpack c)) txCredits (take rxMsgs.first)
-          rxMsgs.deq
-    let enq :: UInt 8 -> ByteList -> Action
-        enq txTag txBody = do
-          mapM_ (flip writeReg 0) rxCredits
-          let packedCredits :: (Vector rxCount (Bit 8))
-              packedCredits = map (\ c -> Prelude.pack (c :: Reg (UInt 8))) rxCredits
-          let packedBody :: (Vector txBytes (Bit 8))
-              packedBody = byteListToVector txBody
-          txMsgs.enq
-            (fromInteger $ valueOf txHead + List.length txBody,
-             packedCredits `append` (Prelude.pack txTag :> packedBody))
-    (fifos, rs) :: (fifos, Rules) <- mkFIFOs rxCredits rxTag rxBody deq txCredits enq
-
-    let handleCreditsOnly =
-          rules
-             "handle_rx_credits_only": when any (\ c -> readReg c > 0) rxCredits ==> enq 0 List.nil
-             "handle_tx_credits_only": when rxTag == 0 ==> deq
-    addRules $ rs <+ handleCreditsOnly
-
-    interface
-      fifos = fifos
-      putMsg = rxMsgs.enq
-      getMsg = do txMsgs.deq; return txMsgs.first
-
-  genCMsgHeaderDecls _ = do
-    deps <- genCMsgTypeHeaderDcls (_ :: fifos)
-    let structItems = genCFIFOStructItems (_ :: fifos)
-    return $ deps +++
-      "typedef struct " +++ stringOf name +++ "_state {\n" +++
-      structItems +++
-      "} " +++ stringOf name +++ "_state;\n" +++
-      "enum {\n" +++
-      -- Note that tx/rx nomenclature is flipped in generated C code
-      "\tsize_tx_" +++ stringOf name +++ " = " +++ integerToString (valueOf rxTotalBytes) +++ ",\n" +++
-      "\tsize_rx_" +++ stringOf name +++ " = " +++ integerToString (valueOf txTotalBytes) +++ ",\n" +++
-      "};\n\n" +++
-      "// Initialize a message state struct.\n" +++
-      "void init_" +++ stringOf name +++ "(" +++ stringOf name +++ "_state *);\n\n" +++
-      "// Select and pack an available message.\n" +++
-      "// Returns the size of the encoded message, or 0 if there is no message to send.\n" +++
-      "size_t encode_" +++ stringOf name +++ "(" +++ stringOf name +++ "_state *, uint8_t buf[size_tx_" +++ stringOf name +++ "]);\n\n" +++
-      "// Unpack an incoming message.\n" +++
-      "// Returns 1 if the message had a payload, or 0 if it is credits-only.\n" +++
-      "_Bool decode_" +++ stringOf name +++ "(" +++ stringOf name +++ "_state *, uint8_t buf[size_rx_" +++ stringOf name +++ "]);\n\n" +++
-      genCFIFOHeaderDcls (_ :: fifos) (stringOf name) +++
-      "\n"
-
-  genCMsgImplDecls _ = do
-    deps <- genCMsgTypeImplDcls (_ :: fifos)
-    return $ deps +++
-      "void init_" +++ stringOf name +++ "(" +++ stringOf name +++ "_state *state) {\n" +++
-      "\tmemset(state, 0, sizeof(" +++ stringOf name +++ "_state));\n" +++
-      genCFIFOInitCredits (_ :: fifos) +++
-      "}\n\n" +++
-      "size_t encode_" +++ stringOf name +++ "(" +++ stringOf name +++ "_state *state, uint8_t buf[size_rx_" +++ stringOf name +++ "]) {\n" +++
-      "\tuint32_t credits_index = 0;\n" +++
-      "\tuint32_t total_credits = 0;\n" +++
-      "\t\n" +++
-      genCFIFOCollectCredits (_ :: fifos) +++
-      genCFIFOEncode (_ :: fifos) (valueOf txCount) +++
-      "\tif (total_credits > 0) {\n" +++
-      "\t\tbuf[" +++ integerToString (valueOf txCount) +++ "] = 0;\n" +++
-      "\t\treturn " +++ integerToString (valueOf txCount + 1) +++ ";\n" +++
-      "\t}\n" +++
-      "\t\n" +++
-      "\treturn 0; // Nothing to send\n" +++
-      "}\n\n" +++
-      "_Bool decode_" +++ stringOf name +++ "(" +++ stringOf name +++ "_state *state, uint8_t buf[size_tx_" +++ stringOf name +++ "]) {\n" +++
-      "\tuint32_t credits_index = 0;\n" +++
-      genCFIFORestoreCredits (_ :: fifos) +++
-      "\t\n" +++
-      genCFIFODecode (_ :: fifos) (valueOf rxCount) +++
-      "\treturn 0; // Message is credits-only\n" +++
-      "}\n\n" +++
-      genCFIFOImplDcls (_ :: fifos) (stringOf name) +++
-      "\n"
 
 -- Driver to all write C declarations for a fifo interface
 writeCMsgDecls :: (GenCMsg fifos rxBytes txBytes) => String -> fifos -> Module Empty
