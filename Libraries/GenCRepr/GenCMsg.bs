@@ -4,6 +4,7 @@ import GenCRepr
 import Vector
 import qualified List
 import FIFOF
+import GetPut
 import CShow
 
 class ByteVector n where
@@ -43,8 +44,8 @@ toTx f = Tx {enq = f.enq; notFull = f.notFull;}
 
 interface MsgManager fifos rxBytes txBytes =
   fifos :: fifos
-  putMsg :: Vector rxBytes (Bit 8) -> Action
-  getMsg :: ActionValue (UInt (TLog (TAdd 1 txBytes)), Vector txBytes (Bit 8))
+  rxMsg :: Put (Vector rxBytes (Bit 8))
+  txMsg :: Get (UInt (TLog (TAdd 1 txBytes)), Vector txBytes (Bit 8))
 
 class GenCMsg fifos rxBytes txBytes | fifos -> rxBytes txBytes where
   mkMsgManager :: Module (MsgManager fifos rxBytes txBytes)
@@ -105,8 +106,8 @@ instance (FIFOs fifos rxBytes rxCount txBytes txCount,
 
     interface
       fifos = fifos
-      putMsg = rxMsgs.enq
-      getMsg = do txMsgs.deq; return txMsgs.first
+      rxMsg = toPut rxMsgs
+      txMsg = toGet txMsgs
 
   genCMsgHeaderDecls _ = do
     deps <- genCMsgTypeHeaderDcls (_ :: fifos)

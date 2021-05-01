@@ -5,6 +5,7 @@ import GenCMsg
 import CounterIface
 import CShow
 import Vector
+import GetPut
 
 type Id = Bit 16 -- Try changing the size (will need to update in CounterIface.bsv)
 
@@ -59,9 +60,9 @@ mkCounter = module
       m <- getMessage
       let mBytes = unpack m
       -- $display "B recieved message " (cshow mBytes)
-      msgMgr.putMsg mBytes
+      msgMgr.rxMsg.put mBytes
 
     "send_message": when True ==> do
-      (_, mBytes) <- msgMgr.getMsg
+      (_, mBytes) <- msgMgr.txMsg.get
       -- $display "B sending message " (cshow mBytes)
       putMessage (pack mBytes)

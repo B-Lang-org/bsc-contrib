@@ -4,6 +4,7 @@ import GenCMsg
 import CShow
 import Vector
 import FIFO
+import GetPut
 
 type Id = Bit 16
 
@@ -56,8 +57,8 @@ mkCounterDevice = module
           msgs.products.enq (Result { id = id; val = newProduct; })
 
   interface
-    putMsg = msgMgr.putMsg
-    getMsg = msgMgr.getMsg
+    putMsg = msgMgr.rxMsg.put
+    getMsg = msgMgr.txMsg.get
 
 interface CounterController =
   putMsg :: (GenCMsg (CounterMsgs Tx Rx) rxBytes txBytes) => Vector rxBytes (Bit 8) -> Action
@@ -92,8 +93,8 @@ mkCounterController = module
       $display "Got product " res.id " " res.val
 
   interface
-    putMsg = msgMgr.putMsg
-    getMsg = msgMgr.getMsg
+    putMsg = msgMgr.rxMsg.put
+    getMsg = msgMgr.txMsg.get
 
 
 {-# verilog mkCounterB2B #-}
