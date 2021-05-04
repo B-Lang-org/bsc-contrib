@@ -59,10 +59,10 @@ mkCounter = module
     "recieve_message": when messageAvailable ==> do
       m <- getMessage
       let mBytes = unpack m
-      -- $display "B recieved message " (cshow mBytes)
+      -- $display "B recieved message " (cshow (mBytes :: Vector 8 (Bit 8)))
       msgMgr.rxMsg.put mBytes
 
     "send_message": when True ==> do
       (_, mBytes) <- msgMgr.txMsg.get
-      -- $display "B sending message " (cshow mBytes)
+      -- $display "B sending message " (cshow (mBytes :: Vector 8 (Bit 8)))
       putMessage (pack mBytes)

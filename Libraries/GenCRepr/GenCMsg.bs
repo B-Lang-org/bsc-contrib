@@ -349,7 +349,7 @@ instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
 instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
          FIFOs' (Meta (MetaField name i) (Conc (Tx cFIFOSize bFIFOSize a))) 0 0 gcrBytes 1 where
   mkRxCredits' _ = return nil
-  mkTxCredits' _ = liftM replicate $ mkReg $ fromInteger $ valueOf cFIFOSize
+  mkTxCredits' _ = liftM replicate $ mkReg 0
   mkFIFOs' _ _ _ _ txCredits enq = do
     fifo :: FIFOF a
     fifo <- mkSizedFIFOF (valueOf bFIFOSize)
@@ -359,7 +359,7 @@ instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
     let ruleName = "handle_tx_" +++ stringOf name
     let rs =
           rules
-            ruleName: when True ==> do
+            ruleName: when credits > 0 ==> do
               credits := credits - 1
               enq (fromInteger $ valueOf i + 1) $ packBytes fifo.first
               fifo.deq
