@@ -148,7 +148,7 @@ genCIntUnpack :: Integer -> String -> String -> String
 genCIntUnpack numBytes val buf =
   let shiftUnpack :: Integer -> String
       shiftUnpack n =
-        "((*" +++ buf +++ ")[" +++ integerToString n +++ "] << " +++ integerToString (8 * (numBytes - n - 1)) +++ ")" +++
+        "((uint" +++ integerToString (numBytes * 8) +++ "_t)(*" +++ buf +++ ")[" +++ integerToString n +++ "] << " +++ integerToString (8 * (numBytes - n - 1)) +++ ")" +++
         if n >= numBytes - 1 then "" else " | " +++ shiftUnpack (n + 1)
   in (case numCBytes numBytes of
         Just _ -> val +++ " = " +++ shiftUnpack 0 +++ ";"
