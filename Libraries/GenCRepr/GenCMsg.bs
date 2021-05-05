@@ -42,10 +42,29 @@ toRx f = Rx {deq = f.deq; first = f.first; notEmpty = f.notEmpty;}
 toTx :: FIFOF a -> Tx ns nd a
 toTx f = Tx {enq = f.enq; notFull = f.notFull;}
 
+instance ToGet (Rx d s a) a where
+  toGet f =
+    interface Get
+      get = do f.deq
+               return f.first
+
+instance ToPut (Tx d s a) a where
+  toPut f =
+    interface Put
+      put = f.enq
+
+-- Represents a variable-sized vector of max length n
+type SizedVector n a = (UInt (TLog (TAdd 1 n)), Vector n a)
+
+dropSize :: Put (Vector n a) -> Put (SizedVector n a)
+dropSize f =
+    interface Put
+      put (_, v) = f.put v
+
 interface MsgManager fifos rxBytes txBytes =
   fifos :: fifos
   rxMsg :: Put (Vector rxBytes (Bit 8))
-  txMsg :: Get (UInt (TLog (TAdd 1 txBytes)), Vector txBytes (Bit 8))
+  txMsg :: Get (SizedVector txBytes (Bit 8))
 
 class GenCMsg fifos rxBytes txBytes | fifos -> rxBytes txBytes where
   mkMsgManager :: Module (MsgManager fifos rxBytes txBytes)
@@ -67,7 +86,7 @@ instance (FIFOs fifos rxBytes rxCount txBytes txCount,
     rxCredits :: Vector rxCount (Reg (UInt 8))
     rxCredits <- mkRxCredits (_ :: fifos)
 
-    txMsgs :: FIFOF (UInt (TLog (TAdd 1 txTotalBytes)), Vector txTotalBytes (Bit 8))
+    txMsgs :: FIFOF (SizedVector txTotalBytes (Bit 8))
     txMsgs <- mkFIFOF
 
     txCredits :: Vector txCount (Reg (UInt 8))
