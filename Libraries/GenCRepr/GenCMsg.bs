@@ -72,7 +72,7 @@ class GenCMsg fifos rxBytes txBytes | fifos -> rxBytes txBytes where
   genCMsgImplDecls :: fifos -> State (List String) String
 
 instance (FIFOs fifos rxBytes rxCount txBytes txCount,
-          Log (TAdd rxCount txCount) tagBits, Div tagBits 8 tagBytes, ByteVector tagBytes,
+          Log (TAdd 1 (TAdd rxCount txCount)) tagBits, Div tagBits 8 tagBytes, ByteVector tagBytes,
           Add txCount tagBytes rxHead, Add rxHead rxBytes rxTotalBytes,
           Add txCount rxRest rxTotalBytes,
           Add rxCount tagBytes txHead, Add txHead txBytes txTotalBytes,
