@@ -93,6 +93,9 @@ jobs:
       - name: Download testsuite
         run: |
           git clone https://github.com/B-Lang-org/bsc ../bsc-testsuite
+      - name: Add contrib tests to testsuite
+        run: |
+          cp -r testing/bsc.contrib ../bsc-testsuite/testsuite/
 
       - name: Download bsc-contrib
         uses: actions/download-artifact@v2
@@ -140,10 +143,11 @@ jobs:
           cd ../bsc-testsuite/testsuite
 
           export TEST_RELEASE=$PWD/../../bsc/inst
-          export TEST_CONTRIB=$PWD/../../bsc-contrib/inst
+
+          export BSCCONTRIBDIR=$PWD/../../bsc-contrib/inst
 
           # Insert additional directories as necessary
-          make -C bsc.bsv_examples/AzureIP localcheck
+          make -C bsc.contrib check
 
       # Show ccache stats so we can see what the hit-rate is like.
       - name: CCache stats
@@ -190,6 +194,9 @@ jobs:
       - name: Download testsuite
         run: |
           git clone https://github.com/B-Lang-org/bsc ../bsc-testsuite
+      - name: Add contrib tests to testsuite
+        run: |
+          cp -r testing/bsc.contrib ../bsc-testsuite/testsuite/
 
       - name: Download bsc-contrib
         uses: actions/download-artifact@v2
@@ -228,10 +235,11 @@ jobs:
           cd ../bsc-testsuite/testsuite
 
           export TEST_RELEASE=$PWD/../../bsc/inst
-          export TEST_CONTRIB=$PWD/../../bsc-contrib/inst
+
+          export BSCCONTRIBDIR=$PWD/../../bsc-contrib/inst
 
           # Insert additional directories as necessary
-          make -C bsc.bsv_examples/AzureIP localcheck
+          make -C bsc.contrib check
 
       # Show ccache stats so we can see what the hit-rate is like.
       - name: CCache stats

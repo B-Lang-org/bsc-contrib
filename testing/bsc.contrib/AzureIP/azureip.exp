@@ -1,0 +1,35 @@
+# Include the boilerplate for bsc-contrib tests
+set here [file join [absolute $srcdir] $subdir]
+source $here/../contrib.tcl
+
+if { $contribtest } {
+
+    add_contrib_dirs_to_path { Bus AMBA_TLM2/TLM AMBA_TLM2/AHB AMBA_TLM2/Axi }
+
+    # The Verilog and Bluesim expected files are different because the randomizer
+    # in AzureIP is different, so different traffic is generated.
+
+    # We sort the output because rules that contain $display but are otherwise CF
+    # can be scheduled in any order.
+    set sort_output 1
+
+    test_c_only_bsv     TestDMA sysTestDMA.c.out.expected
+    test_veri_only_bsv  TestDMA sysTestDMA.v.out.expected
+
+    test_c_only_bsv     AHBOneToOne sysAHBOneToOne.c.out.expected "" $sort_output
+    test_veri_only_bsv  AHBOneToOne sysAHBOneToOne.v.out.expected "" $sort_output
+
+    test_c_only_bsv     BackPressureAHBBus \
+                        sysBackPressureAHBBus.c.out.expected "" $sort_output
+    test_veri_only_bsv  BackPressureAHBBus \
+                        sysBackPressureAHBBus.v.out.expected "" $sort_output
+
+    test_c_only_bsv     AxiReadBus sysAxiReadBus.c.out.expected
+    test_veri_only_bsv  AxiReadBus sysAxiReadBus.v.out.expected
+
+    test_c_only_bsv     AxiWriteBus sysAxiWriteBus.c.out.expected
+    test_veri_only_bsv  AxiWriteBus sysAxiWriteBus.v.out.expected
+
+    restore_path
+
+}
