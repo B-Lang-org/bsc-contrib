@@ -24,7 +24,23 @@ when explicitly added on the command line:
 Until a more sophisicated library system is available, this repository
 can be used for sharing useful code.  Contributions are welcome.
 No guarantees are made about the quality of this code.
-Tests for some libraries can be found in the [bsc-testsuite] respository.
+Tests for some libraries can be found in the `testing` directory.
+
+---
+
+## Testing
+
+The directory `testing/bsc.contrib` contains tests that can be run
+using the testing infrastructure of the [bsc repository].
+Simply copy the directory to a clone of that repo, set
+`BSCCONTRIBDIR` in the environment to point to the installation
+to be tested, and run the testsuite as usual:
+
+    $ cp -r testing/bsc.contrib /path/to/bsc/testsuite/
+    $ cd /path/to/bsc/testsuite/bsc.contrib/
+    $ export BSCCONTRIBDIR=/path/to/bsc-contrib/inst
+    $ make check
+
 
 [bsc repository]: https://github.com/B-Lang-org/bsc
 [bsc-testsuite]: https://github.com/B-Lang-org/bsc-testsuite

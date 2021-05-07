@@ -1,0 +1,68 @@
+package Test where
+
+import GenCRepr
+import TestFn
+import CShow
+import Vector
+import qualified ListN
+
+struct Foo =
+  x :: UInt 8
+  y :: Int 16
+  z :: Bit 256
+
+struct Bar =
+  b :: Bool
+  bs :: Bit 13
+  f :: Foo
+
+struct Baz = {}
+
+data Qux = QF Foo | QFB Foo Bar | Q | QI { x :: Int 8; y :: Int 8} | QU { u :: UInt 16 }
+
+data Kaz = Kaz (UInt 12)
+
+struct Tux =
+  us :: ListN.ListN 8 (UInt 16)
+  bs :: Vector 8 Bar
+  qs :: Vector 11 Qux
+
+data Enum = E1 | E2 | E3 | E4
+
+struct Thing =
+  w :: Vector 2 (Int 8)
+  x :: UInt 8
+  y :: UInt 8
+  z :: Int 16
+
+struct ThingMsg =
+  thing :: Thing
+  swapXY :: Bool
+  deltaZ :: Int 5
+
+actTestThing :: ThingMsg -> Action
+actTestThing tm = do
+  $display (cshow tm)
+  $display (cshow $ GenCRepr.packBytes tm)
+  let input = GenCRepr.pack tm
+  $display (cshow input)
+  output <- test_fn input
+  $display (cshow output)
+  $display (cshow $ GenCRepr.toByteList output)
+  let res = (GenCRepr.unpack output) :: Thing
+  $display (cshow res)
+
+{-# verilog sysTest #-}
+sysTest :: Module Empty
+sysTest = module
+  writeCDecls "test" (_ :: (Baz, Qux, Kaz, Tux, Enum, Maybe (Int 16), Maybe (Bit 32), Either Bool (Vector 3 (UInt 8)), ThingMsg))
+
+  rules
+    when True ==> do
+      $display (cshow $ GenCRepr.packBytes E1)
+      $display (cshow $ GenCRepr.packBytes E2)
+      $display (cshow $ GenCRepr.packBytes E3)
+      $display (cshow $ GenCRepr.packBytes E4)
+      actTestThing (ThingMsg {thing=Thing {w=1:>2:>nil; x=1; y=2; z=0x1234;}; swapXY=False; deltaZ=8;})
+      actTestThing (ThingMsg {thing=Thing {w=1:>2:>nil; x=1; y=2; z=0x1234;}; swapXY=True; deltaZ=negate 8;})
+      $finish

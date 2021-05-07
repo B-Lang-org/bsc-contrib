@@ -1,0 +1,127 @@
+package CounterB2B where
+
+import GenCMsg
+import CShow
+import Vector
+import FIFO
+import GetPut
+
+type Id = Bit 16
+
+-- Try adding/reordering constructors
+data Command = Num { id :: Id; val :: Int 16; }
+             | Reset { id :: Id; newSum :: Int 16; newProduct :: Int 32 }
+  deriving (Bits)
+
+struct Result a =
+  id :: Id
+  val :: a
+ deriving (Bits)
+
+interface CounterMsgs req resp =
+  -- In order of highest to lowest urgency
+  -- Try changing the order and FIFO sizes
+  commands :: req  8 2 Command
+  sums     :: resp 8 2 (Result (Int 16))
+  products :: resp 8 2 (Result (Int 32))
+
+interface CounterDevice =
+  putMsg :: (GenCMsg (CounterMsgs Rx Tx) rxBytes txBytes) => Vector rxBytes (Bit 8) -> Action
+  getMsg :: (GenCMsg (CounterMsgs Rx Tx) rxBytes txBytes) => ActionValue (UInt (TLog (TAdd 1 txBytes)), Vector txBytes (Bit 8))
+
+mkCounterDevice :: Module CounterDevice
+mkCounterDevice = module
+  msgMgr <- mkMsgManager
+  let msgs :: CounterMsgs Rx Tx = msgMgr.fifos
+
+  sum :: Reg (Int 16) <- mkReg 0
+  product :: Reg (Int 32) <- mkReg 1
+
+  rules
+    "handle_command": when True ==> do
+      let c :: Command = msgs.commands.first
+      msgs.commands.deq
+      $display "Handling command " (cshow c)
+      case c of
+        Num { id = id; val = val; } -> do
+          let newSum = sum + val
+          let newProduct = product * signExtend val
+          msgs.sums.enq (Result { id = id; val = newSum; })
+          msgs.products.enq (Result { id = id; val = newProduct; })
+          sum := newSum
+          product := newProduct
+        Reset { id = id; newSum = newSum; newProduct = newProduct; } -> do
+          sum := newSum
+          product := newProduct
+          msgs.sums.enq (Result { id = id; val = newSum; })
+          msgs.products.enq (Result { id = id; val = newProduct; })
+
+  interface
+    putMsg = msgMgr.rxMsg.put
+    getMsg = msgMgr.txMsg.get
+
+interface CounterController =
+  putMsg :: (GenCMsg (CounterMsgs Tx Rx) rxBytes txBytes) => Vector rxBytes (Bit 8) -> Action
+  getMsg :: (GenCMsg (CounterMsgs Tx Rx) rxBytes txBytes) => ActionValue (UInt (TLog (TAdd 1 txBytes)), Vector txBytes (Bit 8))
+
+mkCounterController :: Module CounterController
+mkCounterController = module
+  msgMgr <- mkMsgManager
+  let msgs :: CounterMsgs Tx Rx = msgMgr.fifos
+
+  i :: Reg (Int 16)
+  i <- mkReg 0
+
+  rules
+    "send_command": when i <= 20 ==> do
+      let c = if i % 5 == 0
+              then Reset { id = pack i; newSum = i; newProduct = signExtend i * 10; }
+              else Num { id = pack i; val = i; }
+      i := i + 1
+      $display "Sending command " (cshow c)
+      msgs.commands.enq c
+
+    "handle_sum": when True ==> do
+      let res = msgs.sums.first
+      msgs.sums.deq
+      $display "Got sum " res.id " " res.val
+      if res.id >= 20 then $finish else noAction
+
+    "handle_product": when True ==> do
+      let res = msgs.products.first
+      msgs.products.deq
+      $display "Got product " res.id " " res.val
+
+  interface
+    putMsg = msgMgr.rxMsg.put
+    getMsg = msgMgr.txMsg.get
+
+
+{-# verilog sysCounterB2B #-}
+sysCounterB2B :: Module Empty
+sysCounterB2B = module
+  cc <- mkCounterController
+  cd <- mkCounterDevice
+
+  ctod <- mkFIFO
+  dtoc <- mkFIFO
+
+  rules
+    "get_controller": when True ==> do
+      (_, m) <- cc.getMsg
+      ctod.enq m
+
+    "put_controller": when True ==> do
+      let m = dtoc.first
+      dtoc.deq
+      cc.putMsg m
+
+    "get_device": when True ==> do
+      (_, m) <- cd.getMsg
+      dtoc.enq m
+
+    "put_device": when True ==> do
+      let m = ctod.first
+      ctod.deq
+      cd.putMsg m
+

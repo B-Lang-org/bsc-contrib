@@ -1,0 +1,24 @@
+Cons 0x00 Nil
+Cons 0x01 Nil
+Cons 0x02 Nil
+Cons 0x03 Nil
+ThingMsg {thing=Thing {w=[   1,    2]; x=  1; y=  2; z=  4660}; swapXY=False; deltaZ=  8}
+Cons 0x01 (Cons 0x02 (Cons 0x01 (Cons 0x02 (Cons 0x12 (Cons 0x34 (Cons 0x00 (Cons 0x08 Nil)))))))
+0x0102010212340008
+Called test_fn 102010212340008
+Unpacked msg: 1 2 1 2 4660 0 8
+res: 9 10 1 2 4668
+Packed res: 90a0102123c
+0x090a0102123c
+Cons 0x09 (Cons 0x0a (Cons 0x01 (Cons 0x02 (Cons 0x12 (Cons 0x3c Nil)))))
+Thing {w=[   9,   10]; x=  1; y=  2; z=  4668}
+ThingMsg {thing=Thing {w=[   1,    2]; x=  1; y=  2; z=  4660}; swapXY=True; deltaZ= -8}
+Cons 0x01 (Cons 0x02 (Cons 0x01 (Cons 0x02 (Cons 0x12 (Cons 0x34 (Cons 0x01 (Cons 0x18 Nil)))))))
+0x0102010212340118
+Called test_fn 102010212340118
+Unpacked msg: 1 2 1 2 4660 1 -8
+res: -7 -6 2 1 4652
+Packed res: f9fa0201122c
+0xf9fa0201122c
+Cons 0xf9 (Cons 0xfa (Cons 0x02 (Cons 0x01 (Cons 0x12 (Cons 0x2c Nil)))))
+Thing {w=[  -7,   -6]; x=  2; y=  1; z=  4652}

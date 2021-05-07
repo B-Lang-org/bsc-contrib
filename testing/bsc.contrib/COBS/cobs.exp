@@ -1,0 +1,19 @@
+# Include the boilerplate for bsc-contrib tests
+set here [file join [absolute $srcdir] $subdir]
+source $here/../contrib.tcl
+
+if { $contribtest } {
+
+    add_contrib_dirs_to_path { COBS }
+
+    # Workaround a Bluespec codegen issue that causes problems on macOS
+    set link_options {}
+    if { [which_os] == "Darwin" } {
+        set link_options {-Xc++ -fbracket-depth=260}
+    }
+
+    test_c_veri_bs_modules_options COBSTests {} {} {} {} {} $link_options
+
+    restore_path
+
+}
