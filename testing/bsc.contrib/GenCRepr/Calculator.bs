@@ -31,9 +31,9 @@ eval Sub x y = x - y
 eval Mul x y = x * y
 eval Div x y = x / y
 
-{-# verilog mkCalculator #-}
-mkCalculator :: Module Empty
-mkCalculator = module
+{-# verilog sysCalculator #-}
+sysCalculator :: Module Empty
+sysCalculator = module
   writeCDecls "calculator" (_ :: (Instr, Result))
 
   haltIn :: Reg Bool <- mkReg False
