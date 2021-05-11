@@ -27,9 +27,9 @@ interface CounterMsgs =
   sums     :: Tx 128 2 (Result (Int 16))
   products :: Tx 128 2 (Result (Int 32))
 
-{-# verilog mkCounter #-}
-mkCounter :: Module Empty
-mkCounter = module
+{-# verilog sysCounter #-}
+sysCounter :: Module Empty
+sysCounter = module
   writeCMsgDecls "counter" (_ :: CounterMsgs)
 
   msgMgr <- mkMsgManager

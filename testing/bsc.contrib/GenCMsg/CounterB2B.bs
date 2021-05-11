@@ -18,12 +18,12 @@ struct Result a =
   val :: a
  deriving (Bits)
 
-interface CounterMsgs i o =
+interface CounterMsgs req resp =
   -- In order of highest to lowest urgency
   -- Try changing the order and FIFO sizes
-  commands :: i 8 2 Command
-  sums     :: o 8 2 (Result (Int 16))
-  products :: o 8 2 (Result (Int 32))
+  commands :: req  8 2 Command
+  sums     :: resp 8 2 (Result (Int 16))
+  products :: resp 8 2 (Result (Int 32))
 
 interface CounterDevice =
   putMsg :: (GenCMsg (CounterMsgs Rx Tx) rxBytes txBytes) => Vector rxBytes (Bit 8) -> Action
@@ -97,9 +97,9 @@ mkCounterController = module
     getMsg = msgMgr.txMsg.get
 
 
-{-# verilog mkCounterB2B #-}
-mkCounterB2B :: Module Empty
-mkCounterB2B = module
+{-# verilog sysCounterB2B #-}
+sysCounterB2B :: Module Empty
+sysCounterB2B = module
   cc <- mkCounterController
   cd <- mkCounterDevice
 
