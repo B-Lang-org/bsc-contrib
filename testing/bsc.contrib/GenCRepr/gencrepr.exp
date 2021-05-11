@@ -6,7 +6,9 @@ if { $contribtest } {
 
     add_contrib_dirs_to_path { GenCRepr }
 
-    test_c_veri Test { test_fn.ba test_func.c test.c }
+    compile_pass Test.bs
+    copy test_func.c.keep test_func.c
+    test_c_veri_multi Test sysTest { test_fn.ba test_func.c test.c }
 
     restore_path
 
