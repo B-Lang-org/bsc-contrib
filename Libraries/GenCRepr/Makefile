@@ -1,7 +1,7 @@
 PWD:=$(shell pwd)
 TOP:=$(PWD)/../..
 
-LIBNAME=GenCMsg
+LIBNAME=GenCRepr
 
 # Requires that TOP and LIBNAME be set
 # Sets BUILDDIR, and BSC and BSCFLAGS if not set

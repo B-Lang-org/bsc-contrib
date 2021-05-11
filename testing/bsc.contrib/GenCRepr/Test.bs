@@ -50,9 +50,9 @@ actTestThing tm = do
   let res = (GenCRepr.unpack output) :: Thing
   $display (cshow res)
 
-{-# verilog mkTest #-}
-mkTest :: Module Empty
-mkTest = module
+{-# verilog sysTest #-}
+sysTest :: Module Empty
+sysTest = module
   writeCDecls "test" (_ :: (Baz, Qux, Kaz, Tux, Maybe (Int 16), Maybe (Bit 32), Either Bool (Vector 3 (UInt 8)), ThingMsg))
 
   rules
