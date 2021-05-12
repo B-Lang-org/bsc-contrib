@@ -6,9 +6,9 @@ if { $contribtest } {
 
     add_contrib_dirs_to_path { GenCRepr GenCMsg }
 
-    compile_pass Counter.bs
+    compile_pass CounterB2C.bs
     copy counter_driver.c.keep counter_driver.c
-    test_c_only_multi Counter sysCounter { messageAvailable.ba getMessage.ba putMessage.ba counter_driver.c counter.c } "" "" 1
+    test_c_only_multi CounterB2C sysCounterB2C { messageAvailable.ba getMessage.ba putMessage.ba counter_driver.c counter.c } "" "" 1
 
     test_c_veri CounterB2B "" "" "" 1
 

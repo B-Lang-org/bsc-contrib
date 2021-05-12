@@ -1,4 +1,4 @@
-package Counter where
+package CounterB2C where
 
 import GenCRepr
 import GenCMsg
@@ -27,9 +27,9 @@ interface CounterMsgs =
   sums     :: Tx 128 2 (Result (Int 16))
   products :: Tx 128 2 (Result (Int 32))
 
-{-# verilog sysCounter #-}
-sysCounter :: Module Empty
-sysCounter = module
+{-# verilog sysCounterB2C #-}
+sysCounterB2C :: Module Empty
+sysCounterB2C = module
   writeCMsgDecls "counter" (_ :: CounterMsgs)
 
   msgMgr <- mkMsgManager
