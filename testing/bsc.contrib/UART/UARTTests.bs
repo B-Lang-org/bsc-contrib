@@ -1,0 +1,24 @@
+package UARTTests where
+
+import UART
+import GetPut
+
+{-# verilog sysUARTTests #-}
+sysUARTTests :: Module Empty
+sysUARTTests = module
+  uart <- mkUART 100000 9600
+
+  i :: Reg (UInt 8) <- mkReg 0
+
+  rules
+    "loopback": when True ==> uart.rx uart.tx
+
+    "tx": when True ==> do
+      uart.txData.put $ pack i
+      i := i + 1
+
+    "rx": when True ==> do
+      res <- uart.rxData.get
+      $display res
+      case res of
+        0xff -> $finish

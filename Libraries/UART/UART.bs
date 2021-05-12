@@ -1,0 +1,88 @@
+package UART where
+
+import GetPut
+import FIFOF
+
+-- Basic bi-directional UART implementation, with 8 data bits and no parity bit.
+-- The mkUART module is parameterized by the clock frequency and desired baud rate.
+
+interface UART =
+  txData :: Put (Bit 8)
+  rxData :: Get (Bit 8)
+
+  tx :: Bit 1 {-# always_ready, always_enabled #-}
+  rx :: Bit 1 -> Action {-# always_ready, always_enabled, prefix="", arg_names = [rx] #-}
+
+data State = Ready | StartBit | DataBit (UInt 3) | StopBit
+  deriving (Eq, Bits)
+
+mkUART :: Integer -> Integer -> Module UART
+mkUART clockFreq baud = module
+  let bitCounts = clockFreq / baud - 1
+  let sampleCounts = bitCounts / 2
+
+  txFIFO :: FIFOF (Bit 8) <- mkFIFOF
+  txState :: Reg State <- mkReg Ready
+  txCounter :: Reg (UInt 32) <- mkReg 0
+  txBit :: Reg (Bit 1) <- mkReg 1
+
+  rxFIFO :: FIFOF (Bit 8) <- mkFIFOF
+  rxState :: Reg State <- mkReg Ready
+  rxCounter :: Reg (UInt 32) <- mkReg 0
+  rxByte :: Reg (Bit 8) <- mkReg 0
+  rxWire :: RWire (Bit 1) <- mkRWire
+  let rxBit :: Bit 1 = unJust rxWire.wget  -- Always ready
+
+  rules
+    "tx": when txCounter == 0 && txFIFO.notEmpty ==> do
+      case txState of
+        Ready -> do
+          txState := StartBit
+        StartBit -> do
+          txState := DataBit 0
+          txBit := 0
+          txCounter := fromInteger bitCounts
+        DataBit i -> do
+          txState := if i == 7 then StopBit else DataBit (i + 1)
+          txBit := truncate (txFIFO.first >> i)
+          txCounter := fromInteger bitCounts
+        StopBit -> do
+          txState := Ready
+          txBit := 1
+          txFIFO.deq
+          txCounter := fromInteger bitCounts
+
+    "update_tx_counter": when txCounter > 0 ==>
+      txCounter := txCounter - 1
+
+    "rx": when rxCounter == 0 ==> do
+      case rxState of
+        Ready -> do
+          rxState := StartBit
+          rxCounter := fromInteger sampleCounts
+        StartBit ->
+          if rxBit == 0  -- Check start bit is 0, else ignore as noise
+            then do
+              rxState := DataBit 0
+              rxCounter := fromInteger bitCounts
+            else rxState := Ready
+        DataBit i -> do
+          rxState := if i == 7 then StopBit else DataBit (i + 1)
+          rxByte := rxByte | (zeroExtend rxBit) << i
+          rxCounter := fromInteger bitCounts
+        StopBit -> do
+          rxState := Ready
+          if rxBit == 1  -- Check stop bit is 1, else discard misformed packet
+            then rxFIFO.enq rxByte
+            else noAction
+          rxByte := 0
+          rxCounter := fromInteger sampleCounts
+
+    "update_rx_counter": when rxCounter > 0 ==>
+      rxCounter := rxCounter - 1
+
+  interface
+    txData = toPut txFIFO
+    rxData = toGet rxFIFO
+    tx = txBit
+    rx = rxWire.wset
