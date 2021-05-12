@@ -1,0 +1,13 @@
+# Include the boilerplate for bsc-contrib tests
+set here [file join [absolute $srcdir] $subdir]
+source $here/../contrib.tcl
+
+if { $contribtest } {
+
+    add_contrib_dirs_to_path { COBS }
+
+    test_c_veri COBSTests
+
+    restore_path
+
+}
