@@ -320,9 +320,11 @@ instance (GenCUnionBody tagBytes bodyRepr 0 bodyBytes, TypeNames ta,
     "\tenum " +++ typeName' p +++ "_tag { " +++
     genCEnumBody (_ :: Bit tagBytes) (_ :: bodyRepr) (typeName' p) +++
     " } tag;\n" +++
-    "\tunion " +++ typeName' p +++ "_contents {\n" +++
-    genCUnionBody (_ :: Bit tagBytes) (_ :: bodyRepr) (typeName' p) +++
-    "\t} contents;\n" +++
+    (if hasUnionMembers (_ :: Bit tagBytes) (_ :: bodyRepr)
+      then "\tunion " +++ typeName' p +++ "_contents {\n" +++
+           genCUnionBody (_ :: Bit tagBytes) (_ :: bodyRepr) (typeName' p) +++
+           "\t} contents;\n"
+      else "") +++
     "} " +++ typeName' p +++ ";\n" +++
     "enum { size_" +++ typeName' p +++ " = " +++ integerToString (valueOf n) +++ " };"
 
@@ -334,7 +336,7 @@ instance (GenCUnionBody tagBytes bodyRepr 0 bodyBytes, TypeNames ta,
     "void pack_" +++ typeName' p +++ "(" +++ typeName' p +++ " val, uint8_t **buf);",
     "void pack_" +++ typeName' p +++ "(" +++ typeName' p +++ " val, uint8_t **buf) {\n" +++
     "\t" +++ genCIntPack (valueOf tagBytes) "val.tag" "buf" +++ "\n" +++
-    "\t" +++ genCPackUnionBody (_ :: Bit tagBytes) (_ :: bodyRepr) (typeName' p) +++ " // Invalid tag, do nothing\n" +++
+    "\t" +++ genCPackUnionBody (_ :: Bit tagBytes) (_ :: bodyRepr) (typeName' p) +++ "; // Invalid tag, do nothing\n" +++
     "}")
 
   unpackBytesS' = liftM Meta $ unpackUnionBody (_ :: Bit tagBytes)
@@ -346,7 +348,7 @@ instance (GenCUnionBody tagBytes bodyRepr 0 bodyBytes, TypeNames ta,
     typeName' p +++ " unpack_" +++ typeName' p +++ "(uint8_t **buf) {\n" +++
     "\t" +++ typeName' p +++ " val;\n" +++
     "\t" +++ genCIntUnpack (valueOf tagBytes) "val.tag" "buf" +++ "\n" +++
-    "\t" +++ genCUnpackUnionBody (_ :: Bit tagBytes) (_ :: bodyRepr) (typeName' p) +++ " // Invalid tag, do nothing\n" +++
+    "\t" +++ genCUnpackUnionBody (_ :: Bit tagBytes) (_ :: bodyRepr) (typeName' p) +++ "; // Invalid tag, do nothing\n" +++
     "\treturn val;\n" +++
     "}")
 
@@ -416,6 +418,7 @@ instance TypeNames () where
 class GenCUnionBody nt a i n | nt a -> i n where
   genCEnumBody :: Bit nt -> a -> String -> String
   genCUnionBody :: Bit nt -> a -> String -> String
+  hasUnionMembers :: Bit nt -> a -> Bool
 
   packUnionBody :: Bit nt -> a -> ByteList
   genCPackUnionBody :: Bit nt -> a -> String -> String
@@ -434,11 +437,14 @@ instance (GenCUnionBody tagBytes a i1 n1, GenCUnionBody tagBytes b i2 n2,
   genCUnionBody _ _ typeName =
     genCUnionBody (_ :: Bit tagBytes) (_ :: a) typeName +++
     genCUnionBody (_ :: Bit tagBytes) (_ :: b) typeName
+  hasUnionMembers _ _ =
+    hasUnionMembers (_ :: Bit tagBytes) (_ :: a) ||
+    hasUnionMembers (_ :: Bit tagBytes) (_ :: b)
 
   packUnionBody _ (Left x) = packUnionBody (_ :: Bit tagBytes) x
   packUnionBody _ (Right x) = packUnionBody (_ :: Bit tagBytes) x
   genCPackUnionBody _ _ typeName =
-    genCPackUnionBody (_ :: Bit tagBytes) (_ :: a) typeName +++ " else " +++
+    genCPackUnionBody (_ :: Bit tagBytes) (_ :: a) typeName +++
     genCPackUnionBody (_ :: Bit tagBytes) (_ :: b) typeName
 
   unpackUnionBody _ = do
@@ -447,8 +453,24 @@ instance (GenCUnionBody tagBytes a i1 n1, GenCUnionBody tagBytes b i2 n2,
     then liftM Left $ unpackUnionBody (_ :: Bit tagBytes)
     else liftM Right $ unpackUnionBody (_ :: Bit tagBytes)
   genCUnpackUnionBody _ _ typeName =
-    genCUnpackUnionBody (_ :: Bit tagBytes) (_ :: a) typeName +++ " else " +++
+    genCUnpackUnionBody (_ :: Bit tagBytes) (_ :: a) typeName +++
     genCUnpackUnionBody (_ :: Bit tagBytes) (_ :: b) typeName
+
+-- Special case for no constructors, don't create a struct
+instance (Mul tagBytes 8 tagBits) =>
+         GenCUnionBody tagBytes (Meta (MetaConsAnon ctorName ctorIdx 0) ()) ctorIdx 0 where
+  genCEnumBody _ _ typeName = typeName +++ "_" +++ stringOf ctorName
+  genCUnionBody _ _ _ = ""
+  hasUnionMembers _ _ = False
+
+  packUnionBody _ (Meta ()) = nil
+  genCPackUnionBody _ _ typeName = ""
+
+  unpackUnionBody _ = do
+    x <- get
+    put $ drop (valueOf tagBytes) x
+    return $ Meta ()
+  genCUnpackUnionBody _ _ typeName = ""
 
 -- Special case for a constructor with a single anonymous field, don't create an inner struct
 instance (GenCRepr a n, Mul tagBytes 8 tagBits) =>
@@ -457,13 +479,14 @@ instance (GenCRepr a n, Mul tagBytes 8 tagBits) =>
   genCUnionBody _ _ _ =
     let (lType, rType) = genCType (_ :: a)
     in "\t\t" +++ lType +++ " " +++ stringOf ctorName +++ rType +++ ";\n"
+  hasUnionMembers _ _ = True
 
   packUnionBody _ (Meta (Meta (Conc x))) =
     append (toByteList $ Prelude.pack ((fromInteger $ valueOf ctorIdx) :: UInt tagBits)) $ packBytes x
   genCPackUnionBody _ _ typeName =
     "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
     "\t\t" +++ genCPack (_ :: a) ("val.contents." +++ stringOf ctorName) "buf" +++ "\n" +++
-    "\t}"
+    "\t} else "
 
   unpackUnionBody _ = do
     x <- get
@@ -472,7 +495,7 @@ instance (GenCRepr a n, Mul tagBytes 8 tagBits) =>
   genCUnpackUnionBody _ _ typeName =
     "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
     "\t\t" +++ genCUnpack (_ :: a) ("val.contents." +++ stringOf ctorName) "buf" +++ "\n" +++
-    "\t}"
+    "\t} else "
 
 -- Instance for multiple named fields, represented by an inner struct
 instance (GenCStructBody bodyRepr n, Mul tagBytes 8 tagBits) =>
@@ -482,6 +505,7 @@ instance (GenCStructBody bodyRepr n, Mul tagBytes 8 tagBits) =>
     "\t\tstruct " +++ typeName +++ "_" +++ stringOf ctorName +++ " {\n" +++
     genCStructBody (_ :: bodyRepr) True +++
     "\t\t} " +++ stringOf ctorName +++ ";\n"
+  hasUnionMembers _ _ = True
 
   packUnionBody _ (Meta x) =
     append (toByteList (Prelude.pack ((fromInteger $ valueOf ctorIdx) :: UInt tagBits))) $ packStructBody x
@@ -507,6 +531,7 @@ instance (GenCStructBody bodyRepr n, Mul tagBytes 8 tagBits) =>
     "\t\tstruct " +++ typeName +++ "_" +++ stringOf ctorName +++ " {\n" +++
     genCStructBody (_ :: bodyRepr) True +++
     "\t\t} " +++ stringOf ctorName +++ ";\n"
+  hasUnionMembers _ _ = True
 
   packUnionBody _ (Meta x) =
     append (toByteList (Prelude.pack ((fromInteger $ valueOf ctorIdx) :: UInt tagBits))) $ packStructBody x
