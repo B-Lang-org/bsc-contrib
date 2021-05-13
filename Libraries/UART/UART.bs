@@ -26,7 +26,7 @@ mkUART clockFreq baud = module
   txCounter :: Reg (UInt 32) <- mkReg 0
   txBit :: Reg (Bit 1) <- mkReg 1
 
-  rxFIFO :: FIFOF (Bit 8) <- mkFIFOF
+  rxFIFO :: FIFOF (Bit 8) <- mkSizedFIFOF 16
   rxState :: Reg State <- mkReg Ready
   rxCounter :: Reg (UInt 32) <- mkReg 0
   rxByte :: Reg (Bit 8) <- mkReg 0
@@ -55,13 +55,14 @@ mkUART clockFreq baud = module
     "update_tx_counter": when txCounter > 0 ==>
       txCounter := txCounter - 1
 
-    "rx": when rxCounter == 0 ==> do
+    "start_rx": when rxCounter == 0 && rxState == Ready && rxBit == 0 ==> do
+      rxState := StartBit
+      rxCounter := fromInteger sampleCounts
+
+    "rx": when rxCounter == 0 && rxState /= Ready ==> do
       case rxState of
-        Ready -> do
-          rxState := StartBit
-          rxCounter := fromInteger sampleCounts
         StartBit ->
-          if rxBit == 0  -- Check start bit is 0, else ignore as noise
+          if rxBit == 0  -- Check start bit is still 0, else ignore as noise
             then do
               rxState := DataBit 0
               rxCounter := fromInteger bitCounts
@@ -76,7 +77,6 @@ mkUART clockFreq baud = module
             then rxFIFO.enq rxByte
             else noAction
           rxByte := 0
-          rxCounter := fromInteger sampleCounts
 
     "update_rx_counter": when rxCounter > 0 ==>
       rxCounter := rxCounter - 1
