@@ -5,6 +5,7 @@ BUILD_ORDER = \
 	AMBA_TLM3 \
 	FPGA \
 	NonPipelinedMath \
+	COBS
 
 .PHONY: all
 all: install
