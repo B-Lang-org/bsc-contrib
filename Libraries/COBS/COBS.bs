@@ -6,7 +6,7 @@ import Vector
 
 -- Implementation of Consistent Overhead Byte Stuffing (COBS) encoding of messages into a byte stream.
 -- See https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing
-  
+
 interface (COBSEncoder :: # -> *) n =
   msg :: Put (UInt (TLog (TAdd 1 n)), Vector n (Bit 8))
   byte :: Get (Bit 8)
