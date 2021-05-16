@@ -319,7 +319,7 @@ instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
             ruleName: when rxTagEq (valueOf i + 1) ==> do
               fifo.enq (unpackBytes rxBody).fst
               deq
-    
+
     return (Meta $ Conc fifo_o, rs)
 
   genCMsgTypeHeaderDcls' _ = genAllCHeaderDecls (_ :: a)
