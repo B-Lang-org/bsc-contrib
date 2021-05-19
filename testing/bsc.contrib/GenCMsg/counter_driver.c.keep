@@ -46,7 +46,7 @@ void runHostAction() {
     } else break;
   }
 
-  // Halt after the expected number of responses have been recieved
+  // Halt after the expected number of responses have been received
   if (responses >= NUM_ITERS * 10) {
     printf("Enqueued halt\n");
     enqueue_CounterMsgs_commands(&state, (Command){Command_Halt});
@@ -111,7 +111,7 @@ unsigned char putMessage(unsigned long long in) {
     in >>= 8;
   }
 
-  //printf("C recieved message %hhx %hhx %hhx %hhx %hhx %hhx %hhx\n", in_buf[0], in_buf[1], in_buf[2], in_buf[3], in_buf[4], in_buf[5], in_buf[6]);
+  //printf("C received message %hhx %hhx %hhx %hhx %hhx %hhx %hhx\n", in_buf[0], in_buf[1], in_buf[2], in_buf[3], in_buf[4], in_buf[5], in_buf[6]);
 
   _Bool result = decode_CounterMsgs(&state, in_buf);
   return result;
