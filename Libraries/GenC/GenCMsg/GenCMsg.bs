@@ -6,6 +6,7 @@ import qualified List
 import FIFOF
 import GetPut
 import CShow
+import State
 
 class ByteVector n where
   toByteVector :: Bit (TMul n 8) -> Vector n (Bit 8)

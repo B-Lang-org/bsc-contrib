@@ -1,7 +1,7 @@
 
 BUILD_ORDER = \
-	Repr \
-	Msg \
+	GenCRepr \
+	GenCMsg \
 
 .PHONY: all
 all: install
