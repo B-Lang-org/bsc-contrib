@@ -1,6 +1,6 @@
 # Include the boilerplate for bsc-contrib tests
 set here [file join [absolute $srcdir] $subdir]
-source $here/../contrib.tcl
+source $here/../../contrib.tcl
 
 if { $contribtest } {
 

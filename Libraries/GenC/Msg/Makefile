@@ -1,12 +1,12 @@
 PWD:=$(shell pwd)
-TOP:=$(PWD)/../..
+TOP:=$(PWD)/../../..
 
 LIBNAME=GenCMsg
 
 # Requires that TOP and LIBNAME be set
 # Sets BUILDDIR, and BSC and BSCFLAGS if not set
 # and defines the install target
-include ../common.mk
+include ../../common.mk
 
 # Requires files in GenCRepr
 BSCFLAGS += -p $(BUILDDIR)/../GenCRepr:+

@@ -1,11 +1,7 @@
 
 BUILD_ORDER = \
-	Bus \
-	AMBA_TLM2 \
-	AMBA_TLM3 \
-	FPGA \
-	NonPipelinedMath \
-	GenC
+	Repr \
+	Msg \
 
 .PHONY: all
 all: install

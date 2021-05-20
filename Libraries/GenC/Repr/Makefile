@@ -1,12 +1,12 @@
 PWD:=$(shell pwd)
-TOP:=$(PWD)/../..
+TOP:=$(PWD)/../../..
 
 LIBNAME=GenCRepr
 
 # Requires that TOP and LIBNAME be set
 # Sets BUILDDIR, and BSC and BSCFLAGS if not set
 # and defines the install target
-include ../common.mk
+include ../../common.mk
 
 .PHONY: build
 build:
