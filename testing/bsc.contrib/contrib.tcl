@@ -38,7 +38,7 @@ proc add_contrib_dirs_to_path { dirs } {
 	set old_option $::env(BSC_OPTIONS)
     }
 
-    set libdir "$contrib_inst/Libraries"
+    set libdir "$contrib_inst/lib/Libraries"
 
     if { [llength $dirs] > 0 } {
 	append ::env(BSC_OPTIONS) " -p "
