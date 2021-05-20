@@ -56,10 +56,10 @@ sysCounterB2C = module
           product := signExtend val
         Halt -> $finish
 
-    "recieve_message": when messageAvailable ==> do
+    "receive_message": when messageAvailable ==> do
       m <- getMessage
       let mBytes = unpack m
-      -- $display "B recieved message " (cshow (mBytes :: Vector 8 (Bit 8)))
+      -- $display "B received message " (cshow (mBytes :: Vector 8 (Bit 8)))
       msgMgr.rxMsg.put mBytes
 
     "send_message": when True ==> do

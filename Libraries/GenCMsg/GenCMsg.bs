@@ -22,7 +22,7 @@ instance (Add n1 1 n, ByteVector n1) => ByteVector n where
   fromByteVector x = head x ++ fromByteVector (tail x)
 
 -- A message that should be sent by B-lang and/or received by C.
--- destFIFOSize = size of FIFO at recieving end, and number of credits available, must be <= 255.
+-- destFIFOSize = size of FIFO at receiving end, and number of credits available, must be <= 255.
 -- srcFIFOSize = size of FIFO at sending end, can be as large as desired.
 interface (Rx :: # -> # -> * -> *) destFIFOSize srcFIFOSize a =
   deq      :: Action
@@ -30,7 +30,7 @@ interface (Rx :: # -> # -> * -> *) destFIFOSize srcFIFOSize a =
   notEmpty :: Bool
 
 -- A message that should be received by B-lang and/or sent by C.
--- destFIFOSize = size of FIFO at recieving end, and number of credits available, must be <= 255.
+-- destFIFOSize = size of FIFO at receiving end, and number of credits available, must be <= 255.
 -- srcFIFOSize = size of FIFO at sending end, can be as large as desired.
 interface (Tx :: # -> # -> * -> *) destFIFOSize srcFIFOSize a =
   enq      :: a -> Action
@@ -414,7 +414,7 @@ instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
 
   genCFIFOHeaderDcls' _ ifaceName =
     let (lType, rType) = genCType (_ :: a)
-    in "// Dequeue a recieved " +++ stringOf name +++ " message.\n" +++
+    in "// Dequeue a received " +++ stringOf name +++ " message.\n" +++
        "// Return 0 if failed (none available) or 1 if success.\n" +++
        "_Bool dequeue_" +++ ifaceName +++ "_" +++ stringOf name +++ "(" +++ ifaceName +++ "_state *, " +++ lType +++ " *" +++ rType +++ ");\n\n"
 
