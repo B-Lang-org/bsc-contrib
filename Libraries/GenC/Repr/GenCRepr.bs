@@ -464,13 +464,13 @@ instance (Mul tagBytes 8 tagBits) =>
   hasUnionMembers _ _ = False
 
   packUnionBody _ (Meta ()) = nil
-  genCPackUnionBody _ _ typeName = ""
+  genCPackUnionBody _ _ _ = ""
 
   unpackUnionBody _ = do
     x <- get
     put $ drop (valueOf tagBytes) x
     return $ Meta ()
-  genCUnpackUnionBody _ _ typeName = ""
+  genCUnpackUnionBody _ _ _ = ""
 
 -- Special case for a constructor with a single anonymous field, don't create an inner struct
 instance (GenCRepr a n, Mul tagBytes 8 tagBits) =>
