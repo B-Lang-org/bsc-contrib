@@ -1,0 +1,74 @@
+package CounterB2C where
+
+import GenCRepr
+import GenCMsg
+import CounterIface
+import CShow
+import Vector
+import GetPut
+
+-- Note that changing the message data definitions in this file may affect the
+-- packed message sizes as determined by the GenCMsg type class.
+-- These unfourtunately must be hardcoded in CounterIface.bsv as well, so any
+-- change to these types that affects the packed message sizes must be reflected
+-- in that file as well.
+
+type Id = Bit 16 -- Try changing the size
+
+-- Try adding/reordering constructors
+data Command = Num { id :: Id; val :: Int 16; }
+             | Reset (Int 16)
+             | Halt
+  deriving (Bits)
+
+struct Result a =
+  id :: Id
+  val :: a
+ deriving (Bits)
+
+interface CounterMsgs =
+  -- In order of highest to lowest urgency
+  -- Try changing the order and FIFO sizes
+  commands :: Rx 128 16 Command
+  sums     :: Tx 128 2 (Result (Int 16))
+  products :: Tx 128 2 (Result (Int 32))
+
+{-# verilog sysCounterB2C #-}
+sysCounterB2C :: Module Empty
+sysCounterB2C = module
+  writeCMsgDecls "counter" (_ :: CounterMsgs)
+
+  msgMgr <- mkMsgManager
+  let msgs :: CounterMsgs = msgMgr.fifos
+
+  sum :: Reg (Int 16) <- mkReg 0
+  product :: Reg (Int 32) <- mkReg 1
+
+  rules
+    "handle_command": when True ==> do
+      let c :: Command = msgs.commands.first
+      msgs.commands.deq
+      -- $display "Handling command " (cshow c)
+      case c of
+        Num { id = id; val = val; } -> do
+          let newSum = sum + val
+          let newProduct = product * signExtend val
+          msgs.sums.enq (Result { id = id; val = newSum; })
+          msgs.products.enq (Result { id = id; val = newProduct; })
+          sum := newSum
+          product := newProduct
+        Reset val -> do
+          sum := val
+          product := signExtend val
+        Halt -> $finish
+
+    "receive_message": when messageAvailable ==> do
+      m <- getMessage
+      let mBytes = unpack m
+      -- $display "B received message " (cshow (mBytes :: Vector 8 (Bit 8)))
+      msgMgr.rxMsg.put mBytes
+
+    "send_message": when True ==> do
+      (_, mBytes) <- msgMgr.txMsg.get
+      -- $display "B sending message " (cshow (mBytes :: Vector 8 (Bit 8)))
+      putMessage (pack mBytes)

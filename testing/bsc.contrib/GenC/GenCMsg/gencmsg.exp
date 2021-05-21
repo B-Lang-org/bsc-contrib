@@ -1,0 +1,17 @@
+# Include the boilerplate for bsc-contrib tests
+set here [file join [absolute $srcdir] $subdir]
+source $here/../../contrib.tcl
+
+if { $contribtest } {
+
+    add_contrib_dirs_to_path { GenC/GenCRepr GenC/GenCMsg }
+
+    compile_pass CounterB2C.bs
+    copy counter_driver.c.keep counter_driver.c
+    test_c_only_multi CounterB2C sysCounterB2C { messageAvailable.ba getMessage.ba putMessage.ba counter_driver.c counter.c } "" "" 1
+
+    test_c_veri CounterB2B "" "" "" 1
+
+    restore_path
+
+}
