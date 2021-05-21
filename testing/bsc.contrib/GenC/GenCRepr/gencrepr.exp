@@ -4,7 +4,7 @@ source $here/../../contrib.tcl
 
 if { $contribtest } {
 
-    add_contrib_dirs_to_path { GenCRepr }
+    add_contrib_dirs_to_path { GenC/GenCRepr }
 
     compile_pass Test.bs
     copy test_func.c.keep test_func.c

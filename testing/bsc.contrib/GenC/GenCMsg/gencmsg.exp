@@ -4,7 +4,7 @@ source $here/../../contrib.tcl
 
 if { $contribtest } {
 
-    add_contrib_dirs_to_path { GenCRepr GenCMsg }
+    add_contrib_dirs_to_path { GenC/GenCRepr GenC/GenCMsg }
 
     compile_pass CounterB2C.bs
     copy counter_driver.c.keep counter_driver.c
