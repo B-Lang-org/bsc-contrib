@@ -6,6 +6,12 @@ import FIFO
 import RegFile
 import CShow
 
+-- Note that changing the instruction/result type definitions in this file may
+-- affect the packed data sizes as determined by the GenCRepr type class.
+-- These unfortunately must be hardcoded in CalculatorIface.bsv as well, so any
+-- change to these types that affects the packed data sizes must be reflected in
+-- that file as well.
+
 type Addr = UInt 3
 type Val = Int 32
 type Id = UInt 16

@@ -7,7 +7,13 @@ import CShow
 import Vector
 import GetPut
 
-type Id = Bit 16 -- Try changing the size (will need to update in CounterIface.bsv)
+-- Note that changing the message data definitions in this file may affect the
+-- packed message sizes as determined by the GenCMsg type class.
+-- These unfourtunately must be hardcoded in CounterIface.bsv as well, so any
+-- change to these types that affects the packed message sizes must be reflected
+-- in that file as well.
+
+type Id = Bit 16 -- Try changing the size
 
 -- Try adding/reordering constructors
 data Command = Num { id :: Id; val :: Int 16; }
