@@ -9,7 +9,7 @@ LIBNAME=AMBA_TLM3/Axi4
 include ../../common.mk
 
 # Requires files in Bus, TLM3, and Axi
-BSCFLAGS += -p +:$(BUILDDIR)/../../Bus:$(BUILDDIR)/../TLM3:$(BUILDDIR)/../Axi
+BSCFLAGS += -p $(BUILDDIR)/../../Bus:$(BUILDDIR)/../TLM3:$(BUILDDIR)/../Axi:+
 
 .PHONY: build
 build:

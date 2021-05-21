@@ -9,7 +9,7 @@ LIBNAME=FPGA/Xilinx
 include ../../common.mk
 
 # Requires files in Misc
-BSCFLAGS += -p +:$(BUILDDIR)/../Misc
+BSCFLAGS += -p $(BUILDDIR)/../Misc:+
 
 .PHONY: build
 build:

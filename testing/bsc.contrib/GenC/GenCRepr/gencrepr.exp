@@ -1,0 +1,19 @@
+# Include the boilerplate for bsc-contrib tests
+set here [file join [absolute $srcdir] $subdir]
+source $here/../../contrib.tcl
+
+if { $contribtest } {
+
+    add_contrib_dirs_to_path { GenC/GenCRepr }
+
+    compile_pass Test.bs
+    copy test_func.c.keep test_func.c
+    test_c_veri_multi Test sysTest { test_fn.ba test_func.c test.c }
+
+    compile_pass Calculator.bs
+    copy calculator_driver.c.keep calculator_driver.c
+    test_c_only_multi Calculator sysCalculator { getInstr.ba putResult.ba calculator_driver.c calculator.c }
+
+    restore_path
+
+}
