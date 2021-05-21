@@ -11,6 +11,14 @@ import FIFO
 msg :: (Add n p m) => Vector n (Bit 8) -> (UInt (TLog (TAdd m 1)), Vector m (Bit 8))
 msg v = (fromInteger $ valueOf n, v `append` replicate 0)
 
+{-# verilog mkCOBSEncoder260 #-}
+mkCOBSEncoder260 :: Module (COBSEncoder 260)
+mkCOBSEncoder260 = mkCOBSEncoder
+
+{-# verilog mkCOBSDecoder260 #-}
+mkCOBSDecoder260 :: Module (COBSDecoder 260)
+mkCOBSDecoder260 = mkCOBSDecoder
+
 {-# verilog sysCOBSTests #-}
 sysCOBSTests :: Module Empty
 sysCOBSTests = module
@@ -29,8 +37,8 @@ sysCOBSTests = module
         nil
   let n = 11
 
-  enc :: COBSEncoder 260 <- mkCOBSEncoder
-  dec :: COBSDecoder 260 <- mkCOBSDecoder
+  enc <- mkCOBSEncoder260
+  dec <- mkCOBSDecoder260
 
   enc.byte <-> dec.byte
 
