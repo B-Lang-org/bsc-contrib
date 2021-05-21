@@ -5,7 +5,8 @@ BUILD_ORDER = \
 	AMBA_TLM3 \
 	FPGA \
 	NonPipelinedMath \
-	GenC
+	GenC \
+	COBS \
 
 .PHONY: all
 all: install

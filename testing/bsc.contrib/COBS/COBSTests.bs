@@ -1,0 +1,59 @@
+package COBSTests where
+
+import COBS
+import Vector
+import qualified List
+import GetPut
+import Connectable
+import CShow
+import FIFO
+
+msg :: (Add n p m) => Vector n (Bit 8) -> (UInt (TLog (TAdd m 1)), Vector m (Bit 8))
+msg v = (fromInteger $ valueOf n, v `append` replicate 0)
+
+{-# verilog sysCOBSTests #-}
+sysCOBSTests :: Module Empty
+sysCOBSTests = module
+  let testMsgs =
+        msg (0x00 :> nil) :>
+        msg (0x00 :> 0x00 :> nil) :>
+        msg (0x11 :> 0x22 :> 0x00 :> 0x33 :> nil) :>
+        msg (0x11 :> 0x22 :> 0x33 :> 0x44 :> nil) :>
+        msg (0x11 :> 0x00 :> 0x00 :> 0x00 :> nil) :>
+        msg (map (\ i -> fromInteger i + 1) (genVector :: Vector 254 Integer)) :>
+        msg (map fromInteger (genVector :: Vector 255 Integer)) :>
+        msg (map (\ i -> fromInteger i + 1) (genVector :: Vector 255 Integer)) :>
+        msg (map (\ i -> fromInteger i + 2) (genVector :: Vector 255 Integer)) :>
+        msg (map (\ i -> fromInteger i + 3) (genVector :: Vector 255 Integer)) :>
+        msg (map fromInteger (genVector :: Vector 256 Integer)) :>
+        nil
+  let n = 11
+
+  enc :: COBSEncoder 260 <- mkCOBSEncoder
+  dec :: COBSDecoder 260 <- mkCOBSDecoder
+
+  enc.byte <-> dec.byte
+
+  i <- mkReg 0
+  j <- mkReg 0
+  expected :: FIFO (UInt 9, Vector 260 (Bit 8)) <- mkFIFO
+
+  rules
+    when i < n ==> do
+      let m = select testMsgs i
+      enc.msg.put m
+      expected.enq m
+      i := i + 1
+
+    when True ==> do
+      let m1 = expected.first
+      m2 <- dec.msg.get
+      if m1 == m2
+        then $display "Pass %d" j
+        else $display "Fail %d" j
+      $display "Expected " (cshow m1)
+      $display "Actual   " (cshow m2)
+      expected.deq
+      j := j + 1
+
+    when j >= n ==> $finish
