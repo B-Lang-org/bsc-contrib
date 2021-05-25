@@ -27,6 +27,8 @@ struct Tux =
   bs :: Vector 8 Bar
   qs :: Vector 11 Qux
 
+data Enum = E1 | E2 | E3 | E4
+
 struct Thing =
   w :: Vector 2 (Int 8)
   x :: UInt 8
@@ -53,10 +55,14 @@ actTestThing tm = do
 {-# verilog sysTest #-}
 sysTest :: Module Empty
 sysTest = module
-  writeCDecls "test" (_ :: (Baz, Qux, Kaz, Tux, Maybe (Int 16), Maybe (Bit 32), Either Bool (Vector 3 (UInt 8)), ThingMsg))
+  writeCDecls "test" (_ :: (Baz, Qux, Kaz, Tux, Enum, Maybe (Int 16), Maybe (Bit 32), Either Bool (Vector 3 (UInt 8)), ThingMsg))
 
   rules
     when True ==> do
+      $display (cshow $ GenCRepr.packBytes E1)
+      $display (cshow $ GenCRepr.packBytes E2)
+      $display (cshow $ GenCRepr.packBytes E3)
+      $display (cshow $ GenCRepr.packBytes E4)
       actTestThing (ThingMsg {thing=Thing {w=1:>2:>nil; x=1; y=2; z=0x1234;}; swapXY=False; deltaZ=8;})
       actTestThing (ThingMsg {thing=Thing {w=1:>2:>nil; x=1; y=2; z=0x1234;}; swapXY=True; deltaZ=negate 8;})
       $finish

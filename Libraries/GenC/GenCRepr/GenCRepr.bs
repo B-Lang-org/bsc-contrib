@@ -436,14 +436,15 @@ instance (GenCUnionBody tagBytes a i1 n1, GenCUnionBody tagBytes b i2 n2,
     genCUnpackUnionBody (_ :: Bit tagBytes) (_ :: a) typeName +++
     genCUnpackUnionBody (_ :: Bit tagBytes) (_ :: b) typeName
 
--- Special case for no constructors, don't create a struct
+-- Special case for a constructor with no members, don't create a struct
 instance (Mul tagBytes 8 tagBits) =>
          GenCUnionBody tagBytes (Meta (MetaConsAnon ctorName ctorIdx 0) ()) ctorIdx 0 where
   genCEnumBody _ _ typeName = typeName +++ "_" +++ stringOf ctorName
   genCUnionBody _ _ _ = ""
   hasUnionMembers _ _ = False
 
-  packUnionBody _ (Meta ()) = nil
+  packUnionBody _ (Meta ()) =
+    toByteList $ Prelude.pack ((fromInteger $ valueOf ctorIdx) :: UInt tagBits)
   genCPackUnionBody _ _ _ = ""
 
   unpackUnionBody _ = do
