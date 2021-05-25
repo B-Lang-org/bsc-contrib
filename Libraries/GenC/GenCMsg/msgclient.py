@@ -27,14 +27,19 @@ class Client:
         rxData = []
         self._stateMutex.acquire()
         while True:
+            gotData = False
             for byte in self.serial.read(self.serial.in_waiting):
                 if byte == 0:
                     #print("Rx raw", bytes(rxData))
                     #print("Rx", cobs.decode(bytes(rxData)))
-                    getattr(self.lib, "decode_" + self.name)(self._state, cobs.decode(bytes(rxData)))
+                    gotData |= getattr(self.lib, "decode_" + self.name)(self._state, cobs.decode(bytes(rxData)))
                     rxData.clear()
                 else:
                     rxData.append(byte)
+            if gotData:
+                self._stateMutex.release()
+                self.notify()
+                self._stateMutex.acquire()
 
             txArray = self.ffi.new("uint8_t[]", getattr(self.lib, "size_tx_" + self.name))
             txSize = getattr(self.lib, "encode_" + self.name)(self._state, txArray)
@@ -55,6 +60,10 @@ class Client:
     def start(self):
         """Start listening for and sending messages"""
         threading.Thread(target=self._run, daemon=True).start()
+
+    def notify(self):
+        """Method to be called when a message is recieved"""
+        pass
 
     def put(self, channel, data):
         """Enqueue a message into a channel, blocks until there is space available"""
