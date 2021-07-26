@@ -158,7 +158,15 @@ instance (Div b 8 n) => GenCRepr (Int b) n where
 
   unpackBytesS = State $ \ x ->
     (Prelude.unpack $ fromByteList $ take (valueOf n) x, drop (valueOf n) x)
-  genCUnpack _ = genCIntUnpack (valueOf n)
+  genCUnpack _ val buf =
+    genCIntUnpack (valueOf n) val buf +++
+    case numCBytes (valueOf n) of
+      Nothing -> ""
+      Just nc ->
+        if nc * 8 == valueOf b then ""
+        else "\n" +++
+          "\t// Signed type does not exactly fit a C integer type, pad with the sign bit\n" +++
+          "\t" +++ val +++ " |= " +++ val +++ " >> " +++ integerToString (valueOf b - 1) +++ " == 0? 0 : -1 << " +++ integerToString (valueOf b) +++ ";"
 
 instance GenCRepr Bool 1 where
   typeName _ = "bool"

@@ -38,7 +38,7 @@ struct Thing =
 struct ThingMsg =
   thing :: Thing
   swapXY :: Bool
-  deltaZ :: Int 8
+  deltaZ :: Int 5
 
 actTestThing :: ThingMsg -> Action
 actTestThing tm = do
