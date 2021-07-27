@@ -16,7 +16,7 @@ jobs:
   build-ubuntu:
     strategy:
       matrix:
-        os: [ ubuntu-16.04, ubuntu-18.04, ubuntu-20.04 ]
+        os: [ ubuntu-18.04, ubuntu-20.04 ]
       fail-fast: false
     name: "Build ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
@@ -70,7 +70,7 @@ jobs:
   test-ubuntu:
     strategy:
       matrix:
-        os: [ ubuntu-16.04, ubuntu-18.04, ubuntu-20.04 ]
+        os: [ ubuntu-18.04, ubuntu-20.04 ]
       fail-fast: false
     name: "Test ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
@@ -123,12 +123,9 @@ jobs:
           ccache --zero-stats --max-size 500M
           export PATH=/usr/lib/ccache:$PATH
 
-          REL=$(lsb_release -rs | tr -d .)
-          if [ $REL -ge 1804 ]; then
-              export LINKER=lld
-          else
-              export LINKER=gold
-          fi
+          # Use the LLVM linker as the C++ linker
+          # for a moderate build-time speedup over ld.bfd
+          export LINKER=lld
           export LDFLAGS="-Wl,-fuse-ld=$LINKER"
 
           # Always archive logs, even if make fails (and terminates this script
@@ -136,8 +133,7 @@ jobs:
           trap ./archive_logs.sh EXIT
 
           # Use -O0 for significantly faster C++ compiles (which more
-          # than make up for slower simulations), and gold as the C++
-          # linked for a moderate build-time speedup over ld.bfd.
+          # than make up for slower simulations)
           export CXXFLAGS="-O0"
 
           cd ../bsc-testsuite/testsuite
