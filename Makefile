@@ -19,16 +19,11 @@ rem_build:
 
 # -------------------------
 
-.PHONY: install
-install:
-	$(MAKE)  -C Libraries  PREFIX=$(PREFIX)  install
+.PHONY: install clean full_clean
+install clean full_clean:
+	$(MAKE)  -C Libraries  PREFIX=$(PREFIX)  $@
+	$(MAKE)  -C Verilog    PREFIX=$(PREFIX)  $@
 
-# -------------------------
-
-clean: rem_inst rem_build
-	-$(MAKE)  -C Libraries  clean
-
-full_clean: rem_inst rem_build
-	-$(MAKE)  -C Libraries  full_clean
+clean full_clean: rem_inst rem_build
 
 # -------------------------
