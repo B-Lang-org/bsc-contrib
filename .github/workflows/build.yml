@@ -44,7 +44,7 @@ jobs:
   build-macOS:
     strategy:
       matrix:
-        os: [ macos-10.15 ]
+        os: [ macos-10.15, macos-11 ]
     name: "Build ${{ matrix.os }}"
     runs-on: ${{ matrix. os }}
     steps:
@@ -53,7 +53,7 @@ jobs:
         shell: bash
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ".github/workflows/get_latest_bsc.sh 'macos-10.13+' "
+        run: ".github/workflows/get_latest_bsc.sh ${{ matrix.os }} "
 
       - name: Build
         run: |
@@ -168,7 +168,7 @@ jobs:
   test-macOS:
     strategy:
       matrix:
-        os: [ macos-10.15 ]
+        os: [ macos-10.15, macos-11 ]
     name: "Test ${{ matrix.os }}"
     runs-on: ${{ matrix. os }}
     needs: build-macos
@@ -184,7 +184,7 @@ jobs:
         shell: bash
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ".github/workflows/get_latest_bsc.sh 'macos-10.13+' "
+        run: ".github/workflows/get_latest_bsc.sh ${{ matrix.os }} "
 
       # This ought to be downloaded at the same version as BSC?
       - name: Download testsuite
