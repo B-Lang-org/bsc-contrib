@@ -4,7 +4,6 @@ BUILD_ORDER = \
 	AMBA_TLM2 \
 	AMBA_TLM3 \
 	FPGA \
-	NonPipelinedMath \
 	GenC \
 	COBS \
 
