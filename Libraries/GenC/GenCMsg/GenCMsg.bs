@@ -308,18 +308,26 @@ instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
     let credits :: Reg (UInt 8)
         credits = head rxCredits
 
+    -- TODO: A more efficient approach would be to make credits a CReg.
+    -- See discussion on https://github.com/B-Lang-org/bsc-contrib/pull/22
+    restoreCredits :: FIFOF ()
+    restoreCredits <- mkFIFOF
+
     let fifo_o = Rx {
       first = fifo.first;
-      deq   = do { credits := credits + 1; fifo.deq };
+      deq   = do { restoreCredits.enq (); fifo.deq };
       notEmpty = fifo.notEmpty;
     }
 
-    let ruleName = "handle_rx_" +++ stringOf name
     let rs =
           rules
-            ruleName: when rxTagEq (valueOf i + 1) ==> do
+            ("handle_rx_" +++ stringOf name): when rxTagEq (valueOf i + 1) ==> do
               fifo.enq (unpackBytes rxBody).fst
               deq
+
+            ("restore_credits_" +++ stringOf name): when True ==> do
+              restoreCredits.deq
+              credits := credits + 1
 
     return (Meta $ Conc fifo_o, rs)
 
@@ -376,10 +384,9 @@ instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
     let credits :: Reg (UInt 8)
         credits = head txCredits
 
-    let ruleName = "handle_tx_" +++ stringOf name
     let rs =
           rules
-            ruleName: when credits > 0 ==> do
+            ("handle_tx_" +++ stringOf name): when credits > 0 ==> do
               credits := credits - 1
               enq (fromInteger $ valueOf i + 1) $ packBytes fifo.first
               fifo.deq
