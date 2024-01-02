@@ -159,7 +159,7 @@ instance (FIFOs fifos rxBytes rxCount txBytes txCount,
       "\tmemset(state, 0, sizeof(" +++ stringOf name +++ "_state));\n" +++
       genCFIFOInitCredits (_ :: fifos) +++
       "}\n\n" +++
-      "size_t encode_" +++ stringOf name +++ "(" +++ stringOf name +++ "_state *state, uint8_t buf[size_rx_" +++ stringOf name +++ "]) {\n" +++
+      "size_t encode_" +++ stringOf name +++ "(" +++ stringOf name +++ "_state *state, uint8_t buf[size_tx_" +++ stringOf name +++ "]) {\n" +++
       "\tuint32_t credits_index = 0;\n" +++
       "\tuint32_t total_credits = 0;\n" +++
       "\t\n" +++
@@ -172,7 +172,7 @@ instance (FIFOs fifos rxBytes rxCount txBytes txCount,
       "\t\n" +++
       "\treturn 0; // Nothing to send\n" +++
       "}\n\n" +++
-      "_Bool decode_" +++ stringOf name +++ "(" +++ stringOf name +++ "_state *state, uint8_t buf[size_tx_" +++ stringOf name +++ "]) {\n" +++
+      "_Bool decode_" +++ stringOf name +++ "(" +++ stringOf name +++ "_state *state, uint8_t buf[size_rx_" +++ stringOf name +++ "]) {\n" +++
       "\tuint32_t credits_index = 0;\n" +++
       genCFIFORestoreCredits (_ :: fifos) +++
       "\t\n" +++
