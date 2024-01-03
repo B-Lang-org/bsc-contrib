@@ -307,7 +307,7 @@ instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
     fifo <- mkSizedFIFOF (valueOf bFIFOSize)
     let credits :: Reg (UInt 8)
         credits = head rxCredits
-    
+
     restoreCredits :: FIFOF ()
     restoreCredits <- mkFIFOF
 
@@ -322,7 +322,7 @@ instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
             ("handle_rx_" +++ stringOf name): when rxTagEq (valueOf i + 1) ==> do
               fifo.enq (unpackBytes rxBody).fst
               deq
-            
+
             ("restore_credits_" +++ stringOf name): when True ==> do
               restoreCredits.deq
               credits := credits + 1
