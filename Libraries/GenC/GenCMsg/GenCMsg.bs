@@ -308,6 +308,8 @@ instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
     let credits :: Reg (UInt 8)
         credits = head rxCredits
 
+    -- TODO: A more efficient approach would be to make credits a CReg.
+    -- See discussion on https://github.com/B-Lang-org/bsc-contrib/pull/22
     restoreCredits :: FIFOF ()
     restoreCredits <- mkFIFOF
 
