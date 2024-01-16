@@ -24,14 +24,14 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Download bsc
-        shell: bash
-        env:
-          TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ".github/workflows/get_latest_bsc.sh ${{ matrix.os }} "
+        uses: B-Lang-org/download-bsc@v1
+        with:
+          os: ${{ matrix.os }}
+          path: ../
 
       - name: Build
         run: |
-          export PATH=$PWD/../bsc/inst/bin:$PATH
+          export PATH=$PWD/../bsc/bin:$PATH
           make
           tar czf inst.tar.gz inst
 
@@ -49,15 +49,16 @@ jobs:
     runs-on: ${{ matrix. os }}
     steps:
       - uses: actions/checkout@v3
+
       - name: Download bsc
-        shell: bash
-        env:
-          TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ".github/workflows/get_latest_bsc.sh ${{ matrix.os }} "
+        uses: B-Lang-org/download-bsc@v1
+        with:
+          os: ${{ matrix.os }}
+          path: ../
 
       - name: Build
         run: |
-          export PATH=$PWD/../bsc/inst/bin:$PATH
+          export PATH=$PWD/../bsc/bin:$PATH
           make
           tar czf inst.tar.gz inst
 
@@ -84,15 +85,18 @@ jobs:
 
       # Can this be cached from the previous job?
       - name: Download bsc
-        shell: bash
-        env:
-          TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ".github/workflows/get_latest_bsc.sh ${{ matrix.os }} "
+        id: download
+        uses: B-Lang-org/download-bsc@v1
+        with:
+          os: ${{ matrix.os }}
+          path: ../
 
-      # This ought to be downloaded at the same version as BSC?
+      # Checkout the testsuite at the same version
       - name: Download testsuite
         run: |
-          git clone https://github.com/B-Lang-org/bsc ../bsc-testsuite
+          git clone -n https://github.com/B-Lang-org/bsc ../bsc-testsuite
+          cd ../bsc-testsuite
+          git checkout ${{ steps.download.outputs.commit }}
       - name: Add contrib tests to testsuite
         run: |
           cp -r testing/bsc.contrib ../bsc-testsuite/testsuite/
@@ -138,7 +142,7 @@ jobs:
 
           cd ../bsc-testsuite/testsuite
 
-          export TEST_RELEASE=$PWD/../../bsc/inst
+          export TEST_RELEASE=$PWD/../../bsc
 
           export BSCCONTRIBDIR=$PWD/../../bsc-contrib/inst
 
@@ -181,15 +185,18 @@ jobs:
 
       # Can this be cached from the previous job?
       - name: Download bsc
-        shell: bash
-        env:
-          TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ".github/workflows/get_latest_bsc.sh ${{ matrix.os }} "
+        id: download
+        uses: B-Lang-org/download-bsc@v1
+        with:
+          os: ${{ matrix.os }}
+          path: ../
 
-      # This ought to be downloaded at the same version as BSC?
+      # Checkout the testsuite at the same version
       - name: Download testsuite
         run: |
-          git clone https://github.com/B-Lang-org/bsc ../bsc-testsuite
+          git clone -n https://github.com/B-Lang-org/bsc ../bsc-testsuite
+          cd ../bsc-testsuite
+          git checkout ${{ steps.download.outputs.commit }}
       - name: Add contrib tests to testsuite
         run: |
           cp -r testing/bsc.contrib ../bsc-testsuite/testsuite/
@@ -225,12 +232,12 @@ jobs:
           trap ./archive_logs.sh EXIT
 
           # Use -O0 for significantly faster C++ compiles (which more
-          # than make up for slower simulations).
+          # than make up for slower simulations)
           export CXXFLAGS="-O0"
 
           cd ../bsc-testsuite/testsuite
 
-          export TEST_RELEASE=$PWD/../../bsc/inst
+          export TEST_RELEASE=$PWD/../../bsc
 
           export BSCCONTRIBDIR=$PWD/../../bsc-contrib/inst
 
