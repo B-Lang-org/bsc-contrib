@@ -451,7 +451,7 @@ AXI4_Master_IFC #(wd_id, wd_addr, wd_data, wd_user)
 // AXI4 dummy slave: never accepts requests, never produces responses
 
 AXI4_Slave_IFC #(wd_id, wd_addr, wd_data, wd_user)
-   dummy_AXI4_Slave_ifc = interface AXI4_Slave_IFC 
+   dummy_AXI4_Slave_ifc = interface AXI4_Slave_IFC
 			     // Wr Addr channel
 			     method Action m_awvalid (Bool            awvalid,
 						      Bit #(wd_id)    awid,

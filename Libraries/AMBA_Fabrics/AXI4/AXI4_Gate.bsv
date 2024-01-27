@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2022 Bluespec, Inc. All Rights Reserved
+// Copyright (c) 2021-2023 Bluespec, Inc. All Rights Reserved
 // Author: Rishiyur S. Nikhil
 
 package AXI4_Gate;
@@ -46,6 +46,8 @@ endinterface
 // ================================================================
 // The Gate module
 
+Integer verbosity = 0;
+
 module mkAXI4_Gate
    #(Bool respond_with_err)    // False: block traffic; True: respond with err
    (AXI4_Gate_IFC #(wd_id_t, wd_addr_t, wd_data_t, wd_user_t));
@@ -82,7 +84,7 @@ module mkAXI4_Gate
       let wrr <- pop_o (xactor_to_S.o_wr_resp);
       xactor_from_M.i_wr_resp.enq (wrr);
    endrule
- 
+
    rule rl_rd_addr (rg_enabled);
       let rda <- pop_o (xactor_from_M.o_rd_addr);
       xactor_to_S.i_rd_addr.enq (rda);
@@ -121,7 +123,7 @@ module mkAXI4_Gate
       $display ("    (there couldn't have been a request)");
       $display ("    %0d: %m", cur_cycle);
    endrule
- 
+
    Reg #(Bit #(9)) rg_rd_burst_len <- mkRegU;
 
    rule rl_rd_addr_disabled (respond_with_err && (! rg_enabled));
@@ -172,9 +174,9 @@ module mkAXI4_Gate
    interface axi4_M = xactor_to_S  .axi_side;
 
    method Action m_enable (Bool enabled);
-      if (enabled && (! rg_enabled))
+      if (enabled && (! rg_enabled) && (verbosity != 0))
 	 $display ("%0d: %m: AXI4 ENABLING", cur_cycle);
-      else if ((! enabled) && rg_enabled)
+      else if ((! enabled) && rg_enabled && (verbosity != 0))
 	 $display ("%0d: %m: AXI4 DISABLING", cur_cycle);
 
       rg_enabled      <= enabled;

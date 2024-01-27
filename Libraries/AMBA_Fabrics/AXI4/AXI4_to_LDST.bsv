@@ -27,7 +27,7 @@ package AXI4_to_LDST;
 
 //   wd_axi_data            width of AXI4 data bus
 //   wd_ldst_data           width of load-store data bus
-//   slice                  NAPOT slice of axi wdata/rdata, of width wd_ldst_data 
+//   slice                  NAPOT slice of axi wdata/rdata, of width wd_ldst_data
 //   slices_per_axi_data    number of wd_ldst_data slices in wd_axi_data
 //   szwindow               NAPOT window of size specified by AWSIZE, containing AWADDR
 

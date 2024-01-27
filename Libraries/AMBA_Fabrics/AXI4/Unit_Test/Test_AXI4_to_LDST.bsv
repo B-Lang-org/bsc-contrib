@@ -55,7 +55,7 @@ endmodule
 
 (* synthesize *)
 module mkTest_AXI4_to_LDST (Empty);
-   
+
    // The DUT
    AXI4_to_LDST_1_IFC dut <- mkAXI4_to_LDST_1;
 

@@ -177,7 +177,7 @@ module mkUnit_Test_Deburster (Empty);
       let wd = fv_mk_wr_data (data, user1);
       master.i_wr_data.enq (wd);
       rg_idle_count <= 0;
-      
+
       if (rg_beat < f_len.first - 1)
 	 rg_beat <= rg_beat + 1;
       else begin

@@ -30,7 +30,7 @@ package AXI4_to_LDST_utils;
 
 //   wd_axi_data            width of AXI4 data bus
 //   wd_ldst_data           width of load-store data bus
-//   slice                  NAPOT slice of axi wdata/rdata, of width wd_ldst_data 
+//   slice                  NAPOT slice of axi wdata/rdata, of width wd_ldst_data
 //   slices_per_axi_data    number of wd_ldst_data slices in wd_axi_data
 //   szwindow               NAPOT window of size specified by AWSIZE, containing AWADDR
 
@@ -55,7 +55,7 @@ function Bit #(wd_addr_t) fn_addr_to_NAPOT (Bit #(wd_addr_t) addr, Bit #(8) wdB)
    let              wd_0_lsbs = countZerosLSB (wdB);
    Bit #(wd_addr_t) mask      = ('1 << wd_0_lsbs);
    return (addr & mask);
-endfunction   
+endfunction
 
 // ================================================================
 // Compute byte lane for addr on a given AXI bus width
@@ -66,7 +66,7 @@ function Bit #(8) fn_addr_to_axi_data_bytelane (Bit #(wd_addr_t) addr,
    Bit #(wd_addr_t) mask      = (1 << wd_0_lsbs) - 1;
    Bit #(wd_addr_t) bytelane  = (addr & mask);
    return bytelane [7:0];
-endfunction   
+endfunction
 
 // ================================================================
 // Max of 3 numbers

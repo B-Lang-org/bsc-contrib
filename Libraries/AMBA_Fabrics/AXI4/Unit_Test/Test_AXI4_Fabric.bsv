@@ -1,25 +1,25 @@
 /*
   Unit test for AXI4_Fabric
- 
+
   This test attempts to recreate traffic patterns that were observed
   to cause data corruption in AWSteria.
- 
+
   The fabric is instantiated with 3 master and 4 slave ports, as in
   AWSteria.  One slave is connected to a DDR model, the rest are
   unconnected and unused.  Two master ports connect to master A and
   master B modules, defined here.  The third master port is
   unconnected and unused.
- 
+
   Master A behaves like the host in AWSteria.  For the tests here, it
   will read 32-bits from a single memory location (not overlapping
   with master B), bitwise invert the value, and write it back to the
   same location.
- 
+
   Master B behaves like uncached access from the processor in
   AWSteria.  Across a 4kiB region of memory, it will perform the
   following, all as 32-bit accesses: (1) write zeros, (2) write
   sequential integers, and (3) read back check the integers.
- 
+
   Various aspects of the behavior of the masters and slave modules may
   be adjusted.  See the struct TestParams.
 

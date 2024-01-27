@@ -292,7 +292,7 @@ module mkAXI4_Deburster (AXI4_Deburster_IFC #(wd_id, wd_addr, wd_data, wd_user))
 	 end
       end
    endrule
- 
+
   // ----------------
    // Rd requests (AR channel)
 

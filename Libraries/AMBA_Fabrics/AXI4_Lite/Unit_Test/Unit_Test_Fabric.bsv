@@ -184,7 +184,7 @@ module mkUnit_Test_Fabric (Empty);
       let wd = fv_mk_wr_data (data);
       master.i_wr_data.enq (wd);
       rg_idle_count <= 0;
-      
+
       $display ("%0d: master.rl_wr_data: ", cur_cycle);
       $display ("    ", fshow (wd));
    endrule

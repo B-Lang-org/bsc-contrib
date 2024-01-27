@@ -41,27 +41,32 @@ AXI4_Lite_Wr_Resp (..),
 AXI4_Lite_Rd_Addr (..),
 AXI4_Lite_Rd_Data (..),
 
-// Higher-level FIFO-like interfaces for the 5 AXI4 channels,
+// Higher-level FIFO-like interfaces for the 5 AXI4 channels.
 AXI4_Lite_Server_IFC (..),
 AXI4_Lite_Client_IFC (..),
 AXI4_Lite_Buffer_IFC (..),
 mkAXI4_Lite_Buffer,
 mkAXI4_Lite_Buffer_2,
 
-// Transactors from RTL-level interfacecs to FIFO-like interfaces.
+// Transactors from RTL-level interfaces to FIFO-like interfaces.
 AXI4_Lite_Master_Xactor_IFC (..),
 mkAXI4_Lite_Master_Xactor,            // Using standard mkGFIFOFs
 mkAXI4_Lite_Master_Xactor_2,          // Using cregs/regs instead of mkGFIFOFs
 
 AXI4_Lite_Slave_Xactor_IFC (..),
 mkAXI4_Lite_Slave_Xactor,            // Using standard mkGFIFOFs
-mkAXI4_Lite_Slave_Xactor_2;          // Using cregs/regs instead of mkGFIFOFs
+mkAXI4_Lite_Slave_Xactor_2,          // Using cregs/regs instead of mkGFIFOFs
+
+// Utility function.
+
+zextender;
 
 // ================================================================
 // BSV library imports
 
 import FIFOF       :: *;
 import Connectable :: *;
+import BUtils      :: *;
 
 // ----------------
 // BSV additional libs
@@ -264,7 +269,7 @@ AXI4_Lite_Master_IFC #(wd_addr, wd_data, wd_user)
 // AXI4-Lite dummy slave: never accepts requests, never produces responses
 
 AXI4_Lite_Slave_IFC #(wd_addr, wd_data, wd_user)
-   dummy_AXI4_Lite_Slave_ifc = interface AXI4_Lite_Slave_IFC 
+   dummy_AXI4_Lite_Slave_ifc = interface AXI4_Lite_Slave_IFC
 				  // Wr Addr channel
 				  method Action m_awvalid (Bool           awvalid,
 							   Bit #(wd_addr) awaddr,
@@ -1014,6 +1019,49 @@ module mkAXI4_Lite_Slave_Xactor_2 (AXI4_Lite_Slave_Xactor_IFC #(wd_addr, wd_data
    interface o_rd_addr = fn_crg_and_rg_to_FIFOF_O (crg_rd_addr_full [port_deq], rg_rd_addr);
    interface i_rd_data = fn_crg_and_rg_to_FIFOF_I (crg_rd_data_full [port_enq], rg_rd_data);
 endmodule: mkAXI4_Lite_Slave_Xactor_2
+
+// ================================================================
+
+function AXI4_Lite_Master_IFC #(aa,d,uu) zextender (AXI4_Lite_Master_IFC #(a,d,u) ifc);
+   return interface AXI4_Lite_Master_IFC;
+	     method m_awvalid = ifc.m_awvalid;
+	     method m_awaddr = zExtend(ifc.m_awaddr);
+	     method m_awprot = ifc.m_awprot;
+	     method m_awuser = zExtend(ifc.m_awuser);
+	     method m_awready = ifc.m_awready;
+
+	     method m_wvalid = ifc.m_wvalid;
+	     method m_wdata = ifc.m_wdata;
+	     method m_wstrb = ifc.m_wstrb;
+	     method m_wready = ifc.m_wready;
+
+	     method Action m_bvalid (bvalid,    // in
+				     bresp,     // in
+				     buser);
+		ifc.m_bvalid(bvalid,
+			     bresp,
+			     zExtend(buser));
+	     endmethod
+	     method m_bready = ifc.m_bready;
+
+	     method m_arvalid = ifc.m_arvalid;
+	     method m_araddr = zExtend(ifc.m_araddr);
+	     method m_arprot = ifc.m_arprot;
+	     method m_aruser = zExtend(ifc.m_aruser);
+	     method m_arready = ifc.m_arready;
+
+	     method Action m_rvalid (rvalid,    // in
+				     rdata,     // in
+				     rresp,     // in
+				     ruser);
+		ifc.m_rvalid(rvalid,
+			     rdata,
+			     rresp,
+			     zExtend(ruser));
+	     endmethod
+	     method m_rready = ifc.m_rready;
+	  endinterface ;
+endfunction
 
 // ================================================================
 

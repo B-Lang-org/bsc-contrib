@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2019 Bluespec, Inc. All Rights Reserved
+// Copyright (c) 2013-2023 Bluespec, Inc. All Rights Reserved
 
 package AXI4_Lite_Fabric;
 
@@ -88,7 +88,9 @@ module mkAXI4_Lite_Fabric #(function Tuple2 #(Bool, Bit #(TLog #(num_slaves)))
    // BEHAVIOR
 
    rule rl_reset (rg_reset);
-      $display ("%0d: AXI4_Lite_Fabric.rl_reset", cur_cycle);
+      if (cfg_verbosity != 0)
+	 $display ("%0d: AXI4_Lite_Fabric.rl_reset", cur_cycle);
+
       for (Integer mi = 0; mi < valueOf (num_masters); mi = mi + 1) begin
 	 xactors_from_masters [mi].reset;
 

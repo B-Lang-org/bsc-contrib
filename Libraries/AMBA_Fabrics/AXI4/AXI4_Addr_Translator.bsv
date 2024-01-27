@@ -107,7 +107,7 @@ function AXI4_Slave_IFC  #(wd_id, wd_addr, wd_data, wd_user)
       return (add_not_sub ? addr + addr_delta : addr - addr_delta);
    endfunction
 
-   return interface AXI4_Slave_IFC 
+   return interface AXI4_Slave_IFC
 	     // Wr Addr channel
 	     method Action m_awvalid (Bool            awvalid,
 				      Bit #(wd_id)    awid,

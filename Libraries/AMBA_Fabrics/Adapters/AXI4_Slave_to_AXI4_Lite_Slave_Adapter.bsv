@@ -318,7 +318,7 @@ module mkAXI4_Slave_to_AXI4_Lite_Slave_Adapter
 	 end
       end
    endrule
- 
+
    // ----------------------------------------------------------------
    // Rd requests (AR channel)
    // AXI4 Burst-read requests must be expanded into multiple AXI4L read requests.

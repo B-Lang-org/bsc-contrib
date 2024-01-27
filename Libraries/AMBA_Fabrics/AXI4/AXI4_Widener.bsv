@@ -147,7 +147,7 @@ module mkAXI4_Widener (AXI4_Widener_IFC #(wd_id_t, wd_addr_t, m_wd_data_t, s_wd_
 	 $display ("    m_wrr: ", fshow (m_wrr));
       end
    endrule
- 
+
    // ----------------
    // Rd requests (AR channel); just pass it through, as-is
    // but remember the addr in order to align the data response.
