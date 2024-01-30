@@ -84,13 +84,13 @@ instance (FIFOs fifos rxBytes rxCount txBytes txCount,
     rxMsgs :: FIFOF (Vector rxTotalBytes (Bit 8))
     rxMsgs <- mkFIFOF
 
-    rxCredits :: Vector rxCount (Reg (UInt 8))
+    rxCredits :: Vector rxCount Counter
     rxCredits <- mkRxCredits (_ :: fifos)
 
     txMsgs :: FIFOF (SizedVector txTotalBytes (Bit 8))
     txMsgs <- mkFIFOF
 
-    txCredits :: Vector txCount (Reg (UInt 8))
+    txCredits :: Vector txCount Counter
     txCredits <- mkTxCredits (_ :: fifos)
 
     let rxTagEq :: Integer -> Bool
@@ -102,13 +102,13 @@ instance (FIFOs fifos rxBytes rxCount txBytes txCount,
         rxBody = toList ((takeTail rxMsgs.first) :: Vector rxBytes (Bit 8))
     let deq :: Action
         deq = do
-          zipWithM_ (\ cr c -> writeReg cr (cr + Prelude.unpack c)) txCredits (take rxMsgs.first)
+          zipWithM_ (\ cr c -> cr.inc $ Prelude.unpack c) txCredits (take rxMsgs.first)
           rxMsgs.deq
     let enq :: Integer -> ByteList -> Action
         enq txTag txBody = do
-          mapM_ (flip writeReg 0) rxCredits
+          mapM_ (\ cr -> cr.dec cr.value) rxCredits
           let packedCredits :: Vector rxCount (Bit 8)
-              packedCredits = map (\ c -> Prelude.pack (c :: Reg (UInt 8))) rxCredits
+              packedCredits = map (\ cr -> Prelude.pack cr.value) rxCredits
           let packedTag :: Vector tagBytes (Bit 8)
               packedTag = toByteVector $ fromInteger txTag
           let packedBody :: Vector txBytes (Bit 8)
@@ -120,7 +120,7 @@ instance (FIFOs fifos rxBytes rxCount txBytes txCount,
 
     let handleCreditsOnly =
           rules
-             "handle_rx_credits_only": when any (\ c -> readReg c > 0) rxCredits ==> enq 0 List.nil
+             "handle_rx_credits_only": when any (\ cr -> cr.isGreaterThan 0) rxCredits ==> enq 0 List.nil
              "handle_tx_credits_only": when rxTagEq 0 ==> deq
     addRules $ rs <+ handleCreditsOnly
 
@@ -182,11 +182,35 @@ instance (FIFOs fifos rxBytes rxCount txBytes txCount,
       genCFIFOImplDcls (_ :: fifos) (stringOf name) +++
       "\n"
 
+interface Counter =
+  value :: UInt 8
+  inc :: UInt 8 -> Action
+  dec :: UInt 8 -> Action
+
+  isLessThan :: Integer -> Bool
+  isGreaterThan :: Integer -> Bool
+
+mkCounter :: Integer -> Module Counter
+mkCounter init = module
+  value :: Reg (UInt 8) <- mkReg $ fromInteger init
+  inc :: Wire (UInt 8) <- mkDWire 0
+  dec :: Wire (UInt 8) <- mkDWire 0
+
+  rules
+    "update": when True ==> value := value + inc - dec
+  
+  interface
+    value = value
+    inc = inc._write
+    dec x = _when_ (x <= value) $ dec := x
+    isLessThan n = value < fromInteger n
+    isGreaterThan n = value > fromInteger n
+
 class FIFOs fifos rxBytes rxCount txBytes txCount | fifos -> rxBytes rxCount txBytes txCount where
-  mkRxCredits :: fifos -> Module (Vector rxCount (Reg (UInt 8)))
-  mkTxCredits :: fifos -> Module (Vector txCount (Reg (UInt 8)))
-  mkFIFOs :: Vector rxCount (Reg (UInt 8)) -> (Integer -> Bool) -> ByteList -> Action ->
-             Vector txCount (Reg (UInt 8)) -> (Integer -> ByteList -> Action) ->
+  mkRxCredits :: fifos -> Module (Vector rxCount Counter)
+  mkTxCredits :: fifos -> Module (Vector txCount Counter)
+  mkFIFOs :: Vector rxCount Counter -> (Integer -> Bool) -> ByteList -> Action ->
+             Vector txCount Counter -> (Integer -> ByteList -> Action) ->
              Module (fifos, Rules)
 
   genCMsgTypeHeaderDcls :: fifos -> State (List String) String
@@ -219,10 +243,10 @@ instance (Generic a r, FIFOs' r brx nrx btx ntx) => FIFOs a brx nrx btx ntx wher
   genCFIFOImplDcls _ = genCFIFOImplDcls' (_ :: r)
 
 class FIFOs' fifos rxBytes rxCount txBytes txCount | fifos -> rxBytes rxCount txBytes txCount where
-  mkRxCredits' :: fifos -> Module (Vector rxCount (Reg (UInt 8)))
-  mkTxCredits' :: fifos -> Module (Vector txCount (Reg (UInt 8)))
-  mkFIFOs' :: Vector rxCount (Reg (UInt 8)) -> (Integer -> Bool) -> ByteList -> Action ->
-              Vector txCount (Reg (UInt 8)) -> (Integer -> ByteList -> Action) ->
+  mkRxCredits' :: fifos -> Module (Vector rxCount Counter)
+  mkTxCredits' :: fifos -> Module (Vector txCount Counter)
+  mkFIFOs' :: Vector rxCount Counter -> (Integer -> Bool) -> ByteList -> Action ->
+              Vector txCount Counter -> (Integer -> ByteList -> Action) ->
               Module (fifos, Rules)
 
   genCMsgTypeHeaderDcls' :: fifos -> State (List String) String
@@ -300,22 +324,17 @@ instance FIFOs' () 0 0 0 0 where
 -- B receiving, C sending
 instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
          FIFOs' (Meta (MetaField name i) (Conc (Rx bFIFOSize cFIFOSize a))) gcrBytes 1 0 0 where
-  mkRxCredits' _ = liftM replicate $ mkReg $ fromInteger $ valueOf bFIFOSize
+  mkRxCredits' _ = liftM replicate $ mkCounter $ valueOf bFIFOSize
   mkTxCredits' _ = return nil
   mkFIFOs' rxCredits rxTagEq rxBody deq _ _ = do
     fifo :: FIFOF a
     fifo <- mkSizedFIFOF (valueOf bFIFOSize)
-    let credits :: Reg (UInt 8)
+    let credits :: Counter
         credits = head rxCredits
-
-    -- TODO: A more efficient approach would be to make credits a CReg.
-    -- See discussion on https://github.com/B-Lang-org/bsc-contrib/pull/22
-    restoreCredits :: FIFOF ()
-    restoreCredits <- mkFIFOF
 
     let fifo_o = Rx {
       first = fifo.first;
-      deq   = do { restoreCredits.enq (); fifo.deq };
+      deq   = do { credits.inc 1; fifo.deq };
       notEmpty = fifo.notEmpty;
     }
 
@@ -324,10 +343,6 @@ instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
             ("handle_rx_" +++ stringOf name): when rxTagEq (valueOf i + 1) ==> do
               fifo.enq (unpackBytes rxBody).fst
               deq
-
-            ("restore_credits_" +++ stringOf name): when True ==> do
-              restoreCredits.deq
-              credits := credits + 1
 
     return (Meta $ Conc fifo_o, rs)
 
@@ -377,17 +392,17 @@ instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
 instance (GenCRepr a gcrBytes, GenAllCDecls a, Bits a bBits) =>
          FIFOs' (Meta (MetaField name i) (Conc (Tx cFIFOSize bFIFOSize a))) 0 0 gcrBytes 1 where
   mkRxCredits' _ = return nil
-  mkTxCredits' _ = liftM replicate $ mkReg 0
+  mkTxCredits' _ = liftM replicate $ mkCounter 0
   mkFIFOs' _ _ _ _ txCredits enq = do
     fifo :: FIFOF a
     fifo <- mkSizedFIFOF (valueOf bFIFOSize)
-    let credits :: Reg (UInt 8)
+    let credits :: Counter
         credits = head txCredits
 
     let rs =
           rules
-            ("handle_tx_" +++ stringOf name): when credits > 0 ==> do
-              credits := credits - 1
+            ("handle_tx_" +++ stringOf name): when True ==> do
+              credits.dec 1
               enq (fromInteger $ valueOf i + 1) $ packBytes fifo.first
               fifo.deq
 
