@@ -62,7 +62,7 @@ class Client:
         threading.Thread(target=self._run, daemon=True).start()
 
     def notify(self):
-        """Method to be called when a message is recieved"""
+        """Method to be called when a message is received"""
         pass
 
     def put(self, channel, data):
