@@ -248,7 +248,7 @@ instance (GenCStructBody bodyRepr n, TypeNames ta) =>
   genCPackDecl' p = Just (
     "void pack_" +++ typeName' p +++ "(" +++ typeName' p +++ " val, uint8_t **buf);",
     "void pack_" +++ typeName' p +++ "(" +++ typeName' p +++ " val, uint8_t **buf) {\n" +++
-    genCPackStructBody (_ :: bodyRepr) False "" +++
+    genCPackStructBody (_ :: bodyRepr) False "" +++ "\n" +++
     "}")
 
   unpackBytesS' = liftM Meta $ liftM Meta unpackStructBody
@@ -259,7 +259,7 @@ instance (GenCStructBody bodyRepr n, TypeNames ta) =>
     typeName' p +++ " unpack_" +++ typeName' p +++ "(uint8_t **buf);",
     typeName' p +++ " unpack_" +++ typeName' p +++ "(uint8_t **buf) {\n" +++
     "\t" +++ typeName' p +++ " val;\n" +++
-    genCUnpackStructBody (_ :: bodyRepr) False "" +++
+    genCUnpackStructBody (_ :: bodyRepr) False "" +++ "\n" +++
     "\treturn val;\n" +++
     "}")
 
@@ -281,7 +281,7 @@ instance (GenCStructBody bodyRepr n, TypeNames ta) =>
   genCPackDecl' p = Just (
     "void pack_" +++ typeName' p +++ "(" +++ typeName' p +++ " val, uint8_t **buf);",
     "void pack_" +++ typeName' p +++ "(" +++ typeName' p +++ " val, uint8_t **buf) {\n" +++
-    genCPackStructBody (_ :: bodyRepr) False "" +++
+    genCPackStructBody (_ :: bodyRepr) False "" +++ "\n" +++
     "}")
 
   unpackBytesS' = liftM Meta $ liftM Meta unpackStructBody
@@ -292,7 +292,7 @@ instance (GenCStructBody bodyRepr n, TypeNames ta) =>
     typeName' p +++ " unpack_" +++ typeName' p +++ "(uint8_t **buf);",
     typeName' p +++ " unpack_" +++ typeName' p +++ "(uint8_t **buf) {\n" +++
     "\t" +++ typeName' p +++ " val;\n" +++
-    genCUnpackStructBody (_ :: bodyRepr) False "" +++
+    genCUnpackStructBody (_ :: bodyRepr) False "" +++ "\n" +++
     "\treturn val;\n" +++
     "}")
 
@@ -501,7 +501,7 @@ instance (GenCStructBody bodyRepr n, Mul tagBytes 8 tagBits) =>
   genCPackUnionBody _ _ typeName =
     "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
     genCPackStructBody (_ :: bodyRepr) True (".contents." +++ stringOf ctorName) +++ "\n" +++
-    "\t}"
+    "\t} else "
 
   unpackUnionBody _ = do
     x <- get
@@ -510,7 +510,7 @@ instance (GenCStructBody bodyRepr n, Mul tagBytes 8 tagBits) =>
   genCUnpackUnionBody _ _ typeName =
     "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
     genCUnpackStructBody (_ :: bodyRepr) True (".contents." +++ stringOf ctorName) +++ "\n" +++
-    "\t}"
+    "\t} else "
 
 -- Instance for multiple anonymous fields, same as above
 instance (GenCStructBody bodyRepr n, Mul tagBytes 8 tagBits) =>
@@ -527,7 +527,7 @@ instance (GenCStructBody bodyRepr n, Mul tagBytes 8 tagBits) =>
   genCPackUnionBody _ _ typeName =
     "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
     genCPackStructBody (_ :: bodyRepr) True (".contents." +++ stringOf ctorName) +++ "\n" +++
-    "\t}"
+    "\t} else "
 
   unpackUnionBody _ = do
     x <- get
@@ -536,7 +536,7 @@ instance (GenCStructBody bodyRepr n, Mul tagBytes 8 tagBits) =>
   genCUnpackUnionBody _ _ typeName =
     "if (val.tag == " +++ typeName +++ "_" +++ stringOf ctorName +++ ") {\n" +++
     genCUnpackStructBody (_ :: bodyRepr) True (".contents." +++ stringOf ctorName) +++ "\n" +++
-    "\t}"
+    "\t} else "
 
 -- Helper type class to handle product types.
 -- a = representation type of contents
@@ -557,11 +557,11 @@ instance (GenCStructBody a n1, GenCStructBody b n2, Add n1 n2 n) =>
 
   packStructBody (x, y) = packStructBody x `append` packStructBody y
   genCPackStructBody _ nested sel =
-    genCPackStructBody (_ :: a) nested sel +++ genCPackStructBody (_ :: b) nested sel
+    genCPackStructBody (_ :: a) nested sel +++ "\n" +++ genCPackStructBody (_ :: b) nested sel
 
   unpackStructBody = liftM2 tuple2 unpackStructBody unpackStructBody
   genCUnpackStructBody _ nested sel =
-    genCUnpackStructBody (_ :: a) nested sel +++ genCUnpackStructBody (_ :: b) nested sel
+    genCUnpackStructBody (_ :: a) nested sel +++ "\n" +++ genCUnpackStructBody (_ :: b) nested sel
 
 -- empty case
 instance GenCStructBody () 0 where
@@ -580,12 +580,12 @@ instance (GenCRepr a n) => GenCStructBody (Meta (MetaField name idx) (Conc a)) n
   packStructBody (Meta (Conc x)) = packBytes x
   genCPackStructBody _ nested sel =
     (if nested then "\t" else "") +++
-    "\t" +++ genCPack (_ :: a) ("val" +++ sel +++ "." +++ stringOf name) "buf" +++ "\n"
+    "\t" +++ genCPack (_ :: a) ("val" +++ sel +++ "." +++ stringOf name) "buf"
 
   unpackStructBody = liftM Meta $ liftM Conc unpackBytesS
   genCUnpackStructBody _ nested sel =
     (if nested then "\t" else "") +++
-    "\t" +++ genCUnpack (_ :: a) ("val" +++ sel +++ "." +++ stringOf name) "buf" +++ "\n"
+    "\t" +++ genCUnpack (_ :: a) ("val" +++ sel +++ "." +++ stringOf name) "buf"
 
 
 
