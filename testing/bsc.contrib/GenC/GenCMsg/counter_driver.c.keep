@@ -47,9 +47,11 @@ void runHostAction() {
   }
 
   // Halt after the expected number of responses have been received
-  if (responses >= NUM_ITERS * 10) {
+  static bool sent_halt = false;
+  if (responses >= NUM_ITERS * 10 && !sent_halt) {
     printf("Enqueued halt\n");
     enqueue_CounterMsgs_commands(&state, (Command){Command_Halt});
+    sent_halt = true;
   }
 }
 

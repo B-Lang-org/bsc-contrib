@@ -12,71 +12,73 @@ Sending command Num {id=0x0008; val=     8}
 Sending command Num {id=0x0009; val=     9}
 Handling command Num {id=0x0002; val=     2}
 Got sum     0      0
-Got sum     1      1
-Got product     0           0
 Handling command Num {id=0x0003; val=     3}
 Sending command Reset {id=0x000a; newSum=    10; newProduct=        100}
+Got sum     1      1
 Sending command Num {id=0x000b; val=    11}
+Got product     0           0
+Got product     1           0
 Handling command Num {id=0x0004; val=     4}
 Got sum     2      3
-Got product     1           0
-Got sum     3      6
-Got product     2           0
 Handling command Reset {id=0x0005; newSum=     5; newProduct=         50}
 Sending command Num {id=0x000c; val=    12}
+Got sum     3      6
 Sending command Num {id=0x000d; val=    13}
-Got sum     4     10
-Handling command Num {id=0x0006; val=     6}
+Got product     2           0
 Got product     3           0
-Got sum     5      5
-Got product     4           0
+Handling command Num {id=0x0006; val=     6}
+Got sum     4     10
 Handling command Num {id=0x0007; val=     7}
 Sending command Num {id=0x000e; val=    14}
+Got sum     5      5
 Sending command Reset {id=0x000f; newSum=    15; newProduct=        150}
-Got sum     6     11
-Handling command Num {id=0x0008; val=     8}
+Got product     4           0
 Got product     5          50
-Got sum     7     18
-Got product     6         300
+Handling command Num {id=0x0008; val=     8}
+Got sum     6     11
 Handling command Num {id=0x0009; val=     9}
 Sending command Num {id=0x0010; val=    16}
+Got sum     7     18
 Sending command Num {id=0x0011; val=    17}
-Got sum     8     26
-Handling command Reset {id=0x000a; newSum=    10; newProduct=        100}
+Got product     6         300
 Got product     7        2100
-Got sum     9     35
-Got product     8       16800
+Handling command Reset {id=0x000a; newSum=    10; newProduct=        100}
+Got sum     8     26
 Handling command Num {id=0x000b; val=    11}
 Sending command Num {id=0x0012; val=    18}
+Got sum     9     35
 Sending command Num {id=0x0013; val=    19}
-Got sum    10     10
-Handling command Num {id=0x000c; val=    12}
+Got product     8       16800
 Got product     9      151200
-Got sum    11     21
-Got product    10         100
+Handling command Num {id=0x000c; val=    12}
+Got sum    10     10
 Handling command Num {id=0x000d; val=    13}
 Sending command Reset {id=0x0014; newSum=    20; newProduct=        200}
-Got sum    12     33
-Handling command Num {id=0x000e; val=    14}
+Got sum    11     21
+Got product    10         100
 Got product    11        1100
+Handling command Num {id=0x000e; val=    14}
+Got sum    12     33
+Handling command Reset {id=0x000f; newSum=    15; newProduct=        150}
 Got sum    13     46
 Got product    12       13200
-Handling command Reset {id=0x000f; newSum=    15; newProduct=        150}
-Got sum    14     60
 Got product    13      171600
 Handling command Num {id=0x0010; val=    16}
+Got sum    14     60
+Handling command Num {id=0x0011; val=    17}
 Got sum    15     15
 Got product    14     2402400
-Handling command Num {id=0x0011; val=    17}
-Got sum    16     31
 Got product    15         150
 Handling command Num {id=0x0012; val=    18}
+Got sum    16     31
+Handling command Num {id=0x0013; val=    19}
 Got sum    17     48
 Got product    16        2400
-Handling command Num {id=0x0013; val=    19}
-Got sum    18     66
 Got product    17       40800
 Handling command Reset {id=0x0014; newSum=    20; newProduct=        200}
+Got sum    18     66
 Got sum    19     85
 Got product    18      734400
+Got product    19    13953600
 Got sum    20     20
+Got product    20         200
