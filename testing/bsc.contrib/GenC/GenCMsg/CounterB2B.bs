@@ -72,6 +72,9 @@ mkCounterController = module
   i :: Reg (Int 16)
   i <- mkReg 0
 
+  sumsDone :: Reg Bool <- mkReg False
+  productsDone :: Reg Bool <- mkReg False
+
   rules
     "send_command": when i <= 20 ==> do
       let c = if i % 5 == 0
@@ -85,12 +88,15 @@ mkCounterController = module
       let res = msgs.sums.first
       msgs.sums.deq
       $display "Got sum " res.id " " res.val
-      if res.id >= 20 then $finish else noAction
+      if res.id >= 20 then sumsDone := True else noAction
 
     "handle_product": when True ==> do
       let res = msgs.products.first
       msgs.products.deq
       $display "Got product " res.id " " res.val
+      if res.id >= 20 then productsDone := True else noAction
+
+    "finish": when sumsDone && productsDone ==> $finish
 
   interface
     putMsg = msgMgr.rxMsg.put

@@ -120,9 +120,9 @@ instance (FIFOs fifos rxBytes rxCount txBytes txCount,
 
     let handleCreditsOnly =
           rules
-             "handle_rx_credits_only": when any (\ cr -> cr.isGreaterThan 0) rxCredits ==> enq 0 List.nil
-             "handle_tx_credits_only": when rxTagEq 0 ==> deq
-    addRules $ rs <+ handleCreditsOnly
+             "handle_tx_credits_only": when any (\ cr -> cr.isGreaterThan 0) rxCredits ==> enq 0 List.nil
+             "handle_rx_credits_only": when rxTagEq 0 ==> deq
+    addRules $ rs `rJoinDescendingUrgency` handleCreditsOnly
 
     interface
       fifos = fifos
@@ -198,7 +198,7 @@ mkCounter init = module
 
   rules
     "update": when True ==> value := value + inc - dec
-  
+
   interface
     value = value
     inc = inc._write
@@ -292,7 +292,7 @@ instance (FIFOs' a brx1 nrx1 btx1 ntx1, FIFOs' b brx2 nrx2 btx2 ntx2,
     (fifos2, rs2) <- mkFIFOs'
       (takeTail rxCredits) rxTagEq rxBody deq
       (takeTail txCredits) (\ txTag txBody -> enq txTag txBody)
-    return ((fifos1, fifos2), rs1 <+ rs2)
+    return ((fifos1, fifos2), rs1 `rJoinDescendingUrgency` rs2)
 
   genCMsgTypeHeaderDcls' _ = liftM2 strConcat (genCMsgTypeHeaderDcls' (_ :: a)) (genCMsgTypeHeaderDcls' (_ :: b))
   genCMsgTypeImplDcls' _ = liftM2 strConcat (genCMsgTypeImplDcls' (_ :: a)) (genCMsgTypeImplDcls' (_ :: b))
