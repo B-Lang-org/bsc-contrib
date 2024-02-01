@@ -197,6 +197,8 @@ mkCounter init = module
   dec :: Wire (UInt 8) <- mkDWire 0
 
   rules
+    {-# ASSERT fire when enabled #-}
+    {-# ASSERT no implicit conditions #-}
     "update": when True ==> value := value + inc - dec
 
   interface
