@@ -297,7 +297,7 @@ instance (GenCStructBody bodyRepr n, TypeNames ta) =>
     "}")
 
 -- Multi-constructor case, generate a tagged union
-instance (GenCUnionBody tagBytes bodyRepr 0 bodyBytes, TypeNames ta,
+instance (GenCUnionBody tagBytes bodyRepr maxCIdx bodyBytes, TypeNames ta,
           GenCRepr' (Meta (MetaData name pkg ta numCtors) bodyRepr) n1, -- TODO: Why is this context needed?
           Log numCtors tagBits, Div tagBits 8 tagBytes, Add tagBytes bodyBytes n) =>
          GenCRepr' (Meta (MetaData name pkg ta numCtors) bodyRepr) n where
@@ -400,7 +400,7 @@ instance TypeNames () where
 -- Helper type class to handle sum types.
 -- nt = number of tag bytes
 -- a = representation type of contents
--- i = constructor index
+-- i = max constructor index
 -- n = max number of bytes needed to pack any summand
 -- Code generation methods require proxy values for nt and a.
 class GenCUnionBody nt a i n | nt a -> i n where
@@ -418,7 +418,7 @@ class GenCUnionBody nt a i n | nt a -> i n where
 instance (GenCUnionBody tagBytes a i1 n1, GenCUnionBody tagBytes b i2 n2,
           Max n1 n2 n,
           Mul tagBytes 8 tagBits) =>
-         GenCUnionBody tagBytes (Either a b) i1 n where
+         GenCUnionBody tagBytes (Either a b) i2 n where
   genCEnumBody _ _ typeName =
     genCEnumBody (_ :: Bit tagBytes) (_ :: a) typeName +++ ", " +++
     genCEnumBody (_ :: Bit tagBytes) (_ :: b) typeName
@@ -437,7 +437,7 @@ instance (GenCUnionBody tagBytes a i1 n1, GenCUnionBody tagBytes b i2 n2,
 
   unpackUnionBody _ = do
     x <- get
-    if fromByteList (take (valueOf tagBytes) x) == ((fromInteger (valueOf i1)) :: Bit tagBits)
+    if fromByteList (take (valueOf tagBytes) x) <= ((fromInteger (valueOf i1)) :: Bit tagBits)
     then liftM Left $ unpackUnionBody (_ :: Bit tagBytes)
     else liftM Right $ unpackUnionBody (_ :: Bit tagBytes)
   genCUnpackUnionBody _ _ typeName =

@@ -1,0 +1,161 @@
+package chess;
+
+
+localparam MAX_SCORE = 9'd500;
+localparam MAX_WEIGHT = 3'd4;
+localparam MAX_DEPTH = 5'd16;
+localparam COLOR_TAG_WIDTH = 1'd1;
+localparam NUM_COLOR = 2'd2;
+typedef enum logic [0:0] {
+  COLOR_WHITE = 1'd0,
+  COLOR_BLACK = 1'd1
+} color_tag_t;
+
+// Color
+typedef color_tag_t color_t;
+
+localparam PIECE_KIND_TAG_WIDTH = 2'd3;
+localparam NUM_PIECE_KIND = 3'd6;
+typedef enum logic [2:0] {
+  PIECE_KIND_PAWN = 3'd0,
+  PIECE_KIND_KNIGHT = 3'd1,
+  PIECE_KIND_BISHOP = 3'd2,
+  PIECE_KIND_ROOK = 3'd3,
+  PIECE_KIND_QUEEN = 3'd4,
+  PIECE_KIND_KING = 3'd5
+} piece_kind_tag_t;
+
+// PieceKind
+typedef piece_kind_tag_t piece_kind_t;
+
+// Piece
+typedef struct packed {
+  color_t color;
+  piece_kind_t kind;
+} piece_t;
+
+// Maybe Piece
+typedef struct packed {
+  logic has_value;
+  piece_t value;
+} option_piece_t;
+
+// PlayerHistory
+typedef struct packed {
+  logic has_pawn_moved2;
+  logic [2:0] pawn_moved2;
+  logic king_moved;
+  logic k_rook_moved;
+  logic q_rook_moved;
+  logic castled;
+} player_history_t;
+
+// State
+typedef struct packed {
+  color_t turn;
+  option_piece_t [7:0][7:0] board;
+  player_history_t white_hist;
+  player_history_t black_hist;
+  logic [5:0] last_progress_move;
+} state_t;
+
+// Int 9
+typedef logic signed [8:0] int9_t;
+
+// Config (UInt 2)
+typedef struct packed {
+  logic [1:0] material_value;
+  logic [1:0] center_control_value;
+  logic [1:0] extended_center_control_value;
+  logic [1:0] castle_value;
+  logic [1:0] pawn_structure_value;
+} config_uint2_t;
+
+// SearchQuery (Config (UInt 2)) 500 16
+typedef struct packed {
+  logic [7:0] rid;
+  state_t state;
+  logic [3:0] depth;
+  logic get_moves;
+  logic has_alpha;
+  int9_t alpha;
+  logic has_beta;
+  int9_t beta;
+  config_uint2_t conf;
+} search_query_config_uint2_500_16_t;
+
+localparam OUTCOME_TAG_WIDTH = 2'd2;
+localparam NUM_OUTCOME = 3'd4;
+typedef enum logic [1:0] {
+  OUTCOME_NO_OUTCOME = 2'd0,
+  OUTCOME_CHECK = 2'd1,
+  OUTCOME_CHECK_MATE = 2'd2,
+  OUTCOME_DRAW = 2'd3
+} outcome_tag_t;
+
+// Outcome
+typedef outcome_tag_t outcome_t;
+
+localparam MOVE_TAG_WIDTH = 2'd2;
+localparam NUM_MOVE = 3'd4;
+typedef enum logic [1:0] {
+  MOVE_MOVE = 2'd0,
+  MOVE_EN_PASSANT = 2'd1,
+  MOVE_PROMOTE = 2'd2,
+  MOVE_CASTLE = 2'd3
+} move_tag_t;
+
+// Position
+typedef struct packed {
+  logic [2:0] rank;
+  logic [2:0] file;
+} position_t;
+
+typedef struct packed {
+  logic [2:0] pad;
+  position_t from;
+  position_t to;
+} move_move_t;
+
+typedef struct packed {
+  logic [2:0] pad;
+  position_t from;
+  position_t to;
+} move_en_passant_t;
+
+typedef struct packed {
+  piece_kind_t kind;
+  position_t from;
+  position_t to;
+} move_promote_t;
+
+typedef struct packed {
+  logic [13:0] pad;
+  logic king_side;
+} move_castle_t;
+
+typedef union packed {
+  move_move_t move;
+  move_en_passant_t en_passant;
+  move_promote_t promote;
+  move_castle_t castle;
+} move_content_t;
+
+// Move
+typedef struct packed {
+  move_tag_t tag;
+  move_content_t content;
+} move_t;
+
+// SearchResult 500 16
+typedef struct packed {
+  logic [7:0] rid;
+  outcome_t outcome;
+  logic has_best_move;
+  move_t best_move;
+  logic forced_outcome;
+  int9_t score;
+  logic [3:0] depth;
+} search_result_500_16_t;
+
+endpackage
