@@ -106,7 +106,7 @@ instance (FIFOs fifos rxBytes rxCount txBytes txCount,
           rxMsgs.deq
     let enq :: Integer -> ByteList -> Action
         enq txTag txBody = do
-          mapM_ (\ cr -> cr.dec cr.value) rxCredits
+          mapM_ (.zero) rxCredits
           let packedCredits :: Vector rxCount (Bit 8)
               packedCredits = map (\ cr -> Prelude.pack cr.value) rxCredits
           let packedTag :: Vector tagBytes (Bit 8)
@@ -120,7 +120,7 @@ instance (FIFOs fifos rxBytes rxCount txBytes txCount,
 
     let handleCreditsOnly =
           rules
-             "handle_tx_credits_only": when any (\ cr -> cr.isGreaterThan 0) rxCredits ==> enq 0 List.nil
+             "handle_tx_credits_only": when any (\ cr -> cr.value > 0) rxCredits ==> enq 0 List.nil
              "handle_rx_credits_only": when rxTagEq 0 ==> deq
     addRules $ rs `rJoinDescendingUrgency` handleCreditsOnly
 
@@ -186,27 +186,19 @@ interface Counter =
   value :: UInt 8
   inc :: UInt 8 -> Action
   dec :: UInt 8 -> Action
-
-  isLessThan :: Integer -> Bool
-  isGreaterThan :: Integer -> Bool
+  zero :: Action
 
 mkCounter :: Integer -> Module Counter
 mkCounter init = module
-  value :: Reg (UInt 8) <- mkReg $ fromInteger init
-  inc :: Wire (UInt 8) <- mkDWire 0
-  dec :: Wire (UInt 8) <- mkDWire 0
-
-  rules
-    {-# ASSERT fire when enabled #-}
-    {-# ASSERT no implicit conditions #-}
-    "update": when True ==> value := value + inc - dec
+  value :: Vector 2 (Reg (UInt 8)) <- fmap arrayToVector $ mkCReg 2 $ fromInteger init
+  let a :: Reg (UInt 8) = value !! 0
+      b :: Reg (UInt 8) = value !! 1
 
   interface
-    value = value
-    inc = inc._write
-    dec x = _when_ (x <= value) $ dec := x
-    isLessThan n = value < fromInteger n
-    isGreaterThan n = value > fromInteger n
+    value = b
+    inc x = a := a + x
+    dec x = _when_ (x <= b) $ b := b - x
+    zero = b := 0
 
 class FIFOs fifos rxBytes rxCount txBytes txCount | fifos -> rxBytes rxCount txBytes txCount where
   mkRxCredits :: fifos -> Module (Vector rxCount Counter)
