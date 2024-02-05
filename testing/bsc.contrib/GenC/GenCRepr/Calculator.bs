@@ -37,6 +37,13 @@ eval Sub x y = x - y
 eval Mul x y = x * y
 eval Div x y = x / y
 
+-- Check that encodings have the expected number of bytes:
+instrSize :: (GenCRepr Instr 6) => ()
+instrSize = ()
+
+resultSize :: (GenCRepr Result 6) => ()
+resultSize = ()
+
 {-# verilog sysCalculator #-}
 sysCalculator :: Module Empty
 sysCalculator = module
