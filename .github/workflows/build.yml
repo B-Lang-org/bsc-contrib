@@ -45,6 +45,7 @@ jobs:
     strategy:
       matrix:
         os: [ macos-11, macos-12, macos-13 ]
+      fail-fast: false
     name: "Build ${{ matrix.os }}"
     runs-on: ${{ matrix. os }}
     steps:
@@ -173,6 +174,7 @@ jobs:
     strategy:
       matrix:
         os: [ macos-11, macos-12, macos-13 ]
+      fail-fast: false
     name: "Test ${{ matrix.os }}"
     runs-on: ${{ matrix. os }}
     needs: build-macos
