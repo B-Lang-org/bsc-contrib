@@ -6,6 +6,7 @@ BUILD_ORDER = \
 	FPGA \
 	GenC \
 	COBS \
+	VerilogRepr
 
 .PHONY: all
 all: install
