@@ -29,74 +29,103 @@ dropInitialUnderscore :: List Char -> List Char
 dropInitialUnderscore (Cons c cs) when c == '_' = cs
 dropInitialUnderscore cs = cs
 
--- Get a unique string for the Verilog type, for the purpose of naming type
--- instantations.
-class VerilogTypeId a where
+-- Convert a type to its Bluespec type expression, or a unique identifier for use in Verilog.
+class TypeId a where
+  bsType :: a -> String
+  bsTypeP :: a -> String
+  bsTypeP proxy = "(" +++ bsType proxy +++ ")"
   verilogTypeId :: a -> String
 
-instance VerilogTypeId Bool where
+instance TypeId Bool where
+  bsType _ = "Bool"
+  bsTypeP _ = "Bool"
   verilogTypeId _ = "bool"
 
-instance VerilogTypeId (Bit n) where
+instance TypeId (Bit n) where
+  bsType _ = "Bit " +++ integerToString (valueOf n)
   verilogTypeId _ = "bit" +++ integerToString (valueOf n)
 
-instance VerilogTypeId (UInt n) where
+instance TypeId (UInt n) where
+  bsType _ = "UInt " +++ integerToString (valueOf n)
   verilogTypeId _ = "uint" +++ integerToString (valueOf n)
 
-instance VerilogTypeId (Int n) where
+instance TypeId (Int n) where
+  bsType _ = "Int " +++ integerToString (valueOf n)
   verilogTypeId _ = "int" +++ integerToString (valueOf n)
 
-instance (VerilogTypeId a) => VerilogTypeId (Maybe a) where
+instance (TypeId a) => TypeId (Maybe a) where
+  bsType _ = "Maybe " +++ bsTypeP (prx :: a)
   verilogTypeId _ = "option_" +++ verilogTypeId (prx :: a)
 
-instance (VerilogTypeId a) => VerilogTypeId (Vector.Vector n a) where
+instance (TypeId a) => TypeId (Vector.Vector n a) where
+  bsType _ = "Vector " +++ integerToString (valueOf n) +++ " " +++ bsTypeP (prx :: a)
   verilogTypeId _ = "array_" +++
     integerToString (valueOf n) +++ "_" +++
     verilogTypeId (prx :: a)
 
-instance VerilogTypeId () where
+instance TypeId () where
+  bsType _ = "()"
+  bsTypeP _ = "()"
   verilogTypeId _ = "unit"
 
-instance (VerilogTupleTypeId (a, b)) => VerilogTypeId (a, b) where
+instance (TupleTypeId (a, b)) => TypeId (a, b) where
+  bsType proxy = "(" +++ bsTupleType proxy +++ ")"
+  bsTypeP proxy = "(" +++ bsTupleType proxy +++ ")"
   verilogTypeId proxy = "tuple_" +++ verilogTupleTypeId proxy
 
-class VerilogTupleTypeId a where
+class TupleTypeId a where
+  bsTupleType :: a -> String
   verilogTupleTypeId :: a -> String
 
-instance (VerilogTypeId a, VerilogTupleTypeId b) =>
-    VerilogTupleTypeId (a, b) where
+instance (TypeId a, TupleTypeId b) => TupleTypeId (a, b) where
+  bsTupleType _ = bsType (prx :: a) +++ ", " +++ bsTupleType (prx :: b)
   verilogTupleTypeId _ =
     verilogTypeId (prx :: a) +++ "_" +++ verilogTupleTypeId (prx :: b)
 
-instance (VerilogTypeId a) => VerilogTupleTypeId a where
+instance (TypeId a) => TupleTypeId a where
+  bsTupleType = bsType
   verilogTupleTypeId = verilogTypeId
 
-instance (Generic a r, VerilogTypeId' r) => VerilogTypeId a where
+instance (Generic a r, TypeId' r) => TypeId a where
+  bsType _ = bsType' (prx :: r)
+  bsTypeP _ = bsTypeP' (prx :: r)
   verilogTypeId _ = verilogTypeId' (prx :: r)
 
 -- Compute the unique type identifier using a type's generic representation.
-class VerilogTypeId' a where
+class TypeId' a where
+  bsType' :: a -> String
+  bsTypeP' :: a -> String
+  bsTypeP' proxy = "(" +++ bsType' proxy +++ ")"
   verilogTypeId' :: a -> String
 
-instance VerilogTypeId' (Meta (MetaData name pkg () ncons) a) where
+instance TypeId' (Meta (MetaData name pkg () ncons) a) where
+  bsType' _ = stringOf name
+  bsTypeP' _ = stringOf name
   verilogTypeId' _ = toLowerSnakeCase $ stringOf name
 
-instance (VerilogTypeId' tyargs) =>
-    VerilogTypeId' (Meta (MetaData name pkg tyargs ncons) a) where
+instance (TypeId' tyargs) => TypeId' (Meta (MetaData name pkg tyargs ncons) a) where
+  bsType' _ = stringOf name +++ " " +++ bsType' (prx :: tyargs)
+  bsTypeP' _ = "(" +++ stringOf name +++ " " +++ bsType' (prx :: tyargs) +++ ")"
   verilogTypeId' _ =
-    toLowerSnakeCase $ stringOf name +++ "_" +++ verilogTypeId' (prx :: tyargs)
+    toLowerSnakeCase (stringOf name) +++ "_" +++ verilogTypeId' (prx :: tyargs)
 
-instance (VerilogTypeId' a, VerilogTypeId' b) => VerilogTypeId' (a, b) where
+instance (TypeId' a, TypeId' b) => TypeId' (a, b) where
+  bsType' _ =
+    bsType' (prx :: a) +++ " " +++ bsType' (prx :: b)
   verilogTypeId' _ =
     verilogTypeId' (prx :: a) +++ "_" +++ verilogTypeId' (prx :: b)
 
-instance (VerilogTypeId a) => VerilogTypeId' (StarArg a) where
+instance (TypeId a) => TypeId' (StarArg a) where
+  bsType' _ = bsTypeP (prx :: a)
   verilogTypeId' _ = verilogTypeId (prx :: a)
 
-instance VerilogTypeId' (NumArg i) where
+instance TypeId' (NumArg i) where
+  bsType' _ = integerToString $ valueOf i
   verilogTypeId' _ = integerToString $ valueOf i
 
-instance VerilogTypeId' ConArg where
+instance TypeId' ConArg where
+  bsType' _ =
+    error "Demanded Bluespec type of a higher-kinded type argument"
   verilogTypeId' _ =
     error "Demanded Verilog type ID of a higher-kinded type argument"
 
@@ -107,6 +136,7 @@ data VDecl
   | VEnum String Integer (List String)
   | VTypedef String VType
   | VLocalParam String Integer
+  | VComment String
 
 data VField
   = VField VType String
@@ -124,6 +154,7 @@ vDeclNames (VUnion name _) = lst name
 vDeclNames (VEnum name _ tags) = name :> tags
 vDeclNames (VTypedef name _) = lst name
 vDeclNames (VLocalParam name _) = lst name
+vDeclNames (VComment _) = nil
 
 makeLogicArray :: Integer -> VType
 makeLogicArray 0 =
@@ -187,13 +218,15 @@ whenNoDecl name pkg (RenderVerilog f) = RenderVerilog $ \ names decls ->
     Nothing -> f names decls
 
 -- Helper to generate a struct wrapping some type.
-wrapStruct :: (VerilogTypeId a, VerilogRepr a) =>
+wrapStruct :: (TypeId a, VerilogRepr a) =>
   a -> String -> RenderVerilog VType
 wrapStruct proxy pkg = do
   let structName = verilogTypeId proxy +++ "_t"
   whenNoDecl structName pkg do
     fields <- verilogFields proxy "value"
-    emitDecl pkg $ VStruct structName fields
+    emitDecls pkg $ lst
+      (VComment $ bsType proxy)
+      (VStruct structName fields)
   return $ VTypeName structName
 
 class VerilogRepr a where
@@ -226,13 +259,13 @@ instance VerilogRepr (Int n) where
     if valueOf n == 0 then nil
     else lst $ VField (makeSignedLogicArray $ valueOf n) name
 
-instance (VerilogTypeId a, VerilogRepr a) => VerilogRepr (Maybe a) where
+instance (TypeId a, VerilogRepr a) => VerilogRepr (Maybe a) where
   verilogType proxy = wrapStruct proxy "Prelude"
   verilogFields _ name =
     fmap (Cons $ VField VLogic $ "has_" +++ name) $
     verilogFields (prx :: a) name
 
-instance (VerilogTypeId a, VerilogRepr a, Bits a nb) =>
+instance (TypeId a, VerilogRepr a, Bits a nb) =>
     VerilogRepr (Vector.Vector n a) where
   verilogType _ = do
     itemType <- verilogType (prx :: a)
@@ -246,13 +279,15 @@ instance VerilogRepr () where
   verilogType _ = error "Demanded Verilog representation of zero-width type"
   verilogFields _ _ = return nil
 
-instance (VerilogTupleTypeId (a, b), VerilogTupleRepr (a, b) 0) =>
+instance (TupleTypeId (a, b), VerilogTupleRepr (a, b) 0) =>
     VerilogRepr (a, b) where
   verilogType proxy = do
     let structName = verilogTypeId proxy +++ "_t"
     whenNoDecl structName "Prelude" $ do
       structFields <- verilogTupleFields proxy (prx :: Bit 0) "f"
-      emitDecl "Prelude" $ VStruct structName structFields
+      emitDecls "Prelude" $ lst
+        (VComment $ bsTupleType proxy)
+        (VStruct structName structFields)
     return $ VTypeName structName
   verilogFields proxy = verilogTupleFields proxy (prx :: Bit 0)
 
@@ -270,12 +305,12 @@ instance (VerilogRepr a) => VerilogTupleRepr a i where
     verilogFields proxy $ name +++ integerToString (valueOf i)
 
 instance (Bits a n, Generic a r, ContentBits r c,
-          VerilogImpl r c, VerilogTypeId a) =>
+          VerilogImpl r c, TypeId a) =>
     VerilogRepr a where
   verilogType proxy = do
     let baseName = verilogTypeId proxy
     let structName = baseName +++ "_t"
-    verilogImpl (prx :: r) (prx :: Bit c) baseName
+    verilogImpl (prx :: r) (prx :: Bit c) (bsType (prx :: a)) baseName
     return $ VTypeName structName
   verilogFields proxy name =
     if valueOf n == 0
@@ -283,7 +318,7 @@ instance (Bits a n, Generic a r, ContentBits r c,
     else do
       let baseName = verilogTypeId proxy
       let structName = baseName +++ "_t"
-      verilogImpl (prx :: r) (prx :: Bit c) baseName
+      verilogImpl (prx :: r) (prx :: Bit c) (bsType (prx :: a)) baseName
       return $ lst $ VField (VTypeName structName) name
 
 -- Compute the maximum size of a summand's contents from a generic
@@ -303,11 +338,11 @@ instance (ContentBits a n1, ContentBits b n2, Add n1 n2 n) =>
 -- a is the generic representation type, c is the max payload content size for
 -- any constructor.
 class VerilogImpl a c where
-  verilogImpl :: a -> Bit c -> String -> RenderVerilog ()
+  verilogImpl :: a -> Bit c -> String -> String -> RenderVerilog ()
 
 -- Pure enum case
 instance (TagNames a) => VerilogImpl (Meta (MetaData name pkg ta nc) a) 0 where
-  verilogImpl _ _ baseName = if valueOf nc <= 1 then return () else do
+  verilogImpl _ _ bsType baseName = if valueOf nc <= 1 then return () else do
     -- Generate the same "tag" enum as the tagged-union case and typedef it,
     -- since there might be other instantiations that are not a pure enum,
     -- and want to use the same tag names.
@@ -319,8 +354,9 @@ instance (TagNames a) => VerilogImpl (Meta (MetaData name pkg ta nc) a) 0 where
       (VLocalParam ("NUM_" +++ toUpperSnakeCase (stringOf name)) $ valueOf nc)
       (VEnum enumName (log2 $ valueOf nc) $ tagNames (prx :: a) $
         stringOf name)
-    whenNoDecl typedefName (stringOf pkg) $ emitDecl (stringOf pkg) $
-      VTypedef typedefName $ VTypeName enumName
+    whenNoDecl typedefName (stringOf pkg) $ emitDecls (stringOf pkg) $ lst
+      (VComment bsType)
+      (VTypedef typedefName $ VTypeName enumName)
 
 instance (VerilogImpl' a c) => VerilogImpl a c where
   verilogImpl = verilogImpl'
@@ -333,33 +369,37 @@ instance (VerilogImpl' a c) => VerilogImpl a c where
 -- and when that fails we fall through to VerilogImpl' and attempt to match the
 -- pure struct cases.
 class VerilogImpl' a c where
-  verilogImpl' :: a -> Bit c -> String -> RenderVerilog ()
+  verilogImpl' :: a -> Bit c -> String -> String -> RenderVerilog ()
 
 -- Pure struct cases
 instance (VerilogFields a) =>
     VerilogImpl'
       (Meta (MetaData name pkg ta 1)
         (Meta (MetaConsNamed cname 0 nfields) a)) c where
-  verilogImpl' _ _ baseName = do
+  verilogImpl' _ _ bsType baseName = do
     let structName = baseName +++ "_t"
     whenNoDecl structName (stringOf pkg) do
       fields <- verilogFields' (prx :: a) True
-      emitDecl (stringOf pkg) $ VStruct structName fields
+      emitDecls (stringOf pkg) $ lst
+        (VComment bsType)
+        (VStruct structName fields)
 
 instance (VerilogFields a) =>
     VerilogImpl'
       (Meta (MetaData name pkg ta 1)
         (Meta (MetaConsAnon cname 0 nfields) a)) c where
-  verilogImpl' _ _ baseName = do
+  verilogImpl' _ _ bsType baseName = do
     let structName = baseName +++ "_t"
     whenNoDecl structName (stringOf pkg) do
       fields <- verilogFields' (prx :: a) False
-      emitDecl (stringOf pkg) $ VStruct structName fields
+      emitDecls (stringOf pkg) $ lst
+        (VComment bsType)
+        (VStruct structName fields)
 
 -- Tagged union case
 instance (TagNames a, VerilogSummands a) =>
     VerilogImpl' (Meta (MetaData name pkg ta nc) a) c where
-  verilogImpl' _ _ baseName = do
+  verilogImpl' _ _ bsType baseName = do
     let enumName = toLowerSnakeCase (stringOf name) +++ "_tag_t"
     let unionName = baseName +++ "_content_t"
     let structName = baseName +++ "_t"
@@ -373,6 +413,7 @@ instance (TagNames a, VerilogSummands a) =>
       fields <- verilogSummands (prx :: a) baseName (stringOf pkg) $ valueOf c
       emitDecls (stringOf pkg) $ lst
         (VUnion unionName fields)
+        (VComment bsType)
         (VStruct structName $ lst
           (VField (VTypeName enumName) "tag")
           (VField (VTypeName unionName) "content"))
@@ -506,6 +547,7 @@ writeVDecl file (VLocalParam name value) = do
   hPutStrLn file $ "localparam " +++ name +++ " = " +++
     integerToString (log2 $ value + 1) +++ "'d" +++
     integerToString value +++ ";"
+writeVDecl file (VComment comment) = hPutStrLn file $ "// " +++ comment
 
 writeVField :: Handle -> VField -> Module Empty
 writeVField file (VField ty name) =
