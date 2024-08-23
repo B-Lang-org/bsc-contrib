@@ -6,7 +6,7 @@ if { $contribtest } {
 
     add_contrib_dirs_to_path { VerilogRepr }
 
-    compile_pass Chess.bs
+    compile_verilog_pass Chess.bs
     compare_file chess.svh
 
     restore_path
