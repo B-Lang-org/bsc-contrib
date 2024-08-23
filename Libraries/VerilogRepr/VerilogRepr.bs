@@ -577,5 +577,5 @@ writeVerilogFile fileName prefix suffix rv = module
   mapM_ (writeVDecl file) decls
   hPutStrLn file suffix
   hClose file
-  -- messageM $ "Verilog type representation file created: " +++ fileName
+  messageM $ "Verilog type representation file created: " +++ fileName
   interface Empty
