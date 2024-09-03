@@ -55,7 +55,7 @@ data Move
 data Outcome = NoOutcome | Check | CheckMate | Draw
   deriving (Bits)
 
-type Score maxScore = Int (TAdd 1 (TLog maxScore))
+type Score maxScore = Int (TLog (TAdd 1 maxScore))
 type RequestId = UInt 8
 
 struct SearchQuery config maxScore maxDepth =
@@ -92,22 +92,25 @@ type MaxDepth = 16
 type DefaultSearchQuery = SearchQuery (Config (UInt (TLog MaxWeight))) MaxScore MaxDepth
 type DefaultSearchResult = SearchResult MaxScore MaxDepth
 
-genFileName :: String
-genFileName = "chess.svh"
-
 type SVTypes = (DefaultSearchQuery, DefaultSearchResult)
 
 renderAll :: RenderVerilog ()
 renderAll = do
-  emitDecl "Chess" $ VLocalParam "MAX_SCORE" $ valueOf MaxScore
-  emitDecl "Chess" $ VLocalParam "MAX_WEIGHT" $ valueOf MaxWeight
-  emitDecl "Chess" $ VLocalParam "MAX_DEPTH" $ valueOf MaxDepth
+  emitDecl "Chess" $ VLocalParam "MAX_SCORE" (log2 $ 1 + valueOf MaxScore) $ valueOf MaxScore
+  emitDecl "Chess" $ VLocalParam "MAX_WEIGHT" (log2 $ 1 + valueOf MaxWeight) $ valueOf MaxWeight
+  emitDecl "Chess" $ VLocalParam "MAX_DEPTH" (log2 $ 1 + valueOf MaxDepth) $ valueOf MaxDepth
   verilogImpls (prx :: SVTypes)
+
+svFileName :: String
+svFileName = "chess.svh"
+
+jsonFileName :: String
+jsonFileName = "chess_types.json"
 
 {-# synthesize main #-}
 main :: Module Empty
-main = writeVerilogFile
-  genFileName
+main = writeVerilogAndJsonFile
+  svFileName jsonFileName
   "package chess;\n\n"
   "endpackage"
   renderAll

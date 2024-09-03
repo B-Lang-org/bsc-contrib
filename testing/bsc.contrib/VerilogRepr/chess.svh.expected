@@ -59,6 +59,9 @@ typedef struct packed {
   logic [5:0] last_progress_move;
 } state_t;
 
+// Int 9
+typedef logic signed [8:0] int9_t;
+
 // Config (UInt 2)
 typedef struct packed {
   logic [1:0] material_value;
@@ -75,9 +78,9 @@ typedef struct packed {
   logic [3:0] depth;
   logic get_moves;
   logic has_alpha;
-  logic signed [9:0] alpha;
+  int9_t alpha;
   logic has_beta;
-  logic signed [9:0] beta;
+  int9_t beta;
   config_uint2_t conf;
 } search_query_config_uint2_500_16_t;
 
@@ -151,7 +154,7 @@ typedef struct packed {
   logic has_best_move;
   move_t best_move;
   logic forced_outcome;
-  logic signed [9:0] score;
+  int9_t score;
   logic [3:0] depth;
 } search_result_500_16_t;
 

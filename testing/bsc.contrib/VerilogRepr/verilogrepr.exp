@@ -8,6 +8,7 @@ if { $contribtest } {
 
     compile_verilog_pass Chess.bs
     compare_file chess.svh
+    compare_file chess_types.json
 
     restore_path
 
