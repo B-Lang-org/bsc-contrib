@@ -1,6 +1,7 @@
 [
   {
     "bsType": "SearchResult 500 16",
+    "bsPackage": "Chess",
     "size": 42,
     "baseType": "search_result_500_16_t",
     "arraySize": [],
@@ -63,6 +64,7 @@
   },
   {
     "bsType": "Move",
+    "bsPackage": "Chess",
     "size": 17,
     "baseType": "move_t",
     "arraySize": [],
@@ -174,6 +176,7 @@
   },
   {
     "bsType": "Position",
+    "bsPackage": "Chess",
     "size": 6,
     "baseType": "position_t",
     "arraySize": [],
@@ -201,6 +204,7 @@
   },
   {
     "bsType": "Outcome",
+    "bsPackage": "Chess",
     "size": 2,
     "baseType": "outcome_t",
     "arraySize": [],
@@ -214,6 +218,7 @@
   },
   {
     "bsType": "SearchQuery (Config (UInt 2)) 500 16",
+    "bsPackage": "Chess",
     "size": 386,
     "baseType": "search_query_config_uint2_500_16_t",
     "arraySize": [],
@@ -290,6 +295,7 @@
   },
   {
     "bsType": "Config (UInt 2)",
+    "bsPackage": "Chess",
     "size": 10,
     "baseType": "config_uint2_t",
     "arraySize": [],
@@ -344,6 +350,7 @@
   },
   {
     "bsType": "UInt 2",
+    "bsPackage": "Prelude",
     "size": 2,
     "baseType": "logic",
     "arraySize": [
@@ -354,6 +361,7 @@
   },
   {
     "bsType": "Int 9",
+    "bsPackage": "Prelude",
     "size": 9,
     "baseType": "int9_t",
     "arraySize": [],
@@ -362,6 +370,7 @@
   },
   {
     "bsType": "UInt 4",
+    "bsPackage": "Prelude",
     "size": 4,
     "baseType": "logic",
     "arraySize": [
@@ -372,6 +381,7 @@
   },
   {
     "bsType": "State",
+    "bsPackage": "Chess",
     "size": 343,
     "baseType": "state_t",
     "arraySize": [],
@@ -421,6 +431,7 @@
   },
   {
     "bsType": "UInt 6",
+    "bsPackage": "Prelude",
     "size": 6,
     "baseType": "logic",
     "arraySize": [
@@ -431,6 +442,7 @@
   },
   {
     "bsType": "PlayerHistory",
+    "bsPackage": "Chess",
     "size": 8,
     "baseType": "player_history_t",
     "arraySize": [],
@@ -484,6 +496,7 @@
   },
   {
     "bsType": "UInt 3",
+    "bsPackage": "Prelude",
     "size": 3,
     "baseType": "logic",
     "arraySize": [
@@ -494,25 +507,30 @@
   },
   {
     "bsType": "Vector 8 (Vector 8 (Maybe Piece))",
+    "bsPackage": "Vector",
     "size": 320,
     "baseType": "option_piece_t",
     "arraySize": [
       8,
       8
     ],
-    "sort": "Vector"
+    "sort": "Vector",
+    "bsElemType": "Vector 8 (Maybe Piece)"
   },
   {
     "bsType": "Vector 8 (Maybe Piece)",
+    "bsPackage": "Vector",
     "size": 40,
     "baseType": "option_piece_t",
     "arraySize": [
       8
     ],
-    "sort": "Vector"
+    "sort": "Vector",
+    "bsElemType": "Maybe Piece"
   },
   {
     "bsType": "Maybe Piece",
+    "bsPackage": "Prelude",
     "size": 5,
     "baseType": "option_piece_t",
     "arraySize": [],
@@ -536,6 +554,7 @@
   },
   {
     "bsType": "Piece",
+    "bsPackage": "Chess",
     "size": 4,
     "baseType": "piece_t",
     "arraySize": [],
@@ -559,6 +578,7 @@
   },
   {
     "bsType": "PieceKind",
+    "bsPackage": "Chess",
     "size": 3,
     "baseType": "piece_kind_t",
     "arraySize": [],
@@ -574,6 +594,7 @@
   },
   {
     "bsType": "Bool",
+    "bsPackage": "Prelude",
     "size": 1,
     "baseType": "logic",
     "arraySize": [],
@@ -582,6 +603,7 @@
   },
   {
     "bsType": "Color",
+    "bsPackage": "Chess",
     "size": 1,
     "baseType": "color_t",
     "arraySize": [],
@@ -593,6 +615,7 @@
   },
   {
     "bsType": "UInt 8",
+    "bsPackage": "Prelude",
     "size": 8,
     "baseType": "logic",
     "arraySize": [
