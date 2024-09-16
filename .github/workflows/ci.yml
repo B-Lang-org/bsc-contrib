@@ -16,7 +16,7 @@ jobs:
   build-ubuntu:
     strategy:
       matrix:
-        os: [ ubuntu-20.04, ubuntu-22.04 ]
+        os: [ ubuntu-20.04, ubuntu-22.04, ubuntu-24.04 ]
       fail-fast: false
     name: "Build ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
@@ -44,7 +44,7 @@ jobs:
   build-macOS:
     strategy:
       matrix:
-        os: [ macos-11, macos-12, macos-13 ]
+        os: [ macos-12, macos-13, macos-14 ]
       fail-fast: false
     name: "Build ${{ matrix.os }}"
     runs-on: ${{ matrix. os }}
@@ -72,7 +72,7 @@ jobs:
   test-ubuntu:
     strategy:
       matrix:
-        os: [ ubuntu-20.04, ubuntu-22.04 ]
+        os: [ ubuntu-20.04, ubuntu-22.04, ubuntu-24.04 ]
       fail-fast: false
     name: "Test ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
@@ -173,7 +173,7 @@ jobs:
   test-macOS:
     strategy:
       matrix:
-        os: [ macos-11, macos-12, macos-13 ]
+        os: [ macos-12, macos-13, macos-14 ]
       fail-fast: false
     name: "Test ${{ matrix.os }}"
     runs-on: ${{ matrix. os }}
