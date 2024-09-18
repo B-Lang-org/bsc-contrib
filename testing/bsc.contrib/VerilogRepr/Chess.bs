@@ -1,0 +1,116 @@
+package Chess where
+
+import Vector
+import VerilogRepr
+
+-- From https://github.com/krame505/hardware-chess
+
+data PieceKind
+  = Pawn
+  | Knight
+  | Bishop
+  | Rook
+  | Queen
+  | King
+ deriving (Eq, Bits)
+
+data Color = White | Black
+ deriving (Eq, Bits)
+
+struct Piece =
+  color :: Color
+  kind :: PieceKind
+ deriving (Eq, Bits)
+
+type Board = Vector 8 (Vector 8 (Maybe Piece))
+
+struct Position =
+  rank :: UInt 3
+  file :: UInt 3
+ deriving (Eq, Bits)
+
+struct PlayerHistory =
+  pawnMoved2 :: Maybe (UInt 3)
+  kingMoved :: Bool
+  kRookMoved :: Bool
+  qRookMoved :: Bool
+  castled :: Bool
+ deriving (Eq, Bits)
+
+struct State =
+  turn :: Color
+  board :: Board
+  whiteHist :: PlayerHistory
+  blackHist :: PlayerHistory
+  lastProgressMove :: UInt 6
+ deriving (Eq, Bits)
+
+data Move
+  = Move { from :: Position; to :: Position }
+  | EnPassant { from :: Position; to :: Position }
+  | Promote { kind :: PieceKind; from :: Position; to :: Position }
+  | Castle {kingSide :: Bool}
+ deriving (Eq, Bits)
+
+data Outcome = NoOutcome | Check | CheckMate | Draw
+  deriving (Bits)
+
+type Score maxScore = Int (TLog (TAdd 1 maxScore))
+type RequestId = UInt 8
+
+struct SearchQuery config maxScore maxDepth =
+  rid :: RequestId
+  state :: State
+  depth :: UInt (TLog maxDepth)
+  getMoves :: Bool
+  alpha :: Maybe (Score maxScore)
+  beta :: Maybe (Score maxScore)
+  conf :: config
+ deriving (Bits)
+
+struct SearchResult maxScore maxDepth =
+  rid :: RequestId
+  outcome :: Outcome
+  bestMove :: Maybe Move
+  forcedOutcome :: Bool  -- Can either player force a win
+  score :: (Score maxScore)
+  depth :: UInt (TLog maxDepth)
+ deriving (Bits)
+
+struct Config weight =
+  materialValue :: weight
+  centerControlValue :: weight
+  extendedCenterControlValue :: weight
+  castleValue :: weight
+  pawnStructureValue :: weight
+ deriving (Bits)
+
+type MaxScore = 500
+type MaxWeight = 4
+type MaxDepth = 16
+
+type DefaultSearchQuery = SearchQuery (Config (UInt (TLog MaxWeight))) MaxScore MaxDepth
+type DefaultSearchResult = SearchResult MaxScore MaxDepth
+
+type SVTypes = (DefaultSearchQuery, DefaultSearchResult)
+
+renderAll :: RenderVerilog ()
+renderAll = do
+  emitDecl "Chess" $ VLocalParam "MAX_SCORE" (log2 $ 1 + valueOf MaxScore) $ valueOf MaxScore
+  emitDecl "Chess" $ VLocalParam "MAX_WEIGHT" (log2 $ 1 + valueOf MaxWeight) $ valueOf MaxWeight
+  emitDecl "Chess" $ VLocalParam "MAX_DEPTH" (log2 $ 1 + valueOf MaxDepth) $ valueOf MaxDepth
+  verilogImpls (prx :: SVTypes)
+
+svFileName :: String
+svFileName = "chess.svh"
+
+jsonFileName :: String
+jsonFileName = "chess_types.json"
+
+{-# synthesize main #-}
+main :: Module Empty
+main = writeVerilogAndJsonFile
+  svFileName jsonFileName
+  "package chess;\n\n"
+  "endpackage"
+  renderAll
