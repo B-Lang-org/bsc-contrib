@@ -1,0 +1,15 @@
+# Include the boilerplate for bsc-contrib tests
+set here [file join [absolute $srcdir] $subdir]
+source $here/../contrib.tcl
+
+if { $contribtest } {
+
+    add_contrib_dirs_to_path { VerilogRepr }
+
+    compile_verilog_pass Chess.bs
+    compare_file chess.svh
+    compare_file chess_types.json
+
+    restore_path
+
+}

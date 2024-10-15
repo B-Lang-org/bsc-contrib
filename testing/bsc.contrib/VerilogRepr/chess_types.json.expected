@@ -1,0 +1,627 @@
+[
+  {
+    "bsType": "SearchResult 500 16",
+    "bsPackage": "Chess",
+    "size": 42,
+    "baseType": "search_result_500_16_t",
+    "arraySize": [],
+    "sort": "Struct",
+    "fields": [
+      {
+        "name": "rid",
+        "size": 8,
+        "bsType": "UInt 8",
+        "baseType": "logic",
+        "arraySize": [
+          8
+        ]
+      },
+      {
+        "name": "outcome",
+        "size": 2,
+        "bsType": "Outcome",
+        "baseType": "outcome_t",
+        "arraySize": []
+      },
+      {
+        "name": "has_best_move",
+        "size": 1,
+        "bsType": "Bool",
+        "baseType": "logic",
+        "arraySize": []
+      },
+      {
+        "name": "best_move",
+        "size": 17,
+        "bsType": "Move",
+        "baseType": "move_t",
+        "arraySize": []
+      },
+      {
+        "name": "forced_outcome",
+        "size": 1,
+        "bsType": "Bool",
+        "baseType": "logic",
+        "arraySize": []
+      },
+      {
+        "name": "score",
+        "size": 9,
+        "bsType": "Int 9",
+        "baseType": "int9_t",
+        "arraySize": []
+      },
+      {
+        "name": "depth",
+        "size": 4,
+        "bsType": "UInt 4",
+        "baseType": "logic",
+        "arraySize": [
+          4
+        ]
+      }
+    ]
+  },
+  {
+    "bsType": "Move",
+    "bsPackage": "Chess",
+    "size": 17,
+    "baseType": "move_t",
+    "arraySize": [],
+    "sort": "TaggedUnion",
+    "enumValues": {
+      "MOVE_MOVE": 0,
+      "MOVE_EN_PASSANT": 1,
+      "MOVE_PROMOTE": 2,
+      "MOVE_CASTLE": 3
+    },
+    "tagSize": 2,
+    "contentSize": 15,
+    "tagEnumName": "move_tag_t",
+    "unionName": "move_content_t",
+    "alts": [
+      {
+        "tagName": "MOVE_MOVE",
+        "fieldName": "move",
+        "structName": "move_move_t",
+        "padSize": 3,
+        "contentSize": 12,
+        "fields": [
+          {
+            "name": "from",
+            "size": 6,
+            "bsType": "Position",
+            "baseType": "position_t",
+            "arraySize": []
+          },
+          {
+            "name": "to",
+            "size": 6,
+            "bsType": "Position",
+            "baseType": "position_t",
+            "arraySize": []
+          }
+        ]
+      },
+      {
+        "tagName": "MOVE_EN_PASSANT",
+        "fieldName": "en_passant",
+        "structName": "move_en_passant_t",
+        "padSize": 3,
+        "contentSize": 12,
+        "fields": [
+          {
+            "name": "from",
+            "size": 6,
+            "bsType": "Position",
+            "baseType": "position_t",
+            "arraySize": []
+          },
+          {
+            "name": "to",
+            "size": 6,
+            "bsType": "Position",
+            "baseType": "position_t",
+            "arraySize": []
+          }
+        ]
+      },
+      {
+        "tagName": "MOVE_PROMOTE",
+        "fieldName": "promote",
+        "structName": "move_promote_t",
+        "padSize": 0,
+        "contentSize": 15,
+        "fields": [
+          {
+            "name": "kind",
+            "size": 3,
+            "bsType": "PieceKind",
+            "baseType": "piece_kind_t",
+            "arraySize": []
+          },
+          {
+            "name": "from",
+            "size": 6,
+            "bsType": "Position",
+            "baseType": "position_t",
+            "arraySize": []
+          },
+          {
+            "name": "to",
+            "size": 6,
+            "bsType": "Position",
+            "baseType": "position_t",
+            "arraySize": []
+          }
+        ]
+      },
+      {
+        "tagName": "MOVE_CASTLE",
+        "fieldName": "castle",
+        "structName": "move_castle_t",
+        "padSize": 14,
+        "contentSize": 1,
+        "fields": [
+          {
+            "name": "king_side",
+            "size": 1,
+            "bsType": "Bool",
+            "baseType": "logic",
+            "arraySize": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "bsType": "Position",
+    "bsPackage": "Chess",
+    "size": 6,
+    "baseType": "position_t",
+    "arraySize": [],
+    "sort": "Struct",
+    "fields": [
+      {
+        "name": "rank",
+        "size": 3,
+        "bsType": "UInt 3",
+        "baseType": "logic",
+        "arraySize": [
+          3
+        ]
+      },
+      {
+        "name": "file",
+        "size": 3,
+        "bsType": "UInt 3",
+        "baseType": "logic",
+        "arraySize": [
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "bsType": "Outcome",
+    "bsPackage": "Chess",
+    "size": 2,
+    "baseType": "outcome_t",
+    "arraySize": [],
+    "sort": "Enum",
+    "enumValues": {
+      "OUTCOME_NO_OUTCOME": 0,
+      "OUTCOME_CHECK": 1,
+      "OUTCOME_CHECK_MATE": 2,
+      "OUTCOME_DRAW": 3
+    }
+  },
+  {
+    "bsType": "SearchQuery (Config (UInt 2)) 500 16",
+    "bsPackage": "Chess",
+    "size": 386,
+    "baseType": "search_query_config_uint2_500_16_t",
+    "arraySize": [],
+    "sort": "Struct",
+    "fields": [
+      {
+        "name": "rid",
+        "size": 8,
+        "bsType": "UInt 8",
+        "baseType": "logic",
+        "arraySize": [
+          8
+        ]
+      },
+      {
+        "name": "state",
+        "size": 343,
+        "bsType": "State",
+        "baseType": "state_t",
+        "arraySize": []
+      },
+      {
+        "name": "depth",
+        "size": 4,
+        "bsType": "UInt 4",
+        "baseType": "logic",
+        "arraySize": [
+          4
+        ]
+      },
+      {
+        "name": "get_moves",
+        "size": 1,
+        "bsType": "Bool",
+        "baseType": "logic",
+        "arraySize": []
+      },
+      {
+        "name": "has_alpha",
+        "size": 1,
+        "bsType": "Bool",
+        "baseType": "logic",
+        "arraySize": []
+      },
+      {
+        "name": "alpha",
+        "size": 9,
+        "bsType": "Int 9",
+        "baseType": "int9_t",
+        "arraySize": []
+      },
+      {
+        "name": "has_beta",
+        "size": 1,
+        "bsType": "Bool",
+        "baseType": "logic",
+        "arraySize": []
+      },
+      {
+        "name": "beta",
+        "size": 9,
+        "bsType": "Int 9",
+        "baseType": "int9_t",
+        "arraySize": []
+      },
+      {
+        "name": "conf",
+        "size": 10,
+        "bsType": "Config (UInt 2)",
+        "baseType": "config_uint2_t",
+        "arraySize": []
+      }
+    ]
+  },
+  {
+    "bsType": "Config (UInt 2)",
+    "bsPackage": "Chess",
+    "size": 10,
+    "baseType": "config_uint2_t",
+    "arraySize": [],
+    "sort": "Struct",
+    "fields": [
+      {
+        "name": "material_value",
+        "size": 2,
+        "bsType": "UInt 2",
+        "baseType": "logic",
+        "arraySize": [
+          2
+        ]
+      },
+      {
+        "name": "center_control_value",
+        "size": 2,
+        "bsType": "UInt 2",
+        "baseType": "logic",
+        "arraySize": [
+          2
+        ]
+      },
+      {
+        "name": "extended_center_control_value",
+        "size": 2,
+        "bsType": "UInt 2",
+        "baseType": "logic",
+        "arraySize": [
+          2
+        ]
+      },
+      {
+        "name": "castle_value",
+        "size": 2,
+        "bsType": "UInt 2",
+        "baseType": "logic",
+        "arraySize": [
+          2
+        ]
+      },
+      {
+        "name": "pawn_structure_value",
+        "size": 2,
+        "bsType": "UInt 2",
+        "baseType": "logic",
+        "arraySize": [
+          2
+        ]
+      }
+    ]
+  },
+  {
+    "bsType": "UInt 2",
+    "bsPackage": "Prelude",
+    "size": 2,
+    "baseType": "logic",
+    "arraySize": [
+      2
+    ],
+    "sort": "Primitive",
+    "signed": false
+  },
+  {
+    "bsType": "Int 9",
+    "bsPackage": "Prelude",
+    "size": 9,
+    "baseType": "int9_t",
+    "arraySize": [],
+    "sort": "Primitive",
+    "signed": true
+  },
+  {
+    "bsType": "UInt 4",
+    "bsPackage": "Prelude",
+    "size": 4,
+    "baseType": "logic",
+    "arraySize": [
+      4
+    ],
+    "sort": "Primitive",
+    "signed": false
+  },
+  {
+    "bsType": "State",
+    "bsPackage": "Chess",
+    "size": 343,
+    "baseType": "state_t",
+    "arraySize": [],
+    "sort": "Struct",
+    "fields": [
+      {
+        "name": "turn",
+        "size": 1,
+        "bsType": "Color",
+        "baseType": "color_t",
+        "arraySize": []
+      },
+      {
+        "name": "board",
+        "size": 320,
+        "bsType": "Vector 8 (Vector 8 (Maybe Piece))",
+        "baseType": "option_piece_t",
+        "arraySize": [
+          8,
+          8
+        ]
+      },
+      {
+        "name": "white_hist",
+        "size": 8,
+        "bsType": "PlayerHistory",
+        "baseType": "player_history_t",
+        "arraySize": []
+      },
+      {
+        "name": "black_hist",
+        "size": 8,
+        "bsType": "PlayerHistory",
+        "baseType": "player_history_t",
+        "arraySize": []
+      },
+      {
+        "name": "last_progress_move",
+        "size": 6,
+        "bsType": "UInt 6",
+        "baseType": "logic",
+        "arraySize": [
+          6
+        ]
+      }
+    ]
+  },
+  {
+    "bsType": "UInt 6",
+    "bsPackage": "Prelude",
+    "size": 6,
+    "baseType": "logic",
+    "arraySize": [
+      6
+    ],
+    "sort": "Primitive",
+    "signed": false
+  },
+  {
+    "bsType": "PlayerHistory",
+    "bsPackage": "Chess",
+    "size": 8,
+    "baseType": "player_history_t",
+    "arraySize": [],
+    "sort": "Struct",
+    "fields": [
+      {
+        "name": "has_pawn_moved2",
+        "size": 1,
+        "bsType": "Bool",
+        "baseType": "logic",
+        "arraySize": []
+      },
+      {
+        "name": "pawn_moved2",
+        "size": 3,
+        "bsType": "UInt 3",
+        "baseType": "logic",
+        "arraySize": [
+          3
+        ]
+      },
+      {
+        "name": "king_moved",
+        "size": 1,
+        "bsType": "Bool",
+        "baseType": "logic",
+        "arraySize": []
+      },
+      {
+        "name": "k_rook_moved",
+        "size": 1,
+        "bsType": "Bool",
+        "baseType": "logic",
+        "arraySize": []
+      },
+      {
+        "name": "q_rook_moved",
+        "size": 1,
+        "bsType": "Bool",
+        "baseType": "logic",
+        "arraySize": []
+      },
+      {
+        "name": "castled",
+        "size": 1,
+        "bsType": "Bool",
+        "baseType": "logic",
+        "arraySize": []
+      }
+    ]
+  },
+  {
+    "bsType": "UInt 3",
+    "bsPackage": "Prelude",
+    "size": 3,
+    "baseType": "logic",
+    "arraySize": [
+      3
+    ],
+    "sort": "Primitive",
+    "signed": false
+  },
+  {
+    "bsType": "Vector 8 (Vector 8 (Maybe Piece))",
+    "bsPackage": "Vector",
+    "size": 320,
+    "baseType": "option_piece_t",
+    "arraySize": [
+      8,
+      8
+    ],
+    "sort": "Vector",
+    "bsElemType": "Vector 8 (Maybe Piece)"
+  },
+  {
+    "bsType": "Vector 8 (Maybe Piece)",
+    "bsPackage": "Vector",
+    "size": 40,
+    "baseType": "option_piece_t",
+    "arraySize": [
+      8
+    ],
+    "sort": "Vector",
+    "bsElemType": "Maybe Piece"
+  },
+  {
+    "bsType": "Maybe Piece",
+    "bsPackage": "Prelude",
+    "size": 5,
+    "baseType": "option_piece_t",
+    "arraySize": [],
+    "sort": "Struct",
+    "fields": [
+      {
+        "name": "has_value",
+        "size": 1,
+        "bsType": "Bool",
+        "baseType": "logic",
+        "arraySize": []
+      },
+      {
+        "name": "value",
+        "size": 4,
+        "bsType": "Piece",
+        "baseType": "piece_t",
+        "arraySize": []
+      }
+    ]
+  },
+  {
+    "bsType": "Piece",
+    "bsPackage": "Chess",
+    "size": 4,
+    "baseType": "piece_t",
+    "arraySize": [],
+    "sort": "Struct",
+    "fields": [
+      {
+        "name": "color",
+        "size": 1,
+        "bsType": "Color",
+        "baseType": "color_t",
+        "arraySize": []
+      },
+      {
+        "name": "kind",
+        "size": 3,
+        "bsType": "PieceKind",
+        "baseType": "piece_kind_t",
+        "arraySize": []
+      }
+    ]
+  },
+  {
+    "bsType": "PieceKind",
+    "bsPackage": "Chess",
+    "size": 3,
+    "baseType": "piece_kind_t",
+    "arraySize": [],
+    "sort": "Enum",
+    "enumValues": {
+      "PIECE_KIND_PAWN": 0,
+      "PIECE_KIND_KNIGHT": 1,
+      "PIECE_KIND_BISHOP": 2,
+      "PIECE_KIND_ROOK": 3,
+      "PIECE_KIND_QUEEN": 4,
+      "PIECE_KIND_KING": 5
+    }
+  },
+  {
+    "bsType": "Bool",
+    "bsPackage": "Prelude",
+    "size": 1,
+    "baseType": "logic",
+    "arraySize": [],
+    "sort": "Primitive",
+    "signed": false
+  },
+  {
+    "bsType": "Color",
+    "bsPackage": "Chess",
+    "size": 1,
+    "baseType": "color_t",
+    "arraySize": [],
+    "sort": "Enum",
+    "enumValues": {
+      "COLOR_WHITE": 0,
+      "COLOR_BLACK": 1
+    }
+  },
+  {
+    "bsType": "UInt 8",
+    "bsPackage": "Prelude",
+    "size": 8,
+    "baseType": "logic",
+    "arraySize": [
+      8
+    ],
+    "sort": "Primitive",
+    "signed": false
+  }
+]
