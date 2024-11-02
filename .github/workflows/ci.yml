@@ -44,7 +44,7 @@ jobs:
   build-macOS:
     strategy:
       matrix:
-        os: [ macos-12, macos-13, macos-14 ]
+        os: [ macos-13, macos-14, macos-15 ]
       fail-fast: false
     name: "Build ${{ matrix.os }}"
     runs-on: ${{ matrix. os }}
@@ -173,7 +173,7 @@ jobs:
   test-macOS:
     strategy:
       matrix:
-        os: [ macos-12, macos-13, macos-14 ]
+        os: [ macos-13, macos-14, macos-15 ]
       fail-fast: false
     name: "Test ${{ matrix.os }}"
     runs-on: ${{ matrix. os }}
