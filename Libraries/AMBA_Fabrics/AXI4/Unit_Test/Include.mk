@@ -1,10 +1,4 @@
-###  -*-Makefile-*-
-
-# Copyright (c) 2018-2024 Bluespec, Inc. All Rights Reserved
-
-# Makefile for standalone Unit Tester for Deburster
-
-TOPFILE  ?= Unit_Test_Fabric.bsv
+# This is a common 'include' Makefile for the other Makefiles
 
 help:
 	@echo "Targets:"
@@ -15,6 +9,8 @@ help:
 
 b_all:	 b_compile  b_link  b_sim
 v_all:	 v_compile  v_link  v_sim
+
+TOPFILE   ?= Test_AXI4_Fabric.bsv
 
 # ****************************************************************
 

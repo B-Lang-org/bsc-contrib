@@ -63,7 +63,7 @@ AXI4_Lite_Slave_IFC  #(Wd_Addr, Wd_Data, Wd_User) dummy_AXI4_Lite_Slave_ifc_inst
 // ================================================================
 
 (* synthesize *)
-module mkUnit_Test_Fabric (Empty);
+module mkTop (Empty);
    AXI4_Lite_Fabric_IFC_Inst fabric <- mkAXI4_Lite_Fabric_Inst;
 
    AXI4_Lite_Master_Xactor_IFC #(Wd_Addr, Wd_Data, Wd_User) master <- mkAXI4_Lite_Master_Xactor;

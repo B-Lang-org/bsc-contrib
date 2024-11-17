@@ -42,7 +42,7 @@ endmodule
 // ================================================================
 
 (* synthesize *)
-module mkUnit_Test_Deburster (Empty);
+module mkTop (Empty);
    AXI4_Deburster_IFC_Inst deburster <- mkAXI4_Deburster_Inst;
 
    AXI4_Master_Xactor_IFC #(Wd_Id, Wd_Addr, Wd_Data, Wd_User) master <- mkAXI4_Master_Xactor;

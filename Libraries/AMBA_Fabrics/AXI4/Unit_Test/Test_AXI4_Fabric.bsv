@@ -44,6 +44,9 @@ import AXI4_Widener ::*;
 import DDR_Model ::*;
 import Semi_FIFOF ::*;
 
+// ================================================================
+// Help functions
+
 function Action write_word_addr(AXI4_Master_Xactor_IFC#(nid, naddr, ndata, nuser) xactor, Bit#(naddr) addr)
    provisos(
       Mul#(nbytes,8,ndata),
@@ -146,6 +149,8 @@ function ActionValue#(Bit#(32)) read_word_data(AXI4_Master_Xactor_IFC#(nid, nadd
    endactionvalue
 endfunction
 
+// ================================================================
+
 module mkLatencyFIFO#(Integer cycles)(FIFOF#(t))
    provisos(Bits#(t, a__));
 
@@ -194,6 +199,8 @@ module mkLatencyFIFO#(Integer cycles)(FIFOF#(t))
    endmethod
 endmodule
 
+// ================================================================
+
 module mkAXI4LatencyInjection#(Integer req_cycles, Integer resp_cycles)
    (Tuple2#(
       AXI4_Master_IFC #(nid, naddr, ndata, nuser),
@@ -226,6 +233,8 @@ module mkAXI4LatencyInjection#(Integer req_cycles, Integer resp_cycles)
 
    return tuple2(master.axi_side, slave.axi_side);
 endmodule
+
+// ================================================================
 
 // continually read and write address 0x1000
 module mkMasterA(AXI4_Master_IFC#(nid, naddr, ndata, nuser))
@@ -280,6 +289,8 @@ module mkMasterA(AXI4_Master_IFC#(nid, naddr, ndata, nuser))
    return xactor.axi_side;
 endmodule
 
+// ================================================================
+
 module mkMasterA_Parallel(AXI4_Master_IFC#(nid, naddr, ndata, nuser))
    provisos(
       // per bsc
@@ -333,6 +344,8 @@ module mkMasterA_Parallel(AXI4_Master_IFC#(nid, naddr, ndata, nuser))
 
    return xactor.axi_side;
 endmodule
+
+// ================================================================
 
 module mkMasterA_SplitWrite(AXI4_Master_IFC#(nid, naddr, ndata, nuser))
    provisos(
@@ -393,6 +406,8 @@ module mkMasterA_SplitWrite(AXI4_Master_IFC#(nid, naddr, ndata, nuser))
 
    return xactor.axi_side;
 endmodule
+
+// ================================================================
 
 // sweep addresses 0 through 0xfff
 //   write zero
@@ -458,6 +473,8 @@ module mkMasterB(AXI4_Master_IFC#(nid, naddr, ndata, nuser))
 
    return xactor.axi_side;
 endmodule
+
+// ================================================================
 
 module mkMasterB_SplitWrite(AXI4_Master_IFC#(nid, naddr, ndata, nuser))
    provisos(
@@ -569,6 +586,8 @@ instance DefaultValue#(TestParams);
       };
 endinstance
 
+// ================================================================
+
 module mkTestGenerator#(TestParams params)(Empty)
    provisos(
       NumAlias#(nid, 16),
@@ -649,6 +668,8 @@ module mkTestGenerator#(TestParams params)(Empty)
    mkConnection(tpl_1(masterb_latency), fabric.v_from_masters[1]);
 endmodule
 
+// ================================================================
+
 module mkTestCase#(Integer n)(Empty);
    TestParams params = defaultValue;
 
@@ -681,7 +702,10 @@ module mkTestCase#(Integer n)(Empty);
    let _ifc <- mkTestGenerator(params);
 endmodule
 
-module mkTest(Empty);
+// ================================================================
+
+(* synthesize *)
+module mkTop (Empty);
 
    Integer n = 1;
 
