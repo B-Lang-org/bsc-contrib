@@ -7,6 +7,7 @@ BUILD_ORDER = \
 	GenC \
 	COBS \
 	VerilogRepr \
+	Misc \
 
 .PHONY: all
 all: install
