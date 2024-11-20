@@ -16,10 +16,10 @@ package EdgeFIFOFs;
 import FIFOF :: *;
 
 // ================================================================
-// FIFOFs for Master IPs.
+// FIFOFs for IPs that send requests (M = manager, master)
 // enq (IP-side) is guarded, deq (Fabric-side) is not.
 
-module mkMaster_EdgeFIFOF (FIFOF #(t))
+module mkM_EdgeFIFOF (FIFOF #(t))
    provisos (Bits #(t, tsz));
 
    Integer port_deq   = 0;
@@ -66,10 +66,10 @@ module mkMaster_EdgeFIFOF (FIFOF #(t))
 endmodule
 
 // ================================================================
-// For Slave IPs.
+// FIFOFs for IPs that receive requests (S = subordinate, slave)
 // enq (Fabric-side) is unguarded, deq (IP-side) is guarded.
 
-module mkSlave_EdgeFIFOF (FIFOF #(t))
+module mkS_EdgeFIFOF (FIFOF #(t))
    provisos (Bits #(t, tsz));
 
    Integer port_deq   = 0;

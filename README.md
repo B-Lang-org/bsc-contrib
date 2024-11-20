@@ -56,3 +56,13 @@ header comment that states the copyright and the license as an SPDX
 short identifier (BSD-3-Clause) with the full license text given in
 the `LICENSES` directory.
 
+---
+
+## Contributing
+
+Please see the following document in the `doc` directory for advice on
+how to contribute new libraries to this repository.
+
+[How to Contribute](doc/How_to_Contribute.html)
+
+---

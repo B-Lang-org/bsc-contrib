@@ -1,0 +1,208 @@
+= How to Contribute to `bsc-contrib`
+:revnumber: v1.02
+:revdate: 2024-11-19
+:sectnums:
+
+// ================================================================
+
+Let's assume you want to contribute a new library `MyContrib`.  All
+your sources and documentation should be placed in a new sub-dir:
+
+    bsc-contrib/Libraries/MyContrib/
+
+If you also have unit-tests, they should be in a new sub-dir:
+
+    bsc-contrib/testing/bsc.contrib/Unit_Test_MyContrib
+
+NOTE: In future we may require unit tests also to be in
+      bsc-contrib/Libraries/MyContrib/`
+
+This document should help you prepare your contribution, within your
+own fork of the `bsc-contrib` repository, before issuing a Pull
+Request (PR).
+
+// ================================================================
+== Logistics
+
+We suggest the following "flow":
+
+* On GitHub, create a FORK of the original `bsc-contrib` repo, under your own account.
+* Clone your FORK to your work area (laptop, desktop, ...).
+* Create a new BRANCH.
+* Prepare your contribution in your new BRANCH, including formatting,
+  copyrights, licenses, build-and-install Makefiles and unit-tests.
+  See the sections below for details.
+* Commit your BRANCH.
+
+* Please "squash" any "uninteresting" older commits so that the PR
+  contains only useful commits (that a future maintainer may find
+  useful).  In most cases, one can squash everything into a single,
+  final commit on top of the most recent `bsc-contrib` commit.
+
+* Push the commit up to your FORK.
+* From your FORK, create a PR for the original `bsc-contrib` repo.
+
+// ================================================================
+== Source text formatting
+
+Source text formatting is checked automatically during CI (continuous
+integration).
+
+At the moment the only check is to disallow trailing blanks,
+particularly in source files.
+
+NOTE: We may add more detailed format-checkers in future.
+
+// ================================================================
+== Copyright and License text
+
+Make sure all files (code files, Makefiles, READMEs, ...) have your
+desired Copyright and License text. Example:
+
+    // Copyright (c) 2020 Bluespec, Inc. All rights reserved.
+    //
+    // SPDX-License-Identifier: BSD-3-Clause
+
+You are responsible for specifying your preferred copyright and
+license text (but please remember that this is a public repo;
+everything here is expected to be free and open-source; anything here
+should be freely usable in commercial products).
+
+You can insert full license text or, if it is a standard well-known
+license, just provide its SPDX identifier as in the example above.  If
+you're undecided, we recommend BSD-3-Clause.
+
+// ================================================================
+== README
+
+It is normally good to have a README file in your contribution:
+
+    Libraries/MyContrib/README{,.txt,.md,.adoc}
+
+Plain-text (no extension or `.txt` extension), Markdown (`.md`) or
+AsciiDoctor (`.adoc`) are automatically rendered by GitHub.
+
+// ================================================================
+== Makefiles for building and installing
+
+`make all` at the top level descends recursively into sub-dirs.  In a
+leaf-level library dir the Makefile contains a `build` target to
+compile the source file(s) in that dir.  The corresponding object
+files get copied into the installation directory (default
+`bsc-contrib/inst`).  You can also specify other files to be copied
+(include files, config files, ...).  This `make` is performed for
+installation, but also repeatedly automatically by CI (continuous
+integration), to check that it succeeds.
+
+NOTE: This just compiles sources, it does not build executables.  See
+      separate "Unit Tests" section for building unit-test executables
+      and running them.  Those are also performed by CI.
+
+// ----------------------------------------------------------------
+
+=== Setting up Makefiles for build-and-install of `MyContrib`
+
+In the existing
+
+    Libraries/Makefile
+
+add `MyContrib` to the `BUILD_ORDER` list in order to include your
+contribution into the recursive descent.
+
+If `Libraries/MyContrib/` has sub-dirs, repeat the recursive pattern
+of `Libraries/Makefile` to enable recursive descent into each sub-dir,
+as needed.  Example:
+
+    Libraries/AMBA_TLM2/Makefile
+
+Finally, at leaf level, have a `Makefile` that does the actual work.
+Example:
+
+    Libraries/AMBA_TLM2/AHB/Makefile
+
+* Make sure it defines `TOP` and `LIBNAME`
+
+* It should compile each of the source files in `MyLibrary` (either
+  directly, or via import into another source file).  The
+  corresponding object files are placed in the "install" area by the
+  `make` invocation.
+
+NOTE: Many of these Makefiles include `Libaries/common.mk` for
+      defaults and then selectively override defaults.  It expects
+      Makefile variables `TOP` and `LIBNAME` to be set.
+
+// ----------------------------------------------------------------
+
+=== Running build-and-install
+
+Please run this before submitting a PR to ensure it all works.  In
+your copy (clone of fork) of `bsc-contrib`:
+
+    $ cd bsc-contrib    // my clone of my fork
+    $ make all
+
+This should run the `make install` action on the whole repo, including
+compiling your sources in your newly added `MyContrib`, and installing
+the corresponding object files in:
+
+    bsc-contrib/inst/lib/Libraries/MyContrib/
+
+// ================================================================
+== Optional Unit Tests
+
+You can optionally add unit tests for your library source files; these
+unit tests are run automatically and repeatedly as part of CI
+(Continuous Integration).
+
+NOTE: `bsc-contrib`'s unit-testing is performed as part of the main
+      `bsc` compiler's testing of standard libraries, using the same
+      infrastructure.  The infrastructure has more ways to configure
+      testing than described in this section; please see the `bsc`
+      repo for more details (https://github.com/B-Lang-org/bsc).
+
+Add your unit tests to `bsc-contrib/testing/bsc.contrib/`.  You can
+study any of the existing unit tests in that directory for guidance.
+Briefly:
+
+* Add a sub-dir for a new unit-test (let's call it TEST here for discussion).
+
+    bsc-contrib/testing/bsc.contrib/TEST
+
+* In TEST:
+
+** Each top-level test driver module should be in a file `Foo.bsv` or
+   `Foo.bs`, and the module should be called `sysFoo`, with an `Empty`
+   interface.
+
+** If the top-level file imports other support files (just for this
+   test, not library files), they can be placed here, too.
+
+** Create a file `sysFoo.out.expected` containing output expected when
+   it is run +
+If different output is expected from Bluesim vs. Verilog sim (e.g.,
+$time can be slightly different), you can instead have separate files
+for each:
+
+*** for Bluesim: `sysFoo.c.out.expected`
+*** for Verilog: `sysFoo.v.out.expected`
+
+// ----------------------------------------------------------------
+
+=== Running unit tests
+
+Please run your tests before submitting a PR.
+
+See the "Testing" section of the README in `bsc-contrib` for
+information on how to run them (you have to copy `bsc-contrib` into
+the `bsc` repo and run it there).
+
+NOTE: (Future restructuring plans) +
+      We would like unit tests for
+      library `MyContrib` to be located along with its sources, i.e.,
+      under `Libraries/MyContrib`, instead of separately in
+      `testing/bsc.contrib/TEST`.  The current structure exists
+      because it is derived from historical roots where `bsc-contrib`
+      's testing is done along with `bsc` 's testing using shared
+      infrastructure in the `bsc` repo.
+
+// ================================================================
