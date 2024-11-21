@@ -1,4 +1,6 @@
 // Copyright (c) 2017-2019 Bluespec, Inc.  All Rights Reserved
+//
+// SPDX-License-Identifier: BSD-3-Clause
 
 package ByteLane;
 

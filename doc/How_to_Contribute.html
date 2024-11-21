@@ -438,8 +438,8 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="header">
 <h1>How to Contribute to <code>bsc-contrib</code></h1>
 <div class="details">
-<span id="revnumber">version v1.02,</span>
-<span id="revdate">2024-11-19</span>
+<span id="revnumber">version v1.03,</span>
+<span id="revdate">2024-11-21</span>
 </div>
 </div>
 <div id="content">
@@ -447,11 +447,20 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div class="sectionbody">
 <div class="paragraph">
 <p>Let&#8217;s assume you want to contribute a new library <code>MyContrib</code>.  All
-your sources and documentation should be placed in a new sub-dir:</p>
+your B-Lang (BSV/BH) sources and documentation should be placed in a
+new sub-dir:</p>
 </div>
 <div class="literalblock">
 <div class="content">
 <pre>bsc-contrib/Libraries/MyContrib/</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If your BSV/BH code imports any Verilog, it should be placed in:</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>bsc-contrib/Verilog/</pre>
 </div>
 </div>
 <div class="paragraph">
@@ -497,12 +506,13 @@ Request (PR).</p>
 <p>Clone your FORK to your work area (laptop, desktop, &#8230;&#8203;).</p>
 </li>
 <li>
-<p>Create a new BRANCH.</p>
+<p>Create a new BRANCH in your clone of your FORK.</p>
 </li>
 <li>
-<p>Prepare your contribution in your new BRANCH, including formatting,
-copyrights, licenses, build-and-install Makefiles and unit-tests.
-See the sections below for details.</p>
+<p>In this new BRANCH (in your clone of your FORK), prepare your
+contribution, including formatting, copyrights, licenses,
+build-and-install Makefiles and optional unit-tests. See the
+sections below for details.</p>
 </li>
 <li>
 <p>Commit your BRANCH.</p>
@@ -514,7 +524,7 @@ useful).  In most cases, one can squash everything into a single,
 final commit on top of the most recent <code>bsc-contrib</code> commit.</p>
 </li>
 <li>
-<p>Push the commit up to your FORK.</p>
+<p>Push the commit from your clone up to your FORK.</p>
 </li>
 <li>
 <p>From your FORK, create a PR for the original <code>bsc-contrib</code> repo.</p>
@@ -596,14 +606,21 @@ AsciiDoctor (<code>.adoc</code>) are automatically rendered by GitHub.</p>
 <h2 id="_makefiles_for_building_and_installing">5. Makefiles for building and installing</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p><code>make all</code> at the top level descends recursively into sub-dirs.  In a
-leaf-level library dir the Makefile contains a <code>build</code> target to
-compile the source file(s) in that dir.  The corresponding object
-files get copied into the installation directory (default
-<code>bsc-contrib/inst</code>).  You can also specify other files to be copied
-(include files, config files, &#8230;&#8203;).  This <code>make</code> is performed for
-installation, but also repeatedly automatically by CI (continuous
-integration), to check that it succeeds.</p>
+<p><code>make all</code> at the top level descends recursively into all sub-dirs of
+<code>Libraries</code> and <code>Verilog</code>.  In a leaf-level library dir the Makefile
+contains a <code>build</code> target to compile source file(s) that are in that
+dir.  The corresponding object files get copied into the installation
+directory (default <code>bsc-contrib/inst</code>).  You can also specify other
+files to be copied (include files, config files, &#8230;&#8203;).</p>
+</div>
+<div class="paragraph">
+<p>If you added any files to the <code>Verilog/</code> dir, add those filenames to
+the <code>VERI_FILES</code> list in the <code>Verilog/Makefile</code>.</p>
+</div>
+<div class="paragraph">
+<p>The top-level <code>make all</code> is performed for installation, but is also
+repeated automatically during CI (continuous integration) to check
+that it succeeds.</p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -612,9 +629,10 @@ integration), to check that it succeeds.</p>
 <div class="title">Note</div>
 </td>
 <td class="content">
-This just compiles sources, it does not build executables.  See
-      separate "Unit Tests" section for building unit-test executables
-      and running them.  Those are also performed by CI.
+In the <code>Library</code> sub-dirs, this just compiles sources, it does
+      not build executables.  See separate "Unit Tests" section for
+      building unit-test executables and running them.  Those are also
+      performed by CI.
 </td>
 </tr>
 </table>
@@ -720,8 +738,8 @@ unit tests are run automatically and repeatedly as part of CI
 <div class="title">Note</div>
 </td>
 <td class="content">
-<code>bsc-contrib&#8217;s unit-testing is performed as part of the main
-      `bsc</code> compiler&#8217;s testing of standard libraries, using the same
+<code>bsc-contrib</code> 's unit-testing is performed as part of the main
+      <code>bsc</code> compiler&#8217;s testing of standard libraries, using the same
       infrastructure.  The infrastructure has more ways to configure
       testing than described in this section; please see the <code>bsc</code>
       repo for more details (<a href="https://github.com/B-Lang-org/bsc" class="bare">https://github.com/B-Lang-org/bsc</a>).
@@ -737,15 +755,16 @@ Briefly:</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Add a sub-dir for a new unit-test (let&#8217;s call it TEST here for discussion).</p>
+<p>Add a sub-dir for a new set of unit-tests for the new library (it
+can have sub-dirs for more detailed structure):</p>
 <div class="literalblock">
 <div class="content">
-<pre>bsc-contrib/testing/bsc.contrib/TEST</pre>
+<pre>bsc-contrib/testing/bsc.contrib/MyContrib/</pre>
 </div>
 </div>
 </li>
 <li>
-<p>In TEST:</p>
+<p>In this dir:</p>
 <div class="ulist">
 <ul>
 <li>
@@ -759,10 +778,12 @@ test, not library files), they can be placed here, too.</p>
 </li>
 <li>
 <p>Create a file <code>sysFoo.out.expected</code> containing output expected when
-   it is run<br>
-If different output is expected from Bluesim vs. Verilog sim (e.g.,
-$time can be slightly different), you can instead have separate files
-for each:</p>
+it is run.</p>
+<div class="paragraph">
+<p>If different output is expected from Bluesim vs. Verilog sim (e.g.,
+  <code>$time</code> can be slightly different), you can instead have separate
+  files for each:</p>
+</div>
 <div class="ulist">
 <ul>
 <li>
@@ -785,9 +806,9 @@ for each:</p>
 <p>Please run your tests before submitting a PR.</p>
 </div>
 <div class="paragraph">
-<p>See the "Testing" section of the README in <code>bsc-contrib</code> for
-information on how to run them (you have to copy <code>bsc-contrib</code> into
-the <code>bsc</code> repo and run it there).</p>
+<p>See the "Testing" section of the <a href="../README.md">README</a> in
+<code>bsc-contrib</code> for information on how to run them (you have to copy
+<code>testing/bsc-contrib</code> into the <code>bsc</code> repo and run it there).</p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -800,9 +821,9 @@ the <code>bsc</code> repo and run it there).</p>
       We would like unit tests for
       library <code>MyContrib</code> to be located along with its sources, i.e.,
       under <code>Libraries/MyContrib</code>, instead of separately in
-      <code>testing/bsc.contrib/TEST</code>.  The current structure exists
+      <code>testing/bsc.contrib/MyContrib</code>.  The current structure exists
       because it is derived from historical roots where <code>bsc-contrib</code>
-      's testing is done along with <code>bsc</code> 's testing using shared
+      's testing was done along with <code>bsc</code> 's testing using shared
       infrastructure in the <code>bsc</code> repo.
 </td>
 </tr>
@@ -814,8 +835,8 @@ the <code>bsc</code> repo and run it there).</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Version v1.02<br>
-Last updated 2024-11-20 11:21:30 -0500
+Version v1.03<br>
+Last updated 2024-11-21 09:57:17 -0500
 </div>
 </div>
 </body>

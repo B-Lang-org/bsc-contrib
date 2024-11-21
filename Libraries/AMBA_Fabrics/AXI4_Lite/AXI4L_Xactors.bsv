@@ -12,7 +12,7 @@ package AXI4L_Xactors;
 //     BSV FIFO-like interfaces (flow-controlled)
 //     ARM AXI4 signals (ready/valid protocol)
 
-// This code is adapted from similr AXI4 code provided by Joe Stoy
+// This code is adapted from similar AXI4 code provided by Joe Stoy
 
 // ================================================================
 // BSV library imports

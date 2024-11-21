@@ -9,7 +9,9 @@ LIBNAME=AMBA_Fabrics/Adapters
 include ../../common.mk
 
 # Requires files in Misc and AMBA_Fabrics/AXI4 and AMBA_Fabrics/AXI4_Lite
-BSCFLAGS += -p $(BUILDDIR)/../../Misc:$(BUILDDIR)/../../AMBA_Fabrics/AXI4:$(BUILDDIR)/../../AMBA_Fabrics/AXI4_Lite:+
+BSCFLAGS += -p $(BUILDDIR)/../../AMBA_Fabrics/AXI4:+ \
+	    -p $(BUILDDIR)/../../AMBA_Fabrics/AXI4_Lite:+ \
+	    -p $(BUILDDIR)/../../Misc:+
 
 .PHONY: build
 build:

@@ -1,14 +1,19 @@
 = How to Contribute to `bsc-contrib`
-:revnumber: v1.02
-:revdate: 2024-11-19
+:revnumber: v1.03
+:revdate: 2024-11-21
 :sectnums:
 
 // ================================================================
 
 Let's assume you want to contribute a new library `MyContrib`.  All
-your sources and documentation should be placed in a new sub-dir:
+your B-Lang (BSV/BH) sources and documentation should be placed in a
+new sub-dir:
 
     bsc-contrib/Libraries/MyContrib/
+
+If your BSV/BH code imports any Verilog, it should be placed in:
+
+    bsc-contrib/Verilog/
 
 If you also have unit-tests, they should be in a new sub-dir:
 
@@ -28,10 +33,11 @@ We suggest the following "flow":
 
 * On GitHub, create a FORK of the original `bsc-contrib` repo, under your own account.
 * Clone your FORK to your work area (laptop, desktop, ...).
-* Create a new BRANCH.
-* Prepare your contribution in your new BRANCH, including formatting,
-  copyrights, licenses, build-and-install Makefiles and unit-tests.
-  See the sections below for details.
+* Create a new BRANCH in your clone of your FORK.
+* In this new BRANCH (in your clone of your FORK), prepare your
+  contribution, including formatting, copyrights, licenses,
+  build-and-install Makefiles and optional unit-tests. See the
+  sections below for details.
 * Commit your BRANCH.
 
 * Please "squash" any "uninteresting" older commits so that the PR
@@ -39,7 +45,7 @@ We suggest the following "flow":
   useful).  In most cases, one can squash everything into a single,
   final commit on top of the most recent `bsc-contrib` commit.
 
-* Push the commit up to your FORK.
+* Push the commit from your clone up to your FORK.
 * From your FORK, create a PR for the original `bsc-contrib` repo.
 
 // ================================================================
@@ -85,18 +91,24 @@ AsciiDoctor (`.adoc`) are automatically rendered by GitHub.
 // ================================================================
 == Makefiles for building and installing
 
-`make all` at the top level descends recursively into sub-dirs.  In a
-leaf-level library dir the Makefile contains a `build` target to
-compile the source file(s) in that dir.  The corresponding object
-files get copied into the installation directory (default
-`bsc-contrib/inst`).  You can also specify other files to be copied
-(include files, config files, ...).  This `make` is performed for
-installation, but also repeatedly automatically by CI (continuous
-integration), to check that it succeeds.
+`make all` at the top level descends recursively into all sub-dirs of
+`Libraries` and `Verilog`.  In a leaf-level library dir the Makefile
+contains a `build` target to compile source file(s) that are in that
+dir.  The corresponding object files get copied into the installation
+directory (default `bsc-contrib/inst`).  You can also specify other
+files to be copied (include files, config files, ...).
 
-NOTE: This just compiles sources, it does not build executables.  See
-      separate "Unit Tests" section for building unit-test executables
-      and running them.  Those are also performed by CI.
+If you added any files to the `Verilog/` dir, add those filenames to
+the `VERI_FILES` list in the `Verilog/Makefile`.
+
+The top-level `make all` is performed for installation, but is also
+repeated automatically during CI (continuous integration) to check
+that it succeeds.
+
+NOTE: In the `Library` sub-dirs, this just compiles sources, it does
+      not build executables.  See separate "Unit Tests" section for
+      building unit-test executables and running them.  Those are also
+      performed by CI.
 
 // ----------------------------------------------------------------
 
@@ -154,7 +166,7 @@ You can optionally add unit tests for your library source files; these
 unit tests are run automatically and repeatedly as part of CI
 (Continuous Integration).
 
-NOTE: `bsc-contrib`'s unit-testing is performed as part of the main
+NOTE: `bsc-contrib` 's unit-testing is performed as part of the main
       `bsc` compiler's testing of standard libraries, using the same
       infrastructure.  The infrastructure has more ways to configure
       testing than described in this section; please see the `bsc`
@@ -164,11 +176,12 @@ Add your unit tests to `bsc-contrib/testing/bsc.contrib/`.  You can
 study any of the existing unit tests in that directory for guidance.
 Briefly:
 
-* Add a sub-dir for a new unit-test (let's call it TEST here for discussion).
+* Add a sub-dir for a new set of unit-tests for the new library (it
+  can have sub-dirs for more detailed structure):
 
-    bsc-contrib/testing/bsc.contrib/TEST
+    bsc-contrib/testing/bsc.contrib/MyContrib/
 
-* In TEST:
+* In this dir:
 
 ** Each top-level test driver module should be in a file `Foo.bsv` or
    `Foo.bs`, and the module should be called `sysFoo`, with an `Empty`
@@ -178,10 +191,11 @@ Briefly:
    test, not library files), they can be placed here, too.
 
 ** Create a file `sysFoo.out.expected` containing output expected when
-   it is run +
+   it is run.
++
 If different output is expected from Bluesim vs. Verilog sim (e.g.,
-$time can be slightly different), you can instead have separate files
-for each:
+  `$time` can be slightly different), you can instead have separate
+  files for each:
 
 *** for Bluesim: `sysFoo.c.out.expected`
 *** for Verilog: `sysFoo.v.out.expected`
@@ -192,17 +206,17 @@ for each:
 
 Please run your tests before submitting a PR.
 
-See the "Testing" section of the README in `bsc-contrib` for
-information on how to run them (you have to copy `bsc-contrib` into
-the `bsc` repo and run it there).
+See the "Testing" section of the link:../README.md[README] in
+`bsc-contrib` for information on how to run them (you have to copy
+`testing/bsc-contrib` into the `bsc` repo and run it there).
 
 NOTE: (Future restructuring plans) +
       We would like unit tests for
       library `MyContrib` to be located along with its sources, i.e.,
       under `Libraries/MyContrib`, instead of separately in
-      `testing/bsc.contrib/TEST`.  The current structure exists
+      `testing/bsc.contrib/MyContrib`.  The current structure exists
       because it is derived from historical roots where `bsc-contrib`
-      's testing is done along with `bsc` 's testing using shared
+      's testing was done along with `bsc` 's testing using shared
       infrastructure in the `bsc` repo.
 
 // ================================================================
