@@ -208,7 +208,7 @@ Please run your tests before submitting a PR.
 
 See the "Testing" section of the link:../README.md[README] in
 `bsc-contrib` for information on how to run them (you have to copy
-`testing/bsc-contrib` into the `bsc` repo and run it there).
+`testing/bsc.contrib` into the `bsc` repo and run it there).
 
 NOTE: (Future restructuring plans) +
       We would like unit tests for
