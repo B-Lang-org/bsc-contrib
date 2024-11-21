@@ -63,6 +63,6 @@ the `LICENSES` directory.
 Please see the following document in the `doc` directory for advice on
 how to contribute new libraries to this repository.
 
-[How to Contribute](doc/How_to_Contribute.html)
+[How to Contribute](doc/How_to_Contribute.adoc)
 
 ---
