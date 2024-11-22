@@ -127,8 +127,7 @@ module mkMem_Model #(Integer    verbosity,
    rule rl_info (rg_display_info);
       rg_display_info <= False;
 
-      $display ("INFO: %m");
-      $display ("    base 0x%16h  lim 0x%16h    implemented 0x%16h",
+      $display ("INFO: base 0x%16h  lim 0x%16h    implemented 0x%16h",
 		byte_addr_base, byte_addr_lim, bytes_implemented);
       if (init_with_memhex)
 	 $display ("    initialized from: %s", memhex_filename);

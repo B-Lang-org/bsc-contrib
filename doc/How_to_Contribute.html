@@ -527,7 +527,7 @@ final commit on top of the most recent <code>bsc-contrib</code> commit.</p>
 <p>Push the commit from your clone up to your FORK.</p>
 </li>
 <li>
-<p>From your FORK, create a PR for the original <code>bsc-contrib</code> repo.</p>
+<p>From your FORK, create a PR for the original <code>bsc-contrib</code> repository.</p>
 </li>
 </ul>
 </div>
@@ -574,7 +574,7 @@ desired Copyright and License text. Example:</p>
 </div>
 <div class="paragraph">
 <p>You are responsible for specifying your preferred copyright and
-license text (but please remember that this is a public repo;
+license text (but please remember that this is a public repository;
 everything here is expected to be free and open-source; anything here
 should be freely usable in commercial products).</p>
 </div>
@@ -610,8 +610,8 @@ AsciiDoctor (<code>.adoc</code>) are automatically rendered by GitHub.</p>
 <code>Libraries</code> and <code>Verilog</code>.  In a leaf-level library dir the Makefile
 contains a <code>build</code> target to compile source file(s) that are in that
 dir.  The corresponding object files get copied into the installation
-directory (default <code>bsc-contrib/inst</code>).  You can also specify other
-files to be copied (include files, config files, &#8230;&#8203;).</p>
+dir (default <code>bsc-contrib/inst</code>).  You can also specify other files to
+be copied (include files, config files, &#8230;&#8203;).</p>
 </div>
 <div class="paragraph">
 <p>If you added any files to the <code>Verilog/</code> dir, add those filenames to
@@ -711,9 +711,9 @@ $ make all</pre>
 </div>
 </div>
 <div class="paragraph">
-<p>This should run the <code>make install</code> action on the whole repo, including
-compiling your sources in your newly added <code>MyContrib</code>, and installing
-the corresponding object files in:</p>
+<p>This should run the <code>make install</code> action on the whole repository,
+including compiling your sources in your newly added <code>MyContrib</code>, and
+installing the corresponding object files in:</p>
 </div>
 <div class="literalblock">
 <div class="content">
@@ -740,17 +740,18 @@ unit tests are run automatically and repeatedly as part of CI
 <td class="content">
 <code>bsc-contrib</code> 's unit-testing is performed as part of the main
       <code>bsc</code> compiler&#8217;s testing of standard libraries, using the same
-      infrastructure.  The infrastructure has more ways to configure
-      testing than described in this section; please see the <code>bsc</code>
-      repo for more details (<a href="https://github.com/B-Lang-org/bsc" class="bare">https://github.com/B-Lang-org/bsc</a>).
+      infrastructure.  The infrastructure has many more ways to
+      configure testing than the brief description here; please see
+      <code>testsuite/README.md</code> in the <code>bsc</code> repository for more details
+      (<a href="https://github.com/B-Lang-org/bsc" class="bare">https://github.com/B-Lang-org/bsc</a>).
 </td>
 </tr>
 </table>
 </div>
 <div class="paragraph">
-<p>Add your unit tests to <code>bsc-contrib/testing/bsc.contrib/</code>.  You can
-study any of the existing unit tests in that directory for guidance.
-Briefly:</p>
+<p>Add your unit tests to <code>bsc-contrib/testing/bsc.contrib/</code>.  For
+guidance, you can study any of the existing unit tests in that dir or
+in <code>testsuite/</code> in the <code>bsc</code> compiler repository.  Briefly:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -768,13 +769,17 @@ can have sub-dirs for more detailed structure):</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Each top-level test driver module should be in a file <code>Foo.bsv</code> or
-<code>Foo.bs</code>, and the module should be called <code>sysFoo</code>, with an <code>Empty</code>
-interface.</p>
+<p>There should be a <code>Makefile</code> that is just boilerplate; see any of
+the other unit test dirs for examples.</p>
 </li>
 <li>
-<p>If the top-level file imports other support files (just for this
-test, not library files), they can be placed here, too.</p>
+<p>You can have multiple test programs.  Each such top-level <code>Foo.bsv</code>
+(or <code>Foo.bs</code>) should contain a top-level module <code>sysFoo</code> with an
+<code>Empty</code> interface.</p>
+</li>
+<li>
+<p>If the top-level file imports other support source files (just for
+this test, not library files), they can be placed here, too.</p>
 </li>
 <li>
 <p>Create a file <code>sysFoo.out.expected</code> containing output expected when
@@ -795,6 +800,12 @@ it is run.</p>
 </ul>
 </div>
 </li>
+<li>
+<p>Finally, a file <code>foo.exp</code> contains a fragment of a "script" to be
+run in this dir.  It can invoke multiple tests in this dir.  Each
+test can be run in Bluesim or Verilog sim or both.  Again, see
+other existing unit tests for examples.</p>
+</li>
 </ul>
 </div>
 </li>
@@ -808,7 +819,8 @@ it is run.</p>
 <div class="paragraph">
 <p>See the "Testing" section of the <a href="../README.md">README</a> in
 <code>bsc-contrib</code> for information on how to run them (you have to copy
-<code>testing/bsc-contrib</code> into the <code>bsc</code> repo and run it there).</p>
+<code>testing/bsc.contrib</code> from here into the <code>bsc</code> repository&#8217;s
+<code>testsuite</code> dir and run it there).</p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -824,7 +836,7 @@ it is run.</p>
       <code>testing/bsc.contrib/MyContrib</code>.  The current structure exists
       because it is derived from historical roots where <code>bsc-contrib</code>
       's testing was done along with <code>bsc</code> 's testing using shared
-      infrastructure in the <code>bsc</code> repo.
+      infrastructure in the <code>bsc</code> repository.
 </td>
 </tr>
 </table>
@@ -836,7 +848,7 @@ it is run.</p>
 <div id="footer">
 <div id="footer-text">
 Version v1.03<br>
-Last updated 2024-11-21 09:57:17 -0500
+Last updated 2024-11-22 17:25:57 -0500
 </div>
 </div>
 </body>

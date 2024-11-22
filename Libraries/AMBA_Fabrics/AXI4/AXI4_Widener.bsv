@@ -130,7 +130,7 @@ module mkAXI4_Widener (AXI4_Widener_IFC #(wd_id_t, wd_addr_t, m_wd_data_t, s_wd_
 
       // Debugging
       if (verbosity > 0) begin
-	 $display ("%0d: %m:AXI4_Widener.rl_wr_xaction_M_to_S: m -> s", cur_cycle);
+	 $display ("%0d: AXI4_Widener.rl_wr_xaction_M_to_S: m -> s", cur_cycle);
 	 $display ("    m_wra : ", fshow (m_wra));
 	 $display ("    m_wrd: ",  fshow (m_wrd));
 	 $display ("    s_wrd: ",  fshow (s_wrd));
@@ -146,7 +146,7 @@ module mkAXI4_Widener (AXI4_Widener_IFC #(wd_id_t, wd_addr_t, m_wd_data_t, s_wd_
       xactor_from_M.i_wr_resp.enq (m_wrr);
 
       if (verbosity > 1) begin
-	 $display ("%0d: %m::AXI4_Widener.rl_wr_resp_S_to_M: m <- s", cur_cycle);
+	 $display ("%0d: AXI4_Widener.rl_wr_resp_S_to_M: m <- s", cur_cycle);
 	 $display ("    s_wrr: ", fshow (s_wrr));
 	 $display ("    m_wrr: ", fshow (m_wrr));
       end
@@ -165,7 +165,7 @@ module mkAXI4_Widener (AXI4_Widener_IFC #(wd_id_t, wd_addr_t, m_wd_data_t, s_wd_
 
       // Debugging
       if (verbosity > 0) begin
-	 $display ("%0d: %m::AXI4_Widener.rl_rd_xaction_M_to_S: m -> s", cur_cycle);
+	 $display ("%0d: AXI4_Widener.rl_rd_xaction_M_to_S: m -> s", cur_cycle);
 	 $display ("    m_rda: ", fshow (m_rda));
 	 $display ("    s_rda: ", fshow (s_rda));
       end
@@ -188,7 +188,7 @@ module mkAXI4_Widener (AXI4_Widener_IFC #(wd_id_t, wd_addr_t, m_wd_data_t, s_wd_
 
       // Debugging
       if (verbosity > 0) begin
-	 $display ("%0d: %m::AXI4_Widener.rl_rd_resp_S_to_M: m <- s", cur_cycle);
+	 $display ("%0d: AXI4_Widener.rl_rd_resp_S_to_M: m <- s", cur_cycle);
 	 $display ("    s_rdd: ", fshow (s_rdd));
 	 $display ("    m_rdd: ", fshow (m_rdd));
       end

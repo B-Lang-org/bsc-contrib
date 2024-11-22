@@ -144,7 +144,6 @@ module mkAXI4_Fabric #(function Tuple2 #(Bool, Bit #(TLog #(tn_num_S)))
    rule rl_reset (rg_reset);
       if (cfg_verbosity > 0) begin
 	 $display ("%0d: rl_reset", cur_cycle);
-	 $display ("    %m");
       end
       for (Integer mi = 0; mi < num_M; mi = mi + 1) begin
 	 xactors_from_Ms [mi].reset;
@@ -224,7 +223,6 @@ module mkAXI4_Fabric #(function Tuple2 #(Bool, Bit #(TLog #(tn_num_S)))
 
 	    if (cfg_verbosity > 0) begin
 	       $display ("%0d: rl_wr_xaction_M_to_S: m%0d -> s%0d", cur_cycle, mi, sj);
-	       $display ("    %m");
 	       $display ("    ", fshow (a));
 	    end
 	 endrule
@@ -242,7 +240,6 @@ module mkAXI4_Fabric #(function Tuple2 #(Bool, Bit #(TLog #(tn_num_S)))
 	    v_f_wd_tasks      [mi].enq (tuple2 (fromInteger (num_S), a.awlen));
 
 	    $display ("%0d: ERROR: rl_wr_xaction_no_such_S: m%0d -> ?", cur_cycle, mi);
-	    $display ("    %m");
 	    $display ("        ", fshow (a));
 	 endrule
 
@@ -262,7 +259,6 @@ module mkAXI4_Fabric #(function Tuple2 #(Bool, Bit #(TLog #(tn_num_S)))
 	 if (cfg_verbosity > 0) begin
 	    $display ("%0d: rl_wr_xaction_M_to_S_data: m%0d -> s%0d, beat %0d/%0d",
 		      cur_cycle, mi, sj, v_rg_wd_beat_count [mi], awlen);
-	    $display ("    %m");
 	    $display ("    ", fshow (d));
 	 end
 
@@ -278,7 +274,6 @@ module mkAXI4_Fabric #(function Tuple2 #(Bool, Bit #(TLog #(tn_num_S)))
 	       $display ("%0d: ERROR: rl_wr_xaction_M_to_S_data: m%0d -> s%0d",
 			 cur_cycle, mi, sj);
 	       $display ("    WLAST not set on final data beat (awlen = %0d)", awlen);
-	       $display ("    %m");
 	       $display ("    ", fshow (d));
 	    end
 	 end
@@ -302,7 +297,6 @@ module mkAXI4_Fabric #(function Tuple2 #(Bool, Bit #(TLog #(tn_num_S)))
 	    if (cfg_verbosity > 0) begin
 	       $display ("%0d: rl_wr_resp_S_to_M: m%0d <- s%0d",
 			 cur_cycle, mi, sj);
-	       $display ("    %m");
 	       $display ("        ", fshow (b));
 	    end
 	 endrule
@@ -327,7 +321,6 @@ module mkAXI4_Fabric #(function Tuple2 #(Bool, Bit #(TLog #(tn_num_S)))
 
 	 if (cfg_verbosity > 0) begin
 	    $display ("%0d: rl_wr_resp_err_to_M: m%0d <- err", cur_cycle, mi);
-	    $display ("    %m");
 	    $display ("        ", fshow (b));
 	 end
       endrule
@@ -350,7 +343,6 @@ module mkAXI4_Fabric #(function Tuple2 #(Bool, Bit #(TLog #(tn_num_S)))
 	    if (cfg_verbosity > 0) begin
 	       $display ("%0d: rl_rd_xaction_M_to_S: m%0d -> s%0d",
 			 cur_cycle, mi, sj);
-	       $display ("    %m");
 	       $display ("        ", fshow (a));
 	    end
 	 endrule
@@ -364,7 +356,6 @@ module mkAXI4_Fabric #(function Tuple2 #(Bool, Bit #(TLog #(tn_num_S)))
 	    v_f_rd_err_info [mi].enq (tuple3 (a.arlen, a.arid, a.aruser));
 
 	    $display ("%0d: ERROR: rl_rd_xaction_no_such_S: m%0d -> ?", cur_cycle, mi);
-	    $display ("    %m");
 	    $display ("        ", fshow (a));
 	 endrule
 
@@ -393,7 +384,6 @@ module mkAXI4_Fabric #(function Tuple2 #(Bool, Bit #(TLog #(tn_num_S)))
 		  $display ("%0d: ERROR: rl_rd_resp_S_to_M: m%0d <- s%0d",
 			    cur_cycle, mi, sj);
 		  $display ("    RLAST not set on final data beat (arlen = %0d)", arlen);
-		  $display ("    %m");
 		  $display ("    ", fshow (r));
 	       end
 	    end
@@ -405,7 +395,6 @@ module mkAXI4_Fabric #(function Tuple2 #(Bool, Bit #(TLog #(tn_num_S)))
 	    if (cfg_verbosity > 0) begin
 	       $display ("%0d: rl_rd_resp_S_to_M: m%0d <- s%0d",
 			 cur_cycle, mi, sj);
-	       $display ("    %m");
 	       $display ("    r: ", fshow (r));
 	    end
 	 endrule
@@ -440,7 +429,6 @@ module mkAXI4_Fabric #(function Tuple2 #(Bool, Bit #(TLog #(tn_num_S)))
 	 if (cfg_verbosity > 0) begin
 	    $display ("%0d: rl_rd_resp_err_to_M: m%0d <- err",
 		      cur_cycle, mi);
-	    $display ("    %m");
 	    $display ("    r: ", fshow (r));
 	 end
       endrule

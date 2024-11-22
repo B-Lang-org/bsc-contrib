@@ -34,7 +34,6 @@ ActionValue #(Bit #(32)) cur_cycle = actionvalue
 function Action fa_debug_show_location (Integer verbosity);
    action
       if (verbosity != 0) begin
-	 $display ("    %m");
 	 $write ("    %0d: ", cur_cycle);
       end
    endaction

@@ -119,7 +119,7 @@ module mkAXI4_Mem_Model (AXI4_Mem_Model_IFC #(wd_id, wd_addr, wd_data, wd_user))
 	 rg_rd_beat <= rg_rd_beat + 1;
 
       if (verbosity != 0) begin
-	 $write ("%0d: %m.rl_read: ", cur_cycle);
+	 $write ("%0d: rl_read: ", cur_cycle);
 	 $write (fshow_Rd_Addr (rd_addr));
 	 $write (fshow_Rd_Data (rd_data));
 	 if (addr_ok)
@@ -150,7 +150,7 @@ module mkAXI4_Mem_Model (AXI4_Mem_Model_IFC #(wd_id, wd_addr, wd_data, wd_user))
 	 rf.upd (rf_index, wr_data.wdata);
 
       if (verbosity != 0) begin
-	 $write ("%0d: %m.rl_write: ", cur_cycle);
+	 $write ("%0d: rl_write: ", cur_cycle);
 	 $write (fshow_Wr_Data (wr_data));
 	 $write ("  ", fshow_Wr_Addr (wr_addr));
 	 if (addr_ok)
@@ -179,16 +179,16 @@ module mkAXI4_Mem_Model (AXI4_Mem_Model_IFC #(wd_id, wd_addr, wd_data, wd_user))
 
    method Action init (Bit #(wd_addr) addr_map_base, Bit #(wd_addr) addr_map_lim);
       if (addr_map_base [2:0] != 3'b0)
-	 $display ("%0d: %m.init: ERROR: unaligned addr_map_base 0x%0h", cur_cycle, addr_map_base);
+	 $display ("%0d: init: ERROR: unaligned addr_map_base 0x%0h", cur_cycle, addr_map_base);
       else if (addr_map_lim [2:0] != 3'b0)
-	 $display ("%0d: %m.init: ERROR: unaligned addr_map_lim 0x%0h", cur_cycle, addr_map_lim);
+	 $display ("%0d: init: ERROR: unaligned addr_map_lim 0x%0h", cur_cycle, addr_map_lim);
       else if (addr_map_lim <= addr_map_base)
-	 $display ("%0d: %m.init: ERROR: addr_map_base 0x%0h > addr_map_lim 0x%0h",
+	 $display ("%0d: init: ERROR: addr_map_base 0x%0h > addr_map_lim 0x%0h",
 		   cur_cycle,
 		   addr_map_base,
 		   addr_map_lim);
       else if ((addr_map_lim - addr_map_base) > fromInteger (mem_size_word64 * 8))
-	 $display ("%0d: %m.init: ERROR: mem size (base 0x%0h, lim 0x%0h) > max (0x%0h)",
+	 $display ("%0d: init: ERROR: mem size (base 0x%0h, lim 0x%0h) > max (0x%0h)",
 		   cur_cycle,
 		   addr_map_base,
 		   addr_map_lim,
@@ -198,7 +198,7 @@ module mkAXI4_Mem_Model (AXI4_Mem_Model_IFC #(wd_id, wd_addr, wd_data, wd_user))
 	 rg_addr_map_base <= addr_map_base;
 	 rg_addr_map_lim  <= addr_map_lim;
 	 rg_initialized   <= True;
-	 $display ("%0d: %m.init: addr_map_base 0x%0h, addr_map_lim 0x%0h",
+	 $display ("%0d: init: addr_map_base 0x%0h, addr_map_lim 0x%0h",
 		   cur_cycle,
 		   addr_map_base,
 		   addr_map_lim);

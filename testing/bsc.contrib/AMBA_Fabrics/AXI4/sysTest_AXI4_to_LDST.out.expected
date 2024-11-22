@@ -1,0 +1,320 @@
+================================================================
+34: INFO: Setting Mode to: one-at-a-time
+================
+35: fa_wr_REQ: id 1001 addr ffffffff sizecode 7 (0x80 bytes) strb ffffffffffffffff
+     1f1e1d1c1b1a1918 1716151413121110 0f0e0d0c0b0a0908 0706050403020100
+     3f3e3d3c3b3a3938 3736353433323130 2f2e2d2c2b2a2928 2726252423222120
+37: AXI4_to_ST:rl_start_xaction ================
+  ERROR: illegal AXI4 request
+    awsize 0x80 bytes > axi data bus width 0x40 bytes
+37: AXI4_to_ST:rl_start_xaction ================
+  ERROR: illegal AXI4 request
+    awlen 0x2; only awlen 0 (1-beat bursts) supported
+  Discarding: AXI4_Wr_Addr { awid: 'h1001, awaddr: 'h00000000ffffffff, awlen: 'h02, awsize: 'h7, awburst: 'h1, awlock: 'h0, awcache: 'h0, awprot: 'h0, awqos: 'h0, awregion: 'h0, awuser: 'h0 }
+43: rl_axi_wr_RSP: AXI4_Wr_Resp { bid: 'h1001, bresp: 'h2, buser: 'h0 }
+================
+44: fa_wr_REQ: id 1002 addr 80000025 sizecode 3 (0x8 bytes) strb ffffffffffffffff
+     1f1e1d1c1b1a1918 1716151413121110 0f0e0d0c0b0a0908 0706050403020100
+     3f3e3d3c3b3a3938 3736353433323130 2f2e2d2c2b2a2928 2726252423222120
+51:   rl_st_handler: SB addr 80000025 data 0000000000000025
+52:   rl_st_handler: SH addr 80000026 data 0000000000002726
+56: rl_axi_wr_RSP: AXI4_Wr_Resp { bid: 'h1002, bresp: 'h0, buser: 'h0 }
+================
+57: fa_wr_REQ: id 1003 addr 80000025 sizecode 4 (0x10 bytes) strb ffffffffffffffff
+     1f1e1d1c1b1a1918 1716151413121110 0f0e0d0c0b0a0908 0706050403020100
+     3f3e3d3c3b3a3938 3736353433323130 2f2e2d2c2b2a2928 2726252423222120
+64:   rl_st_handler: SB addr 80000025 data 0000000000000025
+65:   rl_st_handler: SH addr 80000026 data 0000000000002726
+66:   rl_st_handler: SD addr 80000028 data 2f2e2d2c2b2a2928
+70: rl_axi_wr_RSP: AXI4_Wr_Resp { bid: 'h1003, bresp: 'h0, buser: 'h0 }
+================
+71: fa_wr_REQ: id 1004 addr 80000025 sizecode 5 (0x20 bytes) strb ffffffffffffffff
+     1f1e1d1c1b1a1918 1716151413121110 0f0e0d0c0b0a0908 0706050403020100
+     3f3e3d3c3b3a3938 3736353433323130 2f2e2d2c2b2a2928 2726252423222120
+78:   rl_st_handler: SB addr 80000025 data 0000000000000025
+79:   rl_st_handler: SH addr 80000026 data 0000000000002726
+80:   rl_st_handler: SD addr 80000028 data 2f2e2d2c2b2a2928
+81:   rl_st_handler: SD addr 80000030 data 3736353433323130
+82:   rl_st_handler: SD addr 80000038 data 3f3e3d3c3b3a3938
+86: rl_axi_wr_RSP: AXI4_Wr_Resp { bid: 'h1004, bresp: 'h0, buser: 'h0 }
+================
+87: fa_wr_REQ: id 1005 addr 80000025 sizecode 6 (0x40 bytes) strb ffffffffffffffff
+     1f1e1d1c1b1a1918 1716151413121110 0f0e0d0c0b0a0908 0706050403020100
+     3f3e3d3c3b3a3938 3736353433323130 2f2e2d2c2b2a2928 2726252423222120
+94:   rl_st_handler: SB addr 80000025 data 0000000000000025
+95:   rl_st_handler: SH addr 80000026 data 0000000000002726
+96:   rl_st_handler: SD addr 80000028 data 2f2e2d2c2b2a2928
+97:   rl_st_handler: SD addr 80000030 data 3736353433323130
+98:   rl_st_handler: SD addr 80000038 data 3f3e3d3c3b3a3938
+102: rl_axi_wr_RSP: AXI4_Wr_Resp { bid: 'h1005, bresp: 'h0, buser: 'h0 }
+================
+103: fa_wr_REQ: id 1010 addr 40000000 sizecode 6 (0x40 bytes) strb ffffffffffffffff
+     1f1e1d1c1b1a1918 1716151413121110 0f0e0d0c0b0a0908 0706050403020100
+     3f3e3d3c3b3a3938 3736353433323130 2f2e2d2c2b2a2928 2726252423222120
+106:   rl_st_handler: SD addr 40000000 data 0706050403020100
+107:   rl_st_handler: SD addr 40000008 data 0f0e0d0c0b0a0908
+108:   rl_st_handler: SD addr 40000010 data 1716151413121110
+109:   rl_st_handler: SD addr 40000018 data 1f1e1d1c1b1a1918
+110:   rl_st_handler: SD addr 40000020 data 2726252423222120
+111:   rl_st_handler: SD addr 40000028 data 2f2e2d2c2b2a2928
+112:   rl_st_handler: SD addr 40000030 data 3736353433323130
+113:   rl_st_handler: SD addr 40000038 data 3f3e3d3c3b3a3938
+117: rl_axi_wr_RSP: AXI4_Wr_Resp { bid: 'h1010, bresp: 'h0, buser: 'h0 }
+================
+118: fa_wr_REQ: id 1020 addr 10009 sizecode 3 (0x8 bytes) strb ffffffffffffffff
+     1f1e1d1c1b1a1918 1716151413121110 0f0e0d0c0b0a0908 0706050403020100
+     3f3e3d3c3b3a3938 3736353433323130 2f2e2d2c2b2a2928 2726252423222120
+122:   rl_st_handler: SB addr 10009 data 0000000000000009
+123:   rl_st_handler: SH addr 1000a data 0000000000000b0a
+124:   rl_st_handler: SW addr 1000c data 000000000f0e0d0c
+128: rl_axi_wr_RSP: AXI4_Wr_Resp { bid: 'h1020, bresp: 'h0, buser: 'h0 }
+================
+129: fa_wr_REQ: id 1021 addr 10009 sizecode 3 (0x8 bytes) strb 0000000000007e00
+     1f1e1d1c1b1a1918 1716151413121110 0f0e0d0c0b0a0908 0706050403020100
+     3f3e3d3c3b3a3938 3736353433323130 2f2e2d2c2b2a2928 2726252423222120
+133:   rl_st_handler: SB addr 10009 data 0000000000000009
+134:   rl_st_handler: SH addr 1000a data 0000000000000b0a
+135:   rl_st_handler: SH addr 1000c data 0000000000000d0c
+136:   rl_st_handler: SB addr 1000e data 000000000000000e
+140: rl_axi_wr_RSP: AXI4_Wr_Resp { bid: 'h1021, bresp: 'h0, buser: 'h0 }
+================================================================
+162: INFO: Setting Mode to: pipelined, cur_cycle
+================
+163: fa_wr_REQ: id 2001 addr ffffffff sizecode 7 (0x80 bytes) strb ffffffffffffffff
+     1f1e1d1c1b1a1918 1716151413121110 0f0e0d0c0b0a0908 0706050403020100
+     3f3e3d3c3b3a3938 3736353433323130 2f2e2d2c2b2a2928 2726252423222120
+165: AXI4_to_ST:rl_start_xaction ================
+  ERROR: illegal AXI4 request
+    awsize 0x80 bytes > axi data bus width 0x40 bytes
+165: AXI4_to_ST:rl_start_xaction ================
+  ERROR: illegal AXI4 request
+    awlen 0x2; only awlen 0 (1-beat bursts) supported
+  Discarding: AXI4_Wr_Addr { awid: 'h2001, awaddr: 'h00000000ffffffff, awlen: 'h02, awsize: 'h7, awburst: 'h1, awlock: 'h0, awcache: 'h0, awprot: 'h0, awqos: 'h0, awregion: 'h0, awuser: 'h0 }
+================
+166: fa_wr_REQ: id 2002 addr 80000025 sizecode 3 (0x8 bytes) strb ffffffffffffffff
+     1f1e1d1c1b1a1918 1716151413121110 0f0e0d0c0b0a0908 0706050403020100
+     3f3e3d3c3b3a3938 3736353433323130 2f2e2d2c2b2a2928 2726252423222120
+================
+168: fa_wr_REQ: id 2003 addr 80000025 sizecode 4 (0x10 bytes) strb ffffffffffffffff
+     1f1e1d1c1b1a1918 1716151413121110 0f0e0d0c0b0a0908 0706050403020100
+     3f3e3d3c3b3a3938 3736353433323130 2f2e2d2c2b2a2928 2726252423222120
+================
+169: fa_wr_REQ: id 2004 addr 80000025 sizecode 5 (0x20 bytes) strb ffffffffffffffff
+     1f1e1d1c1b1a1918 1716151413121110 0f0e0d0c0b0a0908 0706050403020100
+     3f3e3d3c3b3a3938 3736353433323130 2f2e2d2c2b2a2928 2726252423222120
+================
+170: fa_wr_REQ: id 2005 addr 80000025 sizecode 6 (0x40 bytes) strb ffffffffffffffff
+     1f1e1d1c1b1a1918 1716151413121110 0f0e0d0c0b0a0908 0706050403020100
+     3f3e3d3c3b3a3938 3736353433323130 2f2e2d2c2b2a2928 2726252423222120
+171: rl_axi_wr_RSP: AXI4_Wr_Resp { bid: 'h2001, bresp: 'h2, buser: 'h0 }
+174:   rl_st_handler: SB addr 80000025 data 0000000000000025
+175:   rl_st_handler: SH addr 80000026 data 0000000000002726
+================
+177: fa_wr_REQ: id 2010 addr 40000000 sizecode 6 (0x40 bytes) strb ffffffffffffffff
+     1f1e1d1c1b1a1918 1716151413121110 0f0e0d0c0b0a0908 0706050403020100
+     3f3e3d3c3b3a3938 3736353433323130 2f2e2d2c2b2a2928 2726252423222120
+179: rl_axi_wr_RSP: AXI4_Wr_Resp { bid: 'h2002, bresp: 'h0, buser: 'h0 }
+181:   rl_st_handler: SB addr 80000025 data 0000000000000025
+182:   rl_st_handler: SH addr 80000026 data 0000000000002726
+183:   rl_st_handler: SD addr 80000028 data 2f2e2d2c2b2a2928
+================
+185: fa_wr_REQ: id 2020 addr 10009 sizecode 3 (0x8 bytes) strb ffffffffffffffff
+     1f1e1d1c1b1a1918 1716151413121110 0f0e0d0c0b0a0908 0706050403020100
+     3f3e3d3c3b3a3938 3736353433323130 2f2e2d2c2b2a2928 2726252423222120
+187: rl_axi_wr_RSP: AXI4_Wr_Resp { bid: 'h2003, bresp: 'h0, buser: 'h0 }
+189:   rl_st_handler: SB addr 80000025 data 0000000000000025
+190:   rl_st_handler: SH addr 80000026 data 0000000000002726
+191:   rl_st_handler: SD addr 80000028 data 2f2e2d2c2b2a2928
+192:   rl_st_handler: SD addr 80000030 data 3736353433323130
+193:   rl_st_handler: SD addr 80000038 data 3f3e3d3c3b3a3938
+================
+195: fa_wr_REQ: id 2021 addr 10009 sizecode 3 (0x8 bytes) strb 0000000000007e00
+     1f1e1d1c1b1a1918 1716151413121110 0f0e0d0c0b0a0908 0706050403020100
+     3f3e3d3c3b3a3938 3736353433323130 2f2e2d2c2b2a2928 2726252423222120
+197: rl_axi_wr_RSP: AXI4_Wr_Resp { bid: 'h2004, bresp: 'h0, buser: 'h0 }
+199:   rl_st_handler: SB addr 80000025 data 0000000000000025
+200:   rl_st_handler: SH addr 80000026 data 0000000000002726
+201:   rl_st_handler: SD addr 80000028 data 2f2e2d2c2b2a2928
+202:   rl_st_handler: SD addr 80000030 data 3736353433323130
+203:   rl_st_handler: SD addr 80000038 data 3f3e3d3c3b3a3938
+205:   rl_st_handler: SD addr 40000000 data 0706050403020100
+206:   rl_st_handler: SD addr 40000008 data 0f0e0d0c0b0a0908
+207:   rl_st_handler: SD addr 40000010 data 1716151413121110
+207: rl_axi_wr_RSP: AXI4_Wr_Resp { bid: 'h2005, bresp: 'h0, buser: 'h0 }
+208:   rl_st_handler: SD addr 40000018 data 1f1e1d1c1b1a1918
+209:   rl_st_handler: SD addr 40000020 data 2726252423222120
+210:   rl_st_handler: SD addr 40000028 data 2f2e2d2c2b2a2928
+211:   rl_st_handler: SD addr 40000030 data 3736353433323130
+212:   rl_st_handler: SD addr 40000038 data 3f3e3d3c3b3a3938
+215:   rl_st_handler: SB addr 10009 data 0000000000000009
+216:   rl_st_handler: SH addr 1000a data 0000000000000b0a
+216: rl_axi_wr_RSP: AXI4_Wr_Resp { bid: 'h2010, bresp: 'h0, buser: 'h0 }
+217:   rl_st_handler: SW addr 1000c data 000000000f0e0d0c
+220:   rl_st_handler: SB addr 10009 data 0000000000000009
+221:   rl_st_handler: SH addr 1000a data 0000000000000b0a
+221: rl_axi_wr_RSP: AXI4_Wr_Resp { bid: 'h2020, bresp: 'h0, buser: 'h0 }
+222:   rl_st_handler: SH addr 1000c data 0000000000000d0c
+223:   rl_st_handler: SB addr 1000e data 000000000000000e
+227: rl_axi_wr_RSP: AXI4_Wr_Resp { bid: 'h2021, bresp: 'h0, buser: 'h0 }
+================================================================
+228: INFO: Setting Mode to: one-at-a-time
+================
+229: fa_rd_REQ: id 3001 addr ffffffff sizecode 7 (0x80 bytes)
+231: AXI4_to_LD:rl_start_xaction ================
+  ERROR: illegal AXI4 request
+    awsize 0x80 bytes > axi data bus width 0x40 bytes
+231: AXI4_to_LD:rl_start_xaction ================
+  ERROR: illegal AXI4 request
+    arlen 0x2; only arlen 0 (1-beat bursts) supported
+  Discarding: AXI4_Rd_Addr { arid: 'h3001, araddr: 'h00000000ffffffff, arlen: 'h02, arsize: 'h7, arburst: 'h1, arlock: 'h0, arcache: 'h0, arprot: 'h0, arqos: 'h0, arregion: 'h0, aruser: 'h0 }
+243: rl_axi_rd_RSP: 
+    rid 3001  resp 2  rlast 1  ruser 0
+     0000000000000000 0000000000000000 0000000000000000 0000000000000000
+     0000000000000000 0000000000000000 0000000000000000 0000000000000000
+================
+244: fa_rd_REQ: id 3002 addr 80000025 sizecode 3 (0x8 bytes)
+251:   rl_ld_handler: LB addr 80000025 => data 25
+252:   rl_ld_handler: LH addr 80000026 => data 2726
+259: rl_axi_rd_RSP: 
+    rid 3002  resp 0  rlast 1  ruser 0
+     0000000000000000 0000000000000000 0000000000000000 0000000000000000
+     0000000000000000 0000000000000000 0000000000000000 2726250000000000
+================
+260: fa_rd_REQ: id 3003 addr 80000025 sizecode 4 (0x10 bytes)
+267:   rl_ld_handler: LB addr 80000025 => data 25
+268:   rl_ld_handler: LH addr 80000026 => data 2726
+269:   rl_ld_handler: LD addr 80000028 => data 2f2e2d2c2b2a2928
+275: rl_axi_rd_RSP: 
+    rid 3003  resp 0  rlast 1  ruser 0
+     0000000000000000 0000000000000000 0000000000000000 0000000000000000
+     0000000000000000 0000000000000000 2f2e2d2c2b2a2928 2726250000000000
+================
+276: fa_rd_REQ: id 3004 addr 80000025 sizecode 5 (0x20 bytes)
+283:   rl_ld_handler: LB addr 80000025 => data 25
+284:   rl_ld_handler: LH addr 80000026 => data 2726
+285:   rl_ld_handler: LD addr 80000028 => data 2f2e2d2c2b2a2928
+286:   rl_ld_handler: LD addr 80000030 => data 3736353433323130
+287:   rl_ld_handler: LD addr 80000038 => data 3f3e3d3c3b3a3938
+291: rl_axi_rd_RSP: 
+    rid 3004  resp 0  rlast 1  ruser 0
+     0000000000000000 0000000000000000 0000000000000000 0000000000000000
+     3f3e3d3c3b3a3938 3736353433323130 2f2e2d2c2b2a2928 2726250000000000
+================
+292: fa_rd_REQ: id 3005 addr 80000025 sizecode 6 (0x40 bytes)
+299:   rl_ld_handler: LB addr 80000025 => data 25
+300:   rl_ld_handler: LH addr 80000026 => data 2726
+301:   rl_ld_handler: LD addr 80000028 => data 2f2e2d2c2b2a2928
+302:   rl_ld_handler: LD addr 80000030 => data 3736353433323130
+303:   rl_ld_handler: LD addr 80000038 => data 3f3e3d3c3b3a3938
+307: rl_axi_rd_RSP: 
+    rid 3005  resp 0  rlast 1  ruser 0
+     0000000000000000 0000000000000000 0000000000000000 0000000000000000
+     3f3e3d3c3b3a3938 3736353433323130 2f2e2d2c2b2a2928 2726250000000000
+================
+308: fa_rd_REQ: id 3010 addr 40000000 sizecode 6 (0x40 bytes)
+311:   rl_ld_handler: LD addr 40000000 => data 706050403020100
+312:   rl_ld_handler: LD addr 40000008 => data f0e0d0c0b0a0908
+313:   rl_ld_handler: LD addr 40000010 => data 1716151413121110
+314:   rl_ld_handler: LD addr 40000018 => data 1f1e1d1c1b1a1918
+315:   rl_ld_handler: LD addr 40000020 => data 2726252423222120
+316:   rl_ld_handler: LD addr 40000028 => data 2f2e2d2c2b2a2928
+317:   rl_ld_handler: LD addr 40000030 => data 3736353433323130
+318:   rl_ld_handler: LD addr 40000038 => data 3f3e3d3c3b3a3938
+322: rl_axi_rd_RSP: 
+    rid 3010  resp 0  rlast 1  ruser 0
+     1f1e1d1c1b1a1918 1716151413121110 0f0e0d0c0b0a0908 0706050403020100
+     3f3e3d3c3b3a3938 3736353433323130 2f2e2d2c2b2a2928 2726252423222120
+================
+323: fa_rd_REQ: id 3020 addr 10009 sizecode 3 (0x8 bytes)
+327:   rl_ld_handler: LB addr 10009 => data 9
+328:   rl_ld_handler: LH addr 1000a => data b0a
+329:   rl_ld_handler: LW addr 1000c => data f0e0d0c
+339: rl_axi_rd_RSP: 
+    rid 3020  resp 0  rlast 1  ruser 0
+     0000000000000000 0000000000000000 0f0e0d0c0b0a0900 0000000000000000
+     0000000000000000 0000000000000000 0000000000000000 0000000000000000
+================================================================
+356: INFO: Setting Mode to: pipelined, cur_cycle
+================
+357: fa_rd_REQ: id 4001 addr ffffffff sizecode 7 (0x80 bytes)
+================
+358: fa_rd_REQ: id 4002 addr 80000025 sizecode 3 (0x8 bytes)
+================
+359: fa_rd_REQ: id 4003 addr 80000025 sizecode 4 (0x10 bytes)
+359: AXI4_to_LD:rl_start_xaction ================
+  ERROR: illegal AXI4 request
+    awsize 0x80 bytes > axi data bus width 0x40 bytes
+359: AXI4_to_LD:rl_start_xaction ================
+  ERROR: illegal AXI4 request
+    arlen 0x2; only arlen 0 (1-beat bursts) supported
+  Discarding: AXI4_Rd_Addr { arid: 'h4001, araddr: 'h00000000ffffffff, arlen: 'h02, arsize: 'h7, arburst: 'h1, arlock: 'h0, arcache: 'h0, arprot: 'h0, arqos: 'h0, arregion: 'h0, aruser: 'h0 }
+================
+360: fa_rd_REQ: id 4004 addr 80000025 sizecode 5 (0x20 bytes)
+================
+362: fa_rd_REQ: id 4005 addr 80000025 sizecode 6 (0x40 bytes)
+366:   rl_ld_handler: LB addr 80000025 => data 25
+367:   rl_ld_handler: LH addr 80000026 => data 2726
+================
+369: fa_rd_REQ: id 4010 addr 40000000 sizecode 6 (0x40 bytes)
+371: rl_axi_rd_RSP: 
+    rid 4001  resp 2  rlast 1  ruser 0
+     0000000000000000 0000000000000000 0000000000000000 0000000000000000
+     0000000000000000 0000000000000000 0000000000000000 0000000000000000
+375:   rl_ld_handler: LB addr 80000025 => data 25
+376:   rl_ld_handler: LH addr 80000026 => data 2726
+================
+379: fa_rd_REQ: id 4020 addr 10009 sizecode 3 (0x8 bytes)
+381: rl_axi_rd_RSP: 
+    rid 4002  resp 0  rlast 1  ruser 0
+     0000000000000000 0000000000000000 0000000000000000 0000000000000000
+     0000000000000000 0000000000000000 0000000000000000 2726250000000000
+385:   rl_ld_handler: LD addr 80000028 => data 2f2e2d2c2b2a2928
+386:   rl_ld_handler: LB addr 80000025 => data 25
+387:   rl_ld_handler: LH addr 80000026 => data 2726
+391: rl_axi_rd_RSP: 
+    rid 4003  resp 0  rlast 1  ruser 0
+     0000000000000000 0000000000000000 0000000000000000 0000000000000000
+     0000000000000000 0000000000000000 2f2e2d2c2b2a2928 2726250000000000
+395:   rl_ld_handler: LD addr 80000028 => data 2f2e2d2c2b2a2928
+396:   rl_ld_handler: LD addr 80000030 => data 3736353433323130
+397:   rl_ld_handler: LD addr 80000038 => data 3f3e3d3c3b3a3938
+401: rl_axi_rd_RSP: 
+    rid 4004  resp 0  rlast 1  ruser 0
+     0000000000000000 0000000000000000 0000000000000000 0000000000000000
+     3f3e3d3c3b3a3938 3736353433323130 2f2e2d2c2b2a2928 2726250000000000
+403:   rl_ld_handler: LB addr 80000025 => data 25
+404:   rl_ld_handler: LH addr 80000026 => data 2726
+405:   rl_ld_handler: LD addr 80000028 => data 2f2e2d2c2b2a2928
+406:   rl_ld_handler: LD addr 80000030 => data 3736353433323130
+407:   rl_ld_handler: LD addr 80000038 => data 3f3e3d3c3b3a3938
+409:   rl_ld_handler: LD addr 40000000 => data 706050403020100
+410:   rl_ld_handler: LD addr 40000008 => data f0e0d0c0b0a0908
+411:   rl_ld_handler: LD addr 40000010 => data 1716151413121110
+411: rl_axi_rd_RSP: 
+    rid 4005  resp 0  rlast 1  ruser 0
+     0000000000000000 0000000000000000 0000000000000000 0000000000000000
+     3f3e3d3c3b3a3938 3736353433323130 2f2e2d2c2b2a2928 2726250000000000
+412:   rl_ld_handler: LD addr 40000018 => data 1f1e1d1c1b1a1918
+413:   rl_ld_handler: LD addr 40000020 => data 2726252423222120
+414:   rl_ld_handler: LD addr 40000028 => data 2f2e2d2c2b2a2928
+415:   rl_ld_handler: LD addr 40000030 => data 3736353433323130
+416:   rl_ld_handler: LD addr 40000038 => data 3f3e3d3c3b3a3938
+419:   rl_ld_handler: LB addr 10009 => data 9
+420:   rl_ld_handler: LH addr 1000a => data b0a
+420: rl_axi_rd_RSP: 
+    rid 4010  resp 0  rlast 1  ruser 0
+     1f1e1d1c1b1a1918 1716151413121110 0f0e0d0c0b0a0908 0706050403020100
+     3f3e3d3c3b3a3938 3736353433323130 2f2e2d2c2b2a2928 2726252423222120
+421:   rl_ld_handler: LW addr 1000c => data f0e0d0c
+431: rl_axi_rd_RSP: 
+    rid 4020  resp 0  rlast 1  ruser 0
+     0000000000000000 0000000000000000 0f0e0d0c0b0a0900 0000000000000000
+     0000000000000000 0000000000000000 0000000000000000 0000000000000000
+================
+1404: fa_rd_REQ: id ffff addr ffffffff sizecode 3 (0x8 bytes)
+1414:   rl_ld_handler: LB addr ffffffff => data 3f
+1418: rl_axi_rd_RSP: 
+    rid ffff  resp 0  rlast 1  ruser 0
+     0000000000000000 0000000000000000 0000000000000000 0000000000000000
+     3f00000000000000 0000000000000000 0000000000000000 0000000000000000
+    Sentinel rd_data (rid == '1); exit

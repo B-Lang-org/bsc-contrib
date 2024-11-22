@@ -150,7 +150,7 @@ module mkAXI4L_S_to_AXI4_M_Adapter (AXI4L_S_to_AXI4_M_Adapter_IFC #(wd_addr_AXI4
 
       // Debugging
       if (verbosity > 0) begin
-	 $display ("%0d: %m.rl_wr_addr_data:", cur_cycle);
+	 $display ("%0d: rl_wr_addr_data:", cur_cycle);
 	 $display ("        ", fshow (awaddr_AXI4L));
 	 $display ("    ==>   ", fshow (awaddr_AXI4));
 	 $display ("        ", fshow (wdata_AXI4));
@@ -173,7 +173,7 @@ module mkAXI4L_S_to_AXI4_M_Adapter (AXI4L_S_to_AXI4_M_Adapter_IFC #(wd_addr_AXI4
 
       // Debugging
       if (verbosity > 0) begin
-	 $display ("%0d: %m.rl_wr_resp:", cur_cycle);
+	 $display ("%0d: rl_wr_resp:", cur_cycle);
 	 $display ("        ", fshow (wr_resp_AXI4));
 	 $display ("    ==>   ", fshow (wr_resp_AXI4L));
       end
@@ -215,7 +215,7 @@ module mkAXI4L_S_to_AXI4_M_Adapter (AXI4L_S_to_AXI4_M_Adapter_IFC #(wd_addr_AXI4
 
       // Debugging
       if (verbosity > 0) begin
-	 $display ("%0d: %m.rl_rd_addr:", cur_cycle);
+	 $display ("%0d: rl_rd_addr:", cur_cycle);
 	 $display ("        ", fshow (araddr_AXI4L));
 	 $display ("    ==>   ", fshow (araddr_AXI4));
       end
@@ -248,7 +248,7 @@ module mkAXI4L_S_to_AXI4_M_Adapter (AXI4L_S_to_AXI4_M_Adapter_IFC #(wd_addr_AXI4
 
       // Debugging
       if (verbosity > 0) begin
-	 $display ("%0d: %m.rl_rd_data:", cur_cycle);
+	 $display ("%0d: rl_rd_data:", cur_cycle);
 	 $display ("        ", fshow (rd_data_AXI4));
 	 $display ("    ==>   ", fshow (rd_data_AXI4L));
       end

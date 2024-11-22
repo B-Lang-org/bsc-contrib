@@ -120,12 +120,12 @@ module mkAXI4_Deburster (AXI4_Deburster_IFC #(wd_id, wd_addr, wd_data, wd_user))
 //    // For wrapping bursts the wrap_mask needs to be applied to check if the
 //    // wrapping boundary has been reached
 //    if (axburst == axburst_wrap) begin
-//       $display ("%0d: %m::AXI4_Deburster: wrapping burst. boundary: (%0x). addr: (%0x)", cur_cycle, wrap_boundary, addr);
+//       $display ("%0d: AXI4_Deburster: wrapping burst. boundary: (%0x). addr: (%0x)", cur_cycle, wrap_boundary, addr);
 //       // The wrapping condition
 //       if ((addr % wrap_boundary) == 0) begin
 //          // wrap the address - retain all bits except the wrap boundary bit
 //          addr = addr & (~wrap_boundary);
-//          $display ("%0d: %m::AXI4_Deburster: wrapping burst. Wrapping: addr: (%0x)", cur_cycle, addr);
+//          $display ("%0d: AXI4_Deburster: wrapping burst. Wrapping: addr: (%0x)", cur_cycle, addr);
 //       end
 //    end
 //    return addr;
@@ -162,7 +162,7 @@ module mkAXI4_Deburster (AXI4_Deburster_IFC #(wd_id, wd_addr, wd_data, wd_user))
 
    rule rl_reset (rg_reset);
       if (verbosity >= 1)
-	 $display ("%0d: %m::AXI4_Deburster.rl_reset", cur_cycle);
+	 $display ("%0d: AXI4_Deburster.rl_reset", cur_cycle);
       xaxtor_from_M.reset;
       xactor_to_S.reset;
 
@@ -228,7 +228,7 @@ module mkAXI4_Deburster (AXI4_Deburster_IFC #(wd_id, wd_addr, wd_data, wd_user))
 	 // Simulation-only assertion-check (no action, just display assertion failure)
 	 // Last incoming beat must have WLAST = 1
 	 if (! d_in.wlast) begin
-	    $display ("%0d: ERROR: %m::AXI4_Deburster.rl_wr_xaction_M_to_S: m -> s",
+	    $display ("%0d: ERROR: AXI4_Deburster.rl_wr_xaction_M_to_S: m -> s",
 		      cur_cycle);
 	    $display ("    WLAST not set on last data beat (awlen = %0d)", a_in.awlen);
 	    $display ("    ", fshow (d_in));
@@ -241,7 +241,7 @@ module mkAXI4_Deburster (AXI4_Deburster_IFC #(wd_id, wd_addr, wd_data, wd_user))
 
       // Debugging
       if (verbosity > 0) begin
-	 $display ("%0d: %m::AXI4_Deburster.rl_wr_xaction_M_to_S: m -> s, beat %0d",
+	 $display ("%0d: AXI4_Deburster.rl_wr_xaction_M_to_S: m -> s, beat %0d",
 		   cur_cycle, rg_w_beat_count);
 	 if (rg_w_beat_count == 0)
 	    $display ("    a_in : ", fshow (a_in));
@@ -270,7 +270,7 @@ module mkAXI4_Deburster (AXI4_Deburster_IFC #(wd_id, wd_addr, wd_data, wd_user))
 	 rg_b_beat_count <= rg_b_beat_count + 1;
 
 	 if (verbosity > 1) begin
-	    $display ("%0d: %m::AXI4_Deburster.rl_wr_resp_S_to_M: m <- s, beat %0d",
+	    $display ("%0d: AXI4_Deburster.rl_wr_resp_S_to_M: m <- s, beat %0d",
 		      cur_cycle, rg_b_beat_count);
 	    $display ("    Consuming and discarding beat %0d", rg_b_beat_count);
 	    $display ("    ", fshow (b_in));
@@ -290,7 +290,7 @@ module mkAXI4_Deburster (AXI4_Deburster_IFC #(wd_id, wd_addr, wd_data, wd_user))
 	 rg_b_resp       <= axi4_resp_okay;
 
 	 if (verbosity > 1) begin
-	    $display ("%0d: %m::AXI4_Deburster.rl_wr_resp_S_to_M: m <- s, beat %0d",
+	    $display ("%0d: AXI4_Deburster.rl_wr_resp_S_to_M: m <- s, beat %0d",
 		      cur_cycle, rg_b_beat_count);
 	    $display ("    b_in: ",  fshow (b_in));
 	    $display ("    b_out: ", fshow (b_out));
@@ -342,7 +342,7 @@ module mkAXI4_Deburster (AXI4_Deburster_IFC #(wd_id, wd_addr, wd_data, wd_user))
 
       // Debugging
       if (verbosity > 0) begin
-	 $display ("%0d: %m::AXI4_Deburster.rl_rd_xaction_M_to_S: m -> s, addr %08x beat %0d",
+	 $display ("%0d: AXI4_Deburster.rl_rd_xaction_M_to_S: m -> s, addr %08x beat %0d",
 		   cur_cycle, a_out.araddr, rg_ar_beat_count);
 	 if (rg_ar_beat_count == 0)
 	    $display ("    a_in:  ", fshow (a_in));
@@ -376,7 +376,7 @@ module mkAXI4_Deburster (AXI4_Deburster_IFC #(wd_id, wd_addr, wd_data, wd_user))
 
       // Debugging
       if (verbosity > 0) begin
-	 $display ("%0d: %m::AXI4_Deburster.rl_rd_resp_S_to_M: m <- s, beat %0d",
+	 $display ("%0d: AXI4_Deburster.rl_rd_resp_S_to_M: m <- s, beat %0d",
 		   cur_cycle, rg_r_beat_count);
 	 if ((rg_r_beat_count == 0) || (verbosity > 1)) begin
 	    $display ("    r_in:  ", fshow (r_in));
