@@ -1,798 +1,649 @@
-// Copyright (c) 2021-2024 Bluespec, Inc. All Rights Reserved
-//
+// Copyright (c) 2021-2023 Bluespec, Inc.  All Rights Reserved
+// Copyright (c) 2024 Rishiyur S. Nikhil.
+
 // SPDX-License-Identifier: BSD-3-Clause
-
-/*
-  Unit test for AXI4_Fabric
-
-  This test attempts to recreate traffic patterns that were observed
-  to cause data corruption in an SoC.
-
-  The fabric is instantiated with 3 M and 4 S ports. One S is
-  connected to a DDR model, the rest are unconnected and unused.  Two
-  M ports connect to M A and M B modules, defined here.  The third M
-  port is unconnected and unused.
-
-  M A behaves like a host.  For the tests here, it will read 32-bits
-  from a single memory location (not overlapping with M B), bitwise
-  invert the value, and write it back to the same location.
-
-  M B behaves like uncached access from the processor in AWSteria.
-  Across a 4kiB region of memory, it will perform the following, all
-  as 32-bit accesses: (1) write zeros, (2) write sequential integers,
-  and (3) read back check the integers.
-
-  Various aspects of the behavior of the M and S modules may be
-  adjusted.  See the struct TestParams.
-
-  There are 5 test cases defined.  Supply '-D TESTCASE=<n>' to bsc
-  to select which to compile.
-
-*/
 
 package Test_AXI4_Fabric;
 
-import Assert ::*;
-import BUtils ::*;
-import Connectable ::*;
-import FIFOF ::*;
-import LFSR ::*;
-import StmtFSM ::*;
+// ================================================================
+// Standalone unit tester for AXI4_Fabric.bsv
 
-import Semi_FIFOF ::*;
+// The top-level module is: sysTest_AXI4_Fabric
 
-import AXI4_Deburster ::*;
-import AXI4_Fabric ::*;
-import AXI4_Types ::*;
-import AXI4_Widener ::*;
-import AXI4_DDR_Model ::*;
+// Instantiates a 2-M, 3-S AXI4 fabric.
+
+// Instantiates 2-M test-generators, connected to fabric M ports 0,1.
+// Instantiates 3-S modules, connected to fabric S ports 0,1,2.
+
+// Each M generates 'num_xactions' read and write requests containing,
+// in the following fields:
+//   axid    source id (0,1)
+//   axaddr  a random address
+//   axuser  User_struct { wild, M_num, S_num, serial_num }
+// AW transactions send W.data = AW.awaddr+1
+
+// Ss (and the fabric, if fabric error) copy awuser into buser, aruser into ruser
+// Ss check s_num
+// Ss check aw.addr+1 = w.data for AW/W transactions
+
+// Ms check buser/ruser
+// Ms check R responses for addr+1=data
+
+// POTENTIAL IMPROVEMENTS:
+// * Currently does not generate/test bursts (all transactions are single-beat)
 
 // ================================================================
-// Help functions
+// Bluespec library imports
 
-function Action write_word_addr (AXI4_M_Xactor_IFC #(nid, naddr, ndata, nuser) xactor,
-				 Bit#(naddr)                                   addr)
-   provisos(
-      Mul#(nbytes,8,ndata),
-      // per bsc
-      Mul#(32, a__, ndata)
-      );
-   action
-      AXI4_Wr_Addr#(nid, naddr, nuser) wrreq = AXI4_Wr_Addr {
-	 awid: 0,
-	 awaddr: addr,
-	 awlen: 0,
-	 awsize: axsize_8,
-	 awburst: 0,
-	 awlock: 0,
-	 awcache: 0,
-	 awprot: 0,
-	 awqos: 0,
-	 awregion: 0,
-	 awuser: 0
-	 };
+import FIFOF       :: *;
+import Vector      :: *;
+import Connectable :: *;
+import LFSR        :: *;
 
-      xactor.i_wr_addr.enq(wrreq);
-   endaction
-endfunction
+// ----------------
+// BSV additional libs
 
-function Action write_word_data(AXI4_M_Xactor_IFC#(nid, naddr, ndata, nuser) xactor, Bit#(naddr) addr, Bit#(32) data)
-   provisos(
-      Mul#(nbytes,8,ndata),
-      Add#(strbmask,1,nbytes),
-      // per bsc
-      Mul#(32, a__, ndata)
-      );
-   action
-      AXI4_Wr_Data#(ndata, nuser) wrdata = AXI4_Wr_Data {
-	 wdata: duplicate(data),
-	 wstrb: 'hf << (addr & fromInteger(valueof(strbmask))),
-	 wlast: True,
-	 wuser: 0
-	 };
-
-      xactor.i_wr_data.enq(wrdata);
-   endaction
-endfunction
-
-function Action write_word(AXI4_M_Xactor_IFC#(nid, naddr, ndata, nuser) xactor, Bit#(naddr) addr, Bit#(32) data)
-   provisos(
-      Mul#(nbytes,8,ndata),
-      // per bsc
-      Mul#(32, a__, ndata),
-      Add#(b__, 1, nbytes)
-      );
-   action
-      write_word_addr(xactor, addr);
-      write_word_data(xactor, addr, data);
-   endaction
-endfunction
-
-function Action write_word_resp(AXI4_M_Xactor_IFC#(nid, naddr, ndata, nuser) xactor);
-   action
-      xactor.o_wr_resp.deq;
-   endaction
-endfunction
-
-function Action read_word_addr(AXI4_M_Xactor_IFC#(nid, naddr, ndata, nuser) xactor, Bit#(naddr) addr)
-   provisos(
-      Mul#(nbytes,8,ndata),
-      // per bsc
-      Mul#(32, a__, ndata)
-      );
-   action
-      AXI4_Rd_Addr#(nid, naddr, nuser) rdreq = AXI4_Rd_Addr {
-	 arid: 0,
-	 araddr: addr,
-	 arlen: 0,
-	 arsize: axsize_8,
-	 arburst: 0,
-	 arlock: 0,
-	 arcache: 0,
-	 arprot: 0,
-	 arqos: 0,
-	 arregion: 0,
-	 aruser: 0
-	 };
-
-      xactor.i_rd_addr.enq(rdreq);
-   endaction
-endfunction
-
-function ActionValue#(Bit#(32)) read_word_data(AXI4_M_Xactor_IFC#(nid, naddr, ndata, nuser) xactor, Bit#(naddr) addr)
-   provisos(
-      Mul#(nbytes,8,ndata),
-      // per bsc
-      Mul#(32, a__, ndata)
-      );
-   actionvalue
-      let rddata = xactor.o_rd_data.first;
-      xactor.o_rd_data.deq;
-      Bit#(naddr) addrmask = fromInteger(valueOf(nbytes)) - 1;
-      return cExtend(rddata.rdata >> ((addr & addrmask) * 8));
-   endactionvalue
-endfunction
+import Semi_FIFOF  :: *;
+import GetPut_Aux  :: *;    // for FIFO 'pop'
 
 // ================================================================
+// Project imports
 
-module mkLatencyFIFO#(Integer cycles)(FIFOF#(t))
-   provisos(Bits#(t, a__));
+import AXI4_Types  :: *;
+import AXI4_Fabric :: *;
 
-   Bit#(32) bcycles = fromInteger(cycles);
+// ****************************************************************
+// Number of rd/wr transactions to generate (by each M).
+// This number chosen for reasonable runtime in iverilog.
 
-   staticAssert((bcycles >= 0) && (bcycles <= 256), "cycles must be between 0 and 256, inclusive");
-   staticAssert((bcycles == 0) || ((bcycles & (bcycles - 1)) == 0), "non-zero cycles must be a power of two");
-
-   Bit#(32) mask = bcycles - 1;
-   Reg#(Maybe#(Bit#(32))) count <- mkReg(tagged Invalid);
-   let lfsr <- mkLFSR_8;
-
-   FIFOF#(t) f_in <- mkLFIFOF;
-   FIFOF#(t) f_out <- mkLFIFOF;
-
-   if (bcycles == 0)
-      mkConnection(to_FIFOF_O(f_in), to_FIFOF_I(f_out));
-   else begin
-      rule rl_start(count matches tagged Invalid &&& f_in.notEmpty);
-	 count <= tagged Valid (cExtend(lfsr.value) & mask);
-	 lfsr.next;
-      endrule
-
-      rule rl_count(count matches tagged Valid .x &&& x != 0);
-	 count <= tagged Valid (x - 1);
-      endrule
-
-      rule rl_forward(count matches tagged Valid .x &&& x == 0);
-	 count <= tagged Invalid;
-	 f_out.enq(f_in.first);
-	 f_in.deq;
-      endrule
-   end
-
-   method enq = f_in.enq;
-   method deq = f_out.deq;
-   method first = f_out.first;
-   method notFull = f_in.notFull;
-   method notEmpty = f_out.notEmpty;
-   method Action clear();
-      action
-	 f_in.clear;
-	 f_out.clear;
-	 count <= tagged Invalid;
-      endaction
-   endmethod
-endmodule
+Integer num_xactions = 10000;
 
 // ================================================================
+// Verbosity during simulation on stdout (edit this as desired):
+//   0: quiet
+//   1: show xactions brief
+//   2: show xactions detail
 
-module mkAXI4LatencyInjection#(Integer req_cycles, Integer resp_cycles)
-   (Tuple2#(
-      AXI4_M_IFC #(nid, naddr, ndata, nuser),
-      AXI4_S_IFC #(nid, naddr, ndata, nuser)));
-
-   AXI4_M_Xactor_IFC#(nid, naddr, ndata, nuser) m <- mkAXI4_M_Xactor;
-   AXI4_S_Xactor_IFC#(nid, naddr, ndata, nuser) s <- mkAXI4_S_Xactor;
-
-   FIFOF#(AXI4_Wr_Addr#(nid, naddr, nuser)) f_wr_addr <- mkLatencyFIFO(req_cycles);
-   FIFOF#(AXI4_Wr_Data#(ndata, nuser)) f_wr_data <- mkLatencyFIFO(req_cycles);
-   FIFOF#(AXI4_Wr_Resp#(nid, nuser)) f_wr_resp <- mkLatencyFIFO(resp_cycles);
-
-   FIFOF#(AXI4_Rd_Addr#(nid, naddr, nuser)) f_rd_addr <- mkLatencyFIFO(req_cycles);
-   FIFOF#(AXI4_Rd_Data#(nid, ndata, nuser)) f_rd_data <- mkLatencyFIFO(resp_cycles);
-
-   mkConnection(m.i_wr_addr, to_FIFOF_O(f_wr_addr));
-   mkConnection(to_FIFOF_I(f_wr_addr), s.o_wr_addr);
-
-   mkConnection(m.i_wr_data, to_FIFOF_O(f_wr_data));
-   mkConnection(to_FIFOF_I(f_wr_data), s.o_wr_data);
-
-   mkConnection(m.o_wr_resp, to_FIFOF_I(f_wr_resp));
-   mkConnection(to_FIFOF_O(f_wr_resp), s.i_wr_resp);
-
-   mkConnection(m.i_rd_addr, to_FIFOF_O(f_rd_addr));
-   mkConnection(to_FIFOF_I(f_rd_addr), s.o_rd_addr);
-
-   mkConnection(m.o_rd_data, to_FIFOF_I(f_rd_data));
-   mkConnection(to_FIFOF_O(f_rd_data), s.i_rd_data);
-
-   return tuple2(m.axi_side, s.axi_side);
-endmodule
+Integer verbosity = 0;
 
 // ================================================================
+// Fabric parameters
 
-// continually read and write address 0x1000
-module mkM_A(AXI4_M_IFC#(nid, naddr, ndata, nuser))
-   provisos(
-      // per bsc
-      Add#(a__, 1, b__),
-      Mul#(b__, 8, ndata),
-      Mul#(32, c__, ndata)
-   );
-   AXI4_M_Xactor_IFC#(nid, naddr, ndata, nuser) xactor <- mkAXI4_M_Xactor;
+typedef 2 Num_Ms;
+typedef 3 Num_Ss;
 
-   Reg#(Bit#(32)) iter <- mkReg(1);
-   Reg#(Bit#(32)) data <- mkRegU;
-   Reg#(Bit#(4)) r <- mkRegU;
-   let lfsr <- mkLFSR_4;
+typedef TLog #(Num_Ms)   Wd_M_Num;
+typedef Bit #(Wd_M_Num)  M_Num;
 
-   Stmt s =
-   seq
-      write_word(xactor, 'h1000, 'haaaaaaaa);
-      write_word_resp(xactor);
+typedef TLog #(Num_Ss)   Wd_S_Num;
+typedef Bit #(Wd_S_Num)  S_Num;
 
-      while (True) seq
-	 if (iter % 1000 == 0)
-	    $display("A %d", iter);
-	 iter <= iter + 1;
+// ----------------
+// Address map of the three memory units
+// Note: requests to gaps should return error responses
 
-	 read_word_addr(xactor, 'h0004);
-	 action
-	    let d <- read_word_data(xactor, 'h0004);
-	 endaction
+// Mem unit 0
+Integer addr_base_0 = 'h_0000_0000;
+Integer addr_lim_0  = 'h_0100_0000 - 'h_0000_1000;    // size 16MB - 4KB
 
-	 read_word_addr(xactor, 'h1000);
-	 action
-	    let d <- read_word_data(xactor, 'h1000);
-	    data <= d;
-	 endaction
+// Gap of 4KB
 
-	 write_word(xactor, 'h1000, ~data);
-	 write_word_resp(xactor);
+// Mem unit 1
+Integer addr_base_1 = 'h_0100_0000;
+Integer addr_lim_1  = 'h_0180_0000;    // size 8MB
 
-	 action
-	    lfsr.next;
-	    r <= cExtend(lfsr.value);
-	 endaction
-	 while (r > 0)
-	    r <= r - 1;
-      endseq
-   endseq;
+// Mem unit 2
+Integer addr_base_2 = 'h_0180_0000;
+Integer addr_lim_2  = 'h_01C0_0000;    // size 4MB
 
-   let fsm <- mkAutoFSM(s);
+// Gap to 'h_FFFF_FFFF (rest of addr space
 
-   return xactor.axi_side;
-endmodule
+Integer addr_msb = 24;    // [24:0]
 
 // ================================================================
+// AXI4 parameters
 
-module mkM_A_Parallel(AXI4_M_IFC#(nid, naddr, ndata, nuser))
-   provisos(
-      // per bsc
-      Add#(a__, 1, b__),
-      Mul#(b__, 8, ndata),
-      Mul#(32, c__, ndata)
-   );
-   AXI4_M_Xactor_IFC#(nid, naddr, ndata, nuser) xactor <- mkAXI4_M_Xactor;
+typedef Bit #(20) Serial_Num;    // per-M xaction serial number
 
-   Reg#(Bit#(32)) iter <- mkReg(1);
-   Reg#(Bit#(32)) data <- mkRegU;
-   Reg#(Bit#(4)) r <- mkRegU;
-   let lfsr <- mkLFSR_4;
+typedef 4                               Wd_Id_M;    // M number
+typedef TAdd #(Wd_Id_M, TLog #(Num_Ms)) Wd_Id_S;
+typedef 25                              Wd_Addr;    // to accomodate upto addr_lim_X
+typedef 32                              Wd_Data;    // carries addr+1, for testing
 
-   Stmt s =
-   seq
-      write_word(xactor, 'h1000, 'haaaaaaaa);
-      write_word_resp(xactor);
-
-      par
-	 while (True) seq
-	    if (iter % 1000 == 0)
-	       $display("A %d", iter);
-	    iter <= iter + 1;
-
-	    read_word_addr(xactor, 'h1000);
-	    action
-	       let d <- read_word_data(xactor, 'h1000);
-	       data <= d;
-	    endaction
-
-	    action
-	       lfsr.next;
-	       r <= cExtend(lfsr.value);
-	    endaction
-	    while (r > 0)
-	       r <= r - 1;
-	 endseq
-
-	 while (True) seq
-	    write_word(xactor, 'h1000, ~data);
-	 endseq
-
-	 while (True) seq
-	    write_word_resp(xactor);
-	 endseq
-      endpar
-   endseq;
-
-   let fsm <- mkAutoFSM(s);
-
-   return xactor.axi_side;
-endmodule
-
-// ================================================================
-
-module mkM_A_SplitWrite(AXI4_M_IFC#(nid, naddr, ndata, nuser))
-   provisos(
-      // per bsc
-      Add#(a__, 1, b__),
-      Mul#(b__, 8, ndata),
-      Mul#(32, c__, ndata)
-   );
-   AXI4_M_Xactor_IFC#(nid, naddr, ndata, nuser) xactor <- mkAXI4_M_Xactor;
-
-   Reg#(Bit#(32)) iter <- mkReg(1);
-   Reg#(Bit#(32)) data <- mkRegU;
-   Reg#(Bit#(4)) r <- mkRegU;
-   let lfsr <- mkLFSR_4;
-
-   Stmt s =
-   seq
-      write_word_addr(xactor, 'h1000);
-      write_word_data(xactor, 'h1000, 'haaaaaaaa);
-      write_word_resp(xactor);
-
-      while (True) seq
-	 if (iter % 1000 == 0)
-	    $display("A %d", iter);
-	 iter <= iter + 1;
-
-	 read_word_addr(xactor, 'h0004);
-	 action
-	    let d <- read_word_data(xactor, 'h0004);
-	 endaction
-
-	 read_word_addr(xactor, 'h1000);
-	 action
-	    let d <- read_word_data(xactor, 'h1000);
-	    data <= d;
-	 endaction
-
-	 write_word_data(xactor, 'h1000, ~data);
-	 action
-	    lfsr.next;
-	    r <= cExtend(lfsr.value);
-	 endaction
-	 while (r > 0)
-	    r <= r - 1;
-	 write_word_addr(xactor, 'h1000);
-	 write_word_resp(xactor);
-
-	 action
-	    lfsr.next;
-	    r <= cExtend(lfsr.value);
-	 endaction
-	 while (r > 0)
-	    r <= r - 1;
-      endseq
-   endseq;
-
-   let fsm <- mkAutoFSM(s);
-
-   return xactor.axi_side;
-endmodule
-
-// ================================================================
-
-// sweep addresses 0 through 0xfff
-//   write zero
-//   write sequential integers
-//   read and check integers
-module mkM_B(AXI4_M_IFC#(nid, naddr, ndata, nuser))
-   provisos(
-      // per bsc
-      Add#(a__, 1, b__),
-      Mul#(b__, 8, ndata),
-      Mul#(32, c__, ndata)
-   );
-   AXI4_M_Xactor_IFC#(nid, naddr, ndata, nuser) xactor <- mkAXI4_M_Xactor;
-
-   Reg#(Bit#(64)) data <- mkRegU;
-   Reg#(Bit#(32)) i <- mkRegU;
-   Reg#(Bit#(32)) j <- mkRegU;
-   Reg#(Bit#(32)) iter <- mkReg(1);
-
-   Stmt s =
-   seq
-      while (True) seq
-	 if (iter % 10 == 0)
-	    $display("B %d", iter);
-	 iter <= iter + 1;
-
-	 par
-	    for (i <= 0; i < 'h400; i <= i + 1) seq
-	       write_word(xactor, cExtend(i * 4), cExtend(0));
-	    endseq
-
-	    for (j <= 0; j < 'h400; j <= j + 1) seq
-	       write_word_resp(xactor);
-	    endseq
-	 endpar
-
-	 par
-	    for (i <= 0; i < 'h400; i <= i + 1) seq
-	       write_word(xactor, cExtend(i * 4), cExtend(i));
-	    endseq
-
-	    for (j <= 0; j < 'h400; j <= j + 1) seq
-	       write_word_resp(xactor);
-	    endseq
-	 endpar
-
-	 seq
-	    for (i <= 0; i < 'h400; i <= i + 1) seq
-	       read_word_addr(xactor, cExtend(i * 4));
-	       action
-		  let d <- read_word_data(xactor, cExtend(i * 4));
-		  if (cExtend(d) != i) begin
-		     $display("FAIL addr %x (!= %x)", i, d);
-		     $finish;
-		  end
-	       endaction
-	    endseq
-	 endseq
-      endseq
-   endseq;
-
-   let fsm <- mkAutoFSM(s);
-
-   return xactor.axi_side;
-endmodule
-
-// ================================================================
-
-module mkM_B_SplitWrite(AXI4_M_IFC#(nid, naddr, ndata, nuser))
-   provisos(
-      // per bsc
-      Add#(a__, 1, b__),
-      Mul#(b__, 8, ndata),
-      Mul#(32, c__, ndata)
-   );
-   AXI4_M_Xactor_IFC#(nid, naddr, ndata, nuser) xactor <- mkAXI4_M_Xactor;
-
-   Reg#(Bit#(32)) iter <- mkReg(1);
-   Reg#(Bit#(64)) data <- mkRegU;
-   Reg#(Bit#(32)) i <- mkRegU;
-   Reg#(Bit#(32)) j <- mkRegU;
-   Reg#(Bit#(4)) r <- mkRegU;
-   let lfsr <- mkLFSR_4;
-
-   Stmt s =
-   seq
-      while (True) seq
-	 if (iter % 10 == 0)
-	    $display("B %d", iter);
-	 iter <= iter + 1;
-
-	 par
-	    for (i <= 0; i < 'h400; i <= i + 1) seq
-	       write_word_data(xactor, cExtend(i * 4), cExtend(0));
-	       write_word_addr(xactor, cExtend(i * 4));
-	    endseq
-
-	    for (j <= 0; j < 'h400; j <= j + 1) seq
-	       write_word_resp(xactor);
-	    endseq
-	 endpar
-
-	 par
-	    for (i <= 0; i < 'h400; i <= i + 1) seq
-	       write_word_data(xactor, cExtend(i * 4), cExtend(i));
-	       action
-		  lfsr.next;
-		  r <= cExtend(lfsr.value);
-	       endaction
-	       while (r > 0)
-		  r <= r - 1;
-	       write_word_addr(xactor, cExtend(i * 4));
-	    endseq
-
-	    for (j <= 0; j < 'h400; j <= j + 1) seq
-	       write_word_resp(xactor);
-	    endseq
-	 endpar
-
-	 seq
-	    for (i <= 0; i < 'h400; i <= i + 1) seq
-	       read_word_addr(xactor, cExtend(i * 4));
-	       action
-		  let d <- read_word_data(xactor, cExtend(i * 4));
-		  if (cExtend(d) != i) begin
-		     $display("FAIL addr %x (!= %x)", i, d);
-		     $finish;
-		  end
-	       endaction
-	    endseq
-	 endseq
-      endseq
-   endseq;
-
-   let fsm <- mkAutoFSM(s);
-
-   return xactor.axi_side;
-endmodule
-
-typedef enum {
-   Normal,
-   DDR
-   } MemType deriving (Bits, Eq);
-
-typedef enum {
-   Normal,
-   Parallel,
-   SplitWrite
-   } M_A_Type deriving (Bits, Eq);
-
-typedef enum {
-   Normal,
-   Narrow,
-   Narrow_SplitWrite
-   } M_B_Type deriving (Bits, Eq);
-
+// 'user' field in AXI4 responses contain this struct
 typedef struct {
-   MemType  mem_type;
-   M_A_Type m_a_type;
-   M_B_Type m_b_type;
-   Integer  s_request_latency;
-   Integer  s_response_latency;
-   Integer  m_request_latency;
-   Integer  m_response_latency;
-   } TestParams deriving (Bits, Eq);
+   Bool                   wild;
+   Bit #(TLog #(Num_Ms))  m_num;
+   Bit #(TLog #(Num_Ss))  s_num;
+   Bit #(Wd_Addr)         addr;
+   Serial_Num             serial_num;
+} User_struct
+deriving (Bits, FShow);
 
-instance DefaultValue#(TestParams);
-   defaultValue = TestParams {
-      mem_type: DDR,
-      m_a_type: Normal,
-      m_b_type: Normal,
-      s_request_latency: 0,
-      s_response_latency: 0,
-      m_request_latency: 0,
-      m_response_latency: 0
-      };
-endinstance
+typedef SizeOf #(User_struct) Wd_User;
 
-function Action fn_print_params (TestParams params);
-   action
-      case (params.mem_type)
-	 Normal: $display ("  mem_type = Normal");
-	 DDR:    $display ("  mem_type = DDR");
-      endcase
-      case (params.m_a_type)
-	 Normal:     $display ("  m_a_type = Normal");
-	 Parallel:   $display ("  m_a_type = Parallel");
-	 SplitWrite: $display ("  m_a_type = SplitWrite");
-      endcase
-      case (params.m_b_type)
-	 Normal:            $display ("  m_b_type = Normal");
-	 Narrow:            $display ("  m_b_type = Narrow");
-	 Narrow_SplitWrite: $display ("  m_b_type = Narrow_SplitWrite");
-      endcase
-      $display ("  s_request_latency  = %0d", params.s_request_latency);
-      $display ("  s_response_latency = %0d", params.s_response_latency);
-      $display ("  m_request_latency  = %0d", params.m_request_latency);
-      $display ("  m_response_latency = %0d", params.m_response_latency);
-   endaction
+// More compact output than fshow
+function Fmt fmt_User_struct (User_struct u);
+   Fmt f = $format ("User{m%0d", u.m_num);
+   if (u.wild)
+      f = f + $format (" wild");
+   else
+      f = f + $format (" s%0d", u.s_num);
+   f = f + $format (" addr:%0h}", u.addr);
+   f = f + $format (" #0x%0h}", u.serial_num);
+   return f;
 endfunction
 
-// ================================================================
+AXI4_Size axsize_full1 = axsize_32;    // full width of data bus
 
-typedef  16  Nid;
-typedef  64  Naddr;
-typedef 512  Ndata;
-typedef   0  Nuser;
+// ****************************************************************
+// Routing function used by crossbar switch
 
-typedef   2  Num_Ms;
-typedef   1  Num_Ss;
+function Tuple2 #(Bool, S_Num)
+         fn_addr_to_S_num (Bit #(Wd_Addr) addr);
+   if ((fromInteger (addr_base_0) <= addr) && (addr < fromInteger (addr_lim_0)))
+      return tuple2 (True, 0);
+
+   else if ((fromInteger (addr_base_1) <= addr) && (addr < fromInteger (addr_lim_1)))
+      return tuple2 (True, 1);
+
+   else if ((fromInteger (addr_base_2) <= addr) && (addr < fromInteger (addr_lim_2)))
+      return tuple2 (True, 2);
+
+   else
+      return tuple2 (False, ?);
+endfunction
+
+// ****************************************************************
+// M box for stimulus generation
+
+interface Stim_IFC;
+   interface AXI4_M_IFC #(Wd_Id_M, Wd_Addr, Wd_Data, Wd_User) ifc_M;
+   method Bool completed;
+   method ActionValue #(Bool) print_stats;
+endinterface
+
+// ----------------------------------------------------------------
+// Help functions to create AXI4 packets
+
+function AXI4_AW #(Wd_Id_M, Wd_Addr, Wd_User)
+         fv_mkAW (Bit #(Wd_Id_M) id, Bit #(Wd_Addr) addr, Bit #(Wd_User) user);
+
+   return AXI4_AW {awid:     id,
+		   awaddr:   addr,
+		   awlen:    0,            // 1 beat
+		   awsize:   axsize_full1,
+		   awburst:  axburst_incr,
+		   awlock:   axlock_normal,
+		   awcache:  awcache_norm_noncache_nonbuf,
+		   awprot:   0,
+		   awqos:    0,
+		   awregion: 0,
+		   awuser:   user};
+endfunction
+
+function AXI4_AR #(Wd_Id_M, Wd_Addr, Wd_User)
+         fv_mkAR (Bit #(Wd_Id_M) id, Bit #(Wd_Addr) addr, Bit #(Wd_User) user);
+
+   return AXI4_AR {arid:     id,
+		   araddr:   addr,
+		   arlen:    0,            // 1 beat
+		   arsize:   axsize_full1,
+		   arburst:  axburst_incr,
+		   arlock:   axlock_normal,
+		   arcache:  arcache_norm_noncache_nonbuf,
+		   arprot:   0,
+		   arqos:    0,
+		   arregion: 0,
+		   aruser:   user};
+endfunction
+
+function AXI4_W #(Wd_Data, Wd_User)
+         fv_mkW (Bit #(Wd_Data) data, Bit #(Wd_User) user);
+
+   return AXI4_W {wdata: data,
+		  wstrb: '1,      // all ones
+		  wlast: True,    // Last beat in burst
+		  wuser: user};
+endfunction
+
+function AXI4_R #(Wd_Id_S, Wd_Data, Wd_User)
+         fv_mkR (Bit #(Wd_Id_S) id, Bit #(Wd_Data) data, Bit #(Wd_User) user);
+   return AXI4_R {rid:   id,
+		  rdata: data,
+		  rresp: axi4_resp_okay,
+		  rlast: True,            // Last beat in burst
+		  ruser: user};
+endfunction
+
+function AXI4_B #(Wd_Id_S, Wd_User)
+         fv_mkB (Bit #(Wd_Id_S) req_id, Bit #(Wd_User) req_user);
+   return AXI4_B {bid:   req_id,
+		  bresp: axi4_resp_okay,
+		  buser: req_user};
+endfunction
+
+// ----------------------------------------------------------------
+// An M box for stimulus and responses
+// This M box generates 'num_xactions' random AXI4 requests
+// and (concurrently) processes the AXI4 responses.
 
 (* synthesize *)
-module mkAXI4_Fabric_inst (AXI4_Fabric_IFC#(Num_Ms, Num_Ss, Nid, Naddr, Ndata, Nuser));
-   function fn_addr(addr);
-      return tuple2(True, 0);
-   endfunction
+module mkMbox #(parameter Bit #(4) id)  (Stim_IFC);
 
-   let m <- mkAXI4_Fabric (fn_addr);
-   return m;
-endmodule
+   // Transactor for interface
+   AXI4_Buffer_IFC #(Wd_Id_M, Wd_Addr, Wd_Data, Wd_User) buf_M <- mkAXI4_Buffer;
 
-// ================================================================
+   // Pseudo-random number generator
+   LFSR #(Bit #(32)) lfsr_a <- mkLFSR_32;
 
-module mkTestGenerator#(TestParams params)(Empty)
-   provisos(
-      NumAlias#(nid, 16),
-      NumAlias#(naddr, 64),
-      NumAlias#(ndata, 512),
-      NumAlias#(nuser, 0),
-      NumAlias#(num_Ms, 2),
-      NumAlias#(num_Ss, 1)
-      // NumAlias#(num_Ms, 3),
-      // NumAlias#(num_Ss, 4)
-      );
-   function fn_addr(addr);
-      return tuple2(True, 0);
-   endfunction
+   // When we gen AW, this queue holds info to generate corresponding W
+   FIFOF #(Tuple2 #(Bit #(Wd_Data), Bit #(Wd_User))) f_W_info <- mkFIFOF;
 
-   // AXI4_Fabric_IFC#(num_Ms, num_Ss, nid, naddr, ndata, nuser) fabric <- mkAXI4_Fabric(fn_addr);
-   AXI4_Fabric_IFC#(num_Ms, num_Ss, nid, naddr, ndata, nuser) fabric <- mkAXI4_Fabric_inst;
+   // Transaction serial number
+   Reg #(Serial_Num) rg_serial_num <- mkReg (0);
 
-   if (params.mem_type == Normal) begin
-      staticAssert(False, "normal memory not supported yet");
-
-      //let mem <- mkMem_Model(0, 0, False, "", 0, 'h80000000, 'h80000000);
-      AXI4_Deburster_IFC#(nid, naddr, ndata, nuser) deburster <- mkAXI4_Deburster;
-
-      //mkConnection(deburster.to_S, mem);
-      mkConnection(fabric.v_to_Ss[0], deburster.from_M);
-   end
-   else if (params.mem_type == DDR) begin
-      let mem <- mkDDR_A_Model;
-      Tuple2#(
-	 AXI4_M_IFC #(nid, naddr, ndata, nuser),
-	 AXI4_S_IFC #(nid, naddr, ndata, nuser)) mem_latency <-
-            mkAXI4LatencyInjection(params.s_request_latency, params.s_response_latency);
-
-      mkConnection(tpl_1(mem_latency), mem);
-      mkConnection(fabric.v_to_Ss[0], tpl_2(mem_latency));
-   end
-
-   AXI4_M_IFC#(nid, naddr, ndata, nuser) m_a = ?;
-   if (params.m_a_type == Normal)
-      m_a <- mkM_A;
-   else if (params.m_a_type == Parallel)
-      m_a <- mkM_A_Parallel;
-   else if (params.m_a_type == SplitWrite)
-      m_a <- mkM_A_SplitWrite;
-   else
-      staticAssert(False, "M A type not supported");
-
-   AXI4_M_IFC#(nid, naddr, ndata, nuser) m_b = ?;
-   AXI4_M_IFC#(nid, naddr, 64, nuser) m_b_orig = ?;
-   if (params.m_b_type == Normal)
-      m_b <- mkM_B;
-   else if (params.m_b_type == Narrow) begin
-      m_b_orig <- mkM_B;
-   end
-   else if (params.m_b_type == Narrow_SplitWrite)
-      m_b_orig <- mkM_B_SplitWrite;
-   else
-      staticAssert(False, "M B type not supported");
-
-   if (params.m_b_type != Normal) begin
-      AXI4_Widener_IFC#(nid, naddr, 64, ndata, nuser) widener <- mkAXI4_Widener;
-      mkConnection(m_b_orig, widener.from_M);
-      m_b = widener.to_S;
-   end
-
-   Tuple2#(
-      AXI4_M_IFC #(nid, naddr, ndata, nuser),
-      AXI4_S_IFC #(nid, naddr, ndata, nuser)) m_a_latency <-
-         mkAXI4LatencyInjection(params.m_request_latency, params.m_response_latency);
-
-   Tuple2#(
-      AXI4_M_IFC #(nid, naddr, ndata, nuser),
-      AXI4_S_IFC #(nid, naddr, ndata, nuser)) m_b_latency <-
-         mkAXI4LatencyInjection(params.m_request_latency, params.m_response_latency);
-
-   mkConnection(m_a, tpl_2(m_a_latency));
-   mkConnection(tpl_1(m_a_latency), fabric.v_from_Ms[0]);
-
-   mkConnection(m_b, tpl_2(m_b_latency));
-   mkConnection(tpl_1(m_b_latency), fabric.v_from_Ms[1]);
-endmodule
-
-// ================================================================
-
-module mkTestCase#(Integer n)(Empty);
-   TestParams params = defaultValue;
-
-   if (n == 1) begin
-      // default
-   end
-   else if (n == 2) begin
-      params.m_b_type = Narrow;
-   end
-   else if (n == 3) begin
-      params.m_a_type = SplitWrite;
-      params.m_b_type = Narrow;
-   end
-   else if (n == 4) begin
-      params.m_a_type = SplitWrite;
-      params.m_b_type = Narrow_SplitWrite;
-      params.s_response_latency = 16;
-   end
-   else if (n == 5) begin
-      params.m_b_type = Narrow;
-      params.m_request_latency = 16;
-      params.m_response_latency = 16;
-      params.s_request_latency = 16;
-      params.s_response_latency = 16;
-   end
-   else begin
-      staticAssert(False, "invalid test case");
-   end
-
-   let _ifc <- mkTestGenerator(params);
+   // Statistics
+   Reg #(Bit #(32)) rg_num_AR      <- mkReg (0);    // read requests
+   Reg #(Bit #(32)) rg_num_AW      <- mkReg (0);    // write requests
+   Reg #(Bit #(32)) rg_num_AR_wild <- mkReg (0);    // read/write reqs to wild addrs
+   Reg #(Bit #(32)) rg_num_AW_wild <- mkReg (0);    // read/write reqs to wild addrs
+   Reg #(Bit #(32)) rg_num_R       <- mkReg (0);    // read responses
+   Reg #(Bit #(32)) rg_num_B       <- mkReg (0);    // write responses
 
    // ----------------
-   Reg #(Bool) rg_once_done <- mkReg (False);
+   // FIFOs of request serial numbers to check against responses.
+   // Because responses from different Ss may return in a different order,
+   // we keep separate FIFOs for each S.
+   // Size of FIFOs should be > latency to S and back.
 
-   rule rl_once (! rg_once_done);
-      $display ("params:");
-      fn_print_params (params);
-      rg_once_done <= True;
+   // Reads
+   Vector #(Num_Ss, FIFOF #(Serial_Num))
+   vf_rd_serial_nums <- replicateM (mkSizedFIFOF (256));
+   // Writes
+   Vector #(Num_Ss, FIFOF #(Serial_Num))
+   vf_wr_serial_nums <- replicateM (mkSizedFIFOF (256));
+
+   // ----------------------------------------------------------------
+   // Initialize random num generator
+
+   rule rl_init_LFSR (rg_serial_num == 0);
+      Vector #(32, Bit #(TAdd #(Wd_Id_M,1))) v = replicate ({id,1'b1});
+      Bit #(32) x = truncate (pack (v));
+      if (verbosity != 0)
+	 $display ("M%0d: lfsr seed is %0h", x);
+
+      lfsr_a.seed (x);
+      rg_serial_num <= 1;
    endrule
-endmodule
+
+   // ================================================================
+   // Request generation
+
+   // Generate read and write requests
+   rule rl_AR_AW ((0 < rg_serial_num) && (rg_serial_num <= fromInteger (num_xactions)));
+      let            a32  = lfsr_a.value; lfsr_a.next;
+      Bit #(Wd_Addr) addr = truncate (a32);
+
+      // Compute 'user' field
+      match { .routable, .s_num } = fn_addr_to_S_num (addr);
+      Bool wild = (! routable);
+      let u_struct = User_struct {wild:       wild,
+				  m_num:      truncate (id),
+				  s_num:      s_num,
+				  addr:       addr,
+				  serial_num: rg_serial_num};
+      Bit #(Wd_User) u = pack (u_struct);
+
+      // Read transactions
+      if (a32 [31] == 0) begin
+	 let ar = fv_mkAR (id, addr, u);
+	 buf_M.ifc_S.i_AR.enq (ar);
+
+	 if (! wild) begin
+	    vf_rd_serial_nums [s_num].enq (rg_serial_num);
+	    rg_num_AR <= rg_num_AR + 1;
+	 end
+	 else
+	    rg_num_AR_wild <= rg_num_AR_wild + 1;
+
+	 if (verbosity == 1) begin
+	    $display ("M%0d: ", id, fshow_AR (ar));
+	    $display ("M%0d:    ", id, fmt_User_struct (u_struct));
+	 end
+	 else if (verbosity > 1) begin
+	    $display ("M%0d: ", id, fshow    (ar));
+	    $display ("M%0d:    ", id, fmt_User_struct (u_struct));
+	 end
+      end
+
+      // Write transactions
+      else begin
+	 let aw = fv_mkAW (id, addr, u);
+	 buf_M.ifc_S.i_AW.enq (aw);
+
+	 // Enqueue a request to produce W.
+	 // The data is addr+1, which will be checked by S
+	 Bit #(Wd_Data) d = zeroExtend (addr) + 1;
+	 f_W_info.enq (tuple2 (d, u));
+
+	 if (! wild) begin
+	    vf_wr_serial_nums [s_num].enq (rg_serial_num);
+	    rg_num_AW <= rg_num_AW + 1;
+	 end
+	 else
+	    rg_num_AW_wild <= rg_num_AW_wild + 1;
+
+	 if (verbosity == 1) begin
+	    $display ("M%0d: ", id, fshow_AW (aw));
+	    $display ("M%0d:    ", id, fmt_User_struct (u_struct));
+	 end
+	 else if (verbosity > 1) begin
+	    $display ("M%0d: ", id, fshow    (aw));
+	    $display ("M%0d:    ", id, fmt_User_struct (u_struct));
+	 end
+      end
+      rg_serial_num <= rg_serial_num + 1;
+   endrule
+
+   // ----------------
+   // M: write data for write-transaction
+
+   rule rl_W;
+      match { .data, .user } <- pop (f_W_info);
+
+      let w = fv_mkW (data, user);
+      buf_M.ifc_S.i_W.enq (w);
+
+      User_struct u_struct = unpack (user);
+      if (verbosity == 1) begin
+	 $display ("M%0d: ", id, fshow_W (w));
+	 $display ("M%0d:    ", id, fmt_User_struct (u_struct));
+      end
+      else if (verbosity > 1) begin
+	 $display ("M%0d: ", id, fshow   (w));
+	 $display ("M%0d:    ", id, fmt_User_struct (u_struct));
+      end
+   endrule
+
+   // ================================================================
+   // Response collection and checking
+
+   // ----------------------------------------------------------------
+   // Response-checker function
+
+   function ActionValue #(Bool)
+            fav_check_resp (String         rd_wr_s,
+			    Bit #(Wd_Id_M) rsp_id,
+			    AXI4_Resp      rsp_resp,
+			    Bit #(Wd_User) rsp_user,
+			    Vector #(Num_Ss, FIFOF #(Serial_Num)) vf_serial_nums);
+      actionvalue
+	 User_struct user_struct = unpack (rsp_user);
+
+	 let wild       = user_struct.wild;
+	 let rsp_s_num  = user_struct.s_num;
+	 let rsp_serial = user_struct.serial_num;
+
+	 Bool err = False;
+
+	 // Check if routed correctly (routable)
+	 Bool addr_ok = (((! wild) && (rsp_resp == axi4_resp_okay))
+			 || (wild && (rsp_resp != axi4_resp_okay)));
+	 if (! addr_ok) begin
+	    $display ("M%0d: ERROR: %s wild:", id, rd_wr_s, fshow (wild),
+		      " but resp:", fshow_AXI4_Resp (rsp_resp));
+	    err = True;
+	 end
+	 else if (id != rsp_id) begin
+	    // Check if response returned to correct sender (id)
+	    $display ("M%0d: ERROR: %s id (%0d) != rsp_id", id, rd_wr_s, id, rsp_id);
+	    err = True;
+	 end
+	 else if (! wild) begin
+	    // Check serial number
+	    let exp_serial <- pop (vf_serial_nums [rsp_s_num]);
+	    if (exp_serial != rsp_serial) begin
+	       $display ("M%0d: ERROR: %s ser num mismatch: expected 0x%0x; response 0x%0x",
+			 id, rd_wr_s, exp_serial, rsp_serial);
+	       err = True;
+	    end
+	 end
+
+	 return err;
+      endactionvalue
+   endfunction
+
+   // Collect R response; display and check
+   rule rl_R;
+      let r <- pop_o (buf_M.ifc_S.o_R);
+      rg_num_R <= rg_num_R + 1;
+
+      User_struct u_struct = unpack (r.ruser);
+      if (verbosity == 1) begin
+	 $display ("    M%0d: ", id, fshow_R (r));
+	 $display ("    M%0d:     ", id, fmt_User_struct (u_struct));
+      end
+
+      let err <- fav_check_resp ("R", r.rid, r.rresp, r.ruser, vf_rd_serial_nums);
+
+      if ((r.rresp == axi4_resp_okay)
+	  && (r.rdata != zeroExtend (u_struct.addr) + 1)) begin
+	 $display ("    M%0d: ERROR: R data != addr+1");
+	 err = True;
+      end
+
+      if (err || verbosity > 1) begin
+	 $display ("    M%0d: ", id, fshow   (r));
+	 $display ("    M%0d:     ", id, fmt_User_struct (u_struct));
+      end
+
+      if (err) begin
+	 $display ("FAIL");
+	 $finish (1);
+      end
+   endrule
+
+   // Collect B response; display and check
+   rule rl_B;
+      let b <- pop_o (buf_M.ifc_S.o_B);
+      rg_num_B <= rg_num_B + 1;
+
+      User_struct u_struct = unpack (b.buser);
+      if (verbosity == 1) begin
+	 $display ("    M%0d: ", id, fshow_B (b));
+	 $display ("    M%0d:     ", id, fmt_User_struct (u_struct));
+      end
+
+      let err <- fav_check_resp ("B", b.bid, b.bresp, b.buser, vf_wr_serial_nums);
+
+      if (err || (verbosity > 1)) begin
+	 $display ("    M%0d: ", id, fshow   (b));
+	 $display ("    M%0d:     ", id, fmt_User_struct (u_struct));
+      end
+
+      if (err) begin
+	 $display ("FAIL");
+	 $finish (1);
+      end
+   endrule
+
+   // ----------------------------------------------------------------
+   // Stimulus generation completion
+
+   rule rl_stimulus_completed (rg_serial_num == fromInteger (num_xactions + 1));
+      $display ("M%0d: COMPLETED stimulus generation", id);
+      rg_serial_num <= rg_serial_num + 1;
+   endrule
+
+   // ================================================================
+   // INTERFACE
+
+   interface ifc_M = buf_M.ifc_M;
+
+   method completed = (rg_serial_num >= fromInteger (num_xactions));
+
+   method print_stats;
+      actionvalue
+	 $display ("M%0d: total requests:%0d",
+		   id, rg_num_AR + rg_num_AW + rg_num_AR_wild + rg_num_AW_wild);
+	 $display ("        ARs:%7d      AWs:%7d    to supported addrs",
+		   rg_num_AR, rg_num_AW);
+	 $display ("        ARs:%7d      AWs:%7d    to wild (unsupported) addrs",
+		   rg_num_AR_wild, rg_num_AW_wild);
+	 $display ("         RS:%7d       BS:%7d", rg_num_R, rg_num_B);
+	 Bool ok = ((rg_num_AR + rg_num_AW + rg_num_AR_wild + rg_num_AW_wild)
+		    == (rg_num_R + rg_num_B));
+
+	 if (! ok)
+	    $display ("Mismatched number of requests and responses");
+	 return ok;
+      endactionvalue
+   endmethod
+endmodule: mkMbox
+
+// ****************************************************************
+// S box connected to an S port of the fabric
+// AXI4 response is computed from AXI4 request.
+// Reponse's id and user fields are copied from request.
+// For AR request, R.data is set to AR.addr+1 (checked by M)
+
+(* synthesize *)
+module mkSbox #(Bit #(4) s_num)
+              (AXI4_S_IFC #(Wd_Id_S, Wd_Addr, Wd_Data, Wd_User));
+
+   AXI4_Buffer_IFC #(Wd_Id_S, Wd_Addr, Wd_Data, Wd_User) buf_S <- mkAXI4_Buffer;
+
+   // ================================================================
+   // BEHAVIOR
+
+   // Responses for read requests
+   rule rl_S_AR;
+      let ar <- pop_o (buf_S.ifc_M.o_AR);
+      let r   = fv_mkR (ar.arid, zeroExtend (ar.araddr + 1), ar.aruser);
+      buf_S.ifc_M.i_R.enq (r);
+
+      User_struct u_struct = unpack (ar.aruser);
+      if (verbosity == 1) begin
+	 $display ("        S%0d: ", s_num, fshow_AR (ar),
+		   " ", fmt_User_struct (u_struct));
+	 $display ("        S%0d: ", s_num, fshow_R (r));
+      end
+      else if (verbosity > 1) begin
+	 $display ("        S%0d: ", s_num, fshow (ar),
+		   " ", fmt_User_struct (u_struct));
+	 $display ("        S%0d: ", s_num, fshow (r));
+      end
+   endrule
+
+   // Responses for write requests
+   rule rl_S_AW;
+      let aw <- pop_o (buf_S.ifc_M.o_AW);
+      let w  <- pop_o (buf_S.ifc_M.o_W);
+
+      User_struct awuser_struct = unpack (aw.awuser);
+      User_struct wuser_struct  = unpack (w.wuser);
+
+      Bool ok = True;
+
+      if (aw.awuser != w.wuser) begin
+	 $display ("FAIL");
+	 $display ("        S%0d: AW: Expecting aw.awuser == w.wuser", s_num);
+	 ok = False;
+      end
+
+      if ((zeroExtend (aw.awaddr) + 1) != w.wdata) begin
+	 $display ("FAIL");
+	 $display ("        S%0d: W: Expecting aw.awaddr + 1 == w.wdata", s_num);
+	 ok = False;
+      end
+
+      let wr  = fv_mkB (aw.awid, aw.awuser);
+      buf_S.ifc_M.i_B.enq (wr);
+
+      if ((! ok) || (verbosity == 1)) begin
+	 $display ("        S%0d: ", s_num, fshow_AW (aw));
+	 $display ("        S%0d:     ", fmt_User_struct (awuser_struct));
+	 $display ("        S%0d: ", s_num, fshow_W (w));
+	 $display ("        S%0d:     ", fmt_User_struct (awuser_struct));
+      end
+
+      if ((!ok ) || (verbosity > 1)) begin
+	 $display ("        S%0d: ", s_num, fshow (aw));
+	 $display ("        S%0d:     ", fmt_User_struct (awuser_struct));
+	 $display ("        S%0d: ", s_num, fshow (w));
+	 $display ("        S%0d:     ", fmt_User_struct (awuser_struct));
+      end
+
+      if (! ok)
+	 $finish (1);
+   endrule
+
+   // ----------------------------------------------------------------
+
+   return buf_S.ifc_S;
+endmodule: mkSbox
 
 // ================================================================
+// Top-level of this testbench
 
 (* synthesize *)
 module sysTest_AXI4_Fabric (Empty);
+   // ----------------
+   // Ms
 
-   Integer n = 1;
+   Stim_IFC m0 <- mkMbox (0);
+   Stim_IFC m1 <- mkMbox (1);
 
-   Integer time_limit = (genC ? 100000000 : 10000000);
+   Vector #(Num_Ms,
+	    AXI4_M_IFC #(Wd_Id_M, Wd_Addr, Wd_Data, Wd_User)) v_Ms = newVector;
+   v_Ms [0] = m0.ifc_M;
+   v_Ms [1] = m1.ifc_M;
 
-`ifdef TESTCASE
-   n = `TESTCASE;
-`endif
+   // ----------------
+   // Ss
 
-   let test <- mkTestCase(n);
+   AXI4_S_IFC #(Wd_Id_S, Wd_Addr, Wd_Data, Wd_User) s0 <- mkSbox (0);
+   AXI4_S_IFC #(Wd_Id_S, Wd_Addr, Wd_Data, Wd_User) s1 <- mkSbox (1);
+   AXI4_S_IFC #(Wd_Id_S, Wd_Addr, Wd_Data, Wd_User) s2 <- mkSbox (2);
 
-   // This FSM just stops the test after a suitable delay
-   Stmt s =
-   seq
-      $display("test %d", n);
-      while (True) seq
-	 action
-	    let t <- $time;
-	    if (t > fromInteger (time_limit)) begin
-	    // if (t > 1000000) begin
-	       $display("PASS");
-	       $finish;
-	    end
-	 endaction
-      endseq
-   endseq;
+   Vector #(Num_Ss,
+	    AXI4_S_IFC #(Wd_Id_S, Wd_Addr, Wd_Data, Wd_User)) v_Ss = newVector;
+   v_Ss [0] = s0;
+   v_Ss [1] = s1;
+   v_Ss [2] = s2;
 
-   let fsm <- mkAutoFSM(s);
-endmodule
+   // ----------------
+   // AXI4 2x3 crossbar fabric, passing in Ms and Ss
+
+   Empty fabric <- mkAXI4_Fabric (fn_addr_to_S_num, v_Ms, v_Ss);
+
+   // ----------------
+   // Linger for 256 cycles after both stimulus Ms have
+   // finished generating requests, to allow transactions to complete.
+
+   Reg #(Bit #(12)) rg_linger <- mkReg ('1);
+
+   rule rl_quit (m0.completed && m1.completed);
+      if (rg_linger == '1 - 5) begin
+	 $display ("All Ms: stimulus generation complete.");
+	 $display ("  Lingering to allow in-flight transactions to finish.");
+      end
+
+      else if (rg_linger == 1) begin
+	 let ok0 <- m0.print_stats;
+	 let ok1 <- m1.print_stats;
+	 $display ("%s", ((ok0 && ok1) ? "PASS" :"FAIL"));
+      end
+
+      else if (rg_linger == 0) begin
+	 $finish (0);
+      end
+      rg_linger <= rg_linger - 1;
+   endrule
+
+endmodule: sysTest_AXI4_Fabric
+
+// ================================================================
 
 endpackage

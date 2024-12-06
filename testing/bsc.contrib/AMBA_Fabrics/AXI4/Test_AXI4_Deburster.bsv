@@ -1,13 +1,14 @@
-// Copyright (c) 2019 Bluespec, Inc. All Rights Reserved
-//
+// Copyright (c) 2019-2023 Bluespec, Inc. All Rights Reserved
+// Copyright (c) 2024 Rishiyur S. Nikhil.
+
 // SPDX-License-Identifier: BSD-3-Clause
 
 package Test_AXI4_Deburster;
 
-// ================================================================
+// ****************************************************************
 // Standalone unit tester for AXI4_Deburster.bsv
 
-// ================================================================
+// ****************************************************************
 // Bluespec library imports
 
 import FIFOF       :: *;
@@ -25,7 +26,7 @@ import Semi_FIFOF :: *;
 import AXI4_Types     :: *;
 import AXI4_Deburster :: *;
 
-// ================================================================
+// ****************************************************************
 // Synthesized instance of Deburster
 
 typedef  4 Wd_Id;
@@ -33,97 +34,87 @@ typedef 32 Wd_Addr;
 typedef 64 Wd_Data;
 typedef 10 Wd_User;
 
-typedef AXI4_Deburster_IFC #(Wd_Id, Wd_Addr, Wd_Data, Wd_User) AXI4_Deburster_IFC_Inst;
-
-(* synthesize *)
-module mkAXI4_Deburster_Inst (AXI4_Deburster_IFC_Inst);
-   let m <- mkAXI4_Deburster;
-   return m;
-endmodule
-
 // ================================================================
 
 (* synthesize *)
 module sysTest_AXI4_Deburster (Empty);
-   AXI4_Deburster_IFC_Inst deburster <- mkAXI4_Deburster_Inst;
 
-   AXI4_M_Xactor_IFC #(Wd_Id, Wd_Addr, Wd_Data, Wd_User) m <- mkAXI4_M_Xactor;
-   AXI4_S_Xactor_IFC #(Wd_Id, Wd_Addr, Wd_Data, Wd_User) s <- mkAXI4_S_Xactor;
+   // Buffer for downstream logic
+   AXI4_Buffer_IFC #(Wd_Id, Wd_Addr, Wd_Data, Wd_User) s <- mkAXI4_Buffer;
 
-   mkConnection (m.axi_side,     deburster.from_M);
-   mkConnection (deburster.to_S, s.axi_side);
+   // Deburster, connected to downstream
+   AXI4_S_IFC #(Wd_Id, Wd_Addr, Wd_Data, Wd_User) deburster <- mkAXI4_Deburster (s.ifc_S);
 
-   Reg #(Bit #(32)) rg_test       <- mkReg (20);    // Chooses which test to run
-
-   FIFOF #(Bit #(8))  f_len         <- mkFIFOF;
-   Reg #(Bit #(8))    rg_beat       <- mkReg (0);
-   Reg #(Bit #(32))   rg_idle_count <- mkReg (0);
+   Reg #(Bit #(32))  rg_test       <- mkReg (20);    // Chooses which test to run
+   FIFOF #(Bit #(8)) f_len         <- mkFIFOF;
+   Reg #(Bit #(8))   rg_beat       <- mkReg (0);
+   Reg #(Bit #(32))  rg_idle_count <- mkReg (0);
 
    // ================================================================
    // Help function to create AXI4 channel payloads
 
-   function AXI4_Wr_Addr #(Wd_Id, Wd_Addr, Wd_User)
-            fv_mk_wr_addr (Bit #(Wd_Id)    id,
-			   Bit #(Wd_Addr)  addr,
-			   Bit #(8)        len,
-			   Bit #(2)        burst,
-			   Bit #(Wd_User)  user);
-      return AXI4_Wr_Addr {awid: id,
-			   awaddr: addr,
-			   awlen: len,
-			   awsize: axsize_8,
-			   awburst: burst,
-			   awlock: 0,
-			   awcache: 0,
-			   awprot: 0,
-			   awqos: 0,
-			   awregion: 0,
-			   awuser: user};
+   function AXI4_AW #(Wd_Id, Wd_Addr, Wd_User)
+            fv_mkAW (Bit #(Wd_Id)    id,
+		     Bit #(Wd_Addr)  addr,
+		     Bit #(8)        len,
+		     Bit #(2)        burst,
+		     Bit #(Wd_User)  user);
+      return AXI4_AW {awid: id,
+		      awaddr: addr,
+		      awlen: len,
+		      awsize: axsize_8,
+		      awburst: burst,
+		      awlock: 0,
+		      awcache: 0,
+		      awprot: 0,
+		      awqos: 0,
+		      awregion: 0,
+		      awuser: user};
    endfunction
 
-   function AXI4_Wr_Data #(Wd_Data, Wd_User)
-            fv_mk_wr_data (Bit #(Wd_Data)  data,
-			   Bit #(Wd_User)  user);
+   function AXI4_W #(Wd_Data, Wd_User)
+            fv_mkW (Bit #(Wd_Data)  data,
+		    Bit #(Wd_User)  user);
       Bool last = (rg_beat == f_len.first - 1);
-      return AXI4_Wr_Data {wdata: data,
-			   wstrb: 'hFF,
-			   wlast: last,
-			   wuser: user};
+      return AXI4_W {wdata: data,
+		     wstrb: 'hFF,
+		     wlast: last,
+		     wuser: user};
    endfunction
 
-   function AXI4_Wr_Resp #(Wd_Id, Wd_User)
-            fv_mk_wr_resp (AXI4_Wr_Addr #(Wd_Id, Wd_Addr, Wd_User) wa);
-      return AXI4_Wr_Resp {bid:   wa.awid,
-			   bresp: axi4_resp_okay,
-			   buser: wa.awuser};
+   function AXI4_B #(Wd_Id, Wd_User)
+            fv_mkB (AXI4_AW #(Wd_Id, Wd_Addr, Wd_User) aw);
+      return AXI4_B {bid:   aw.awid,
+		     bresp: axi4_resp_okay,
+		     buser: aw.awuser};
    endfunction
 
-   function AXI4_Rd_Addr #(Wd_Id, Wd_Addr, Wd_User)
-            fv_mk_rd_addr (Bit #(Wd_Id)    id,
-			   Bit #(Wd_Addr)  addr,
-			   Bit #(8)        len,
-			   Bit #(2)        burst,
-			   Bit #(Wd_User)  user);
-      return AXI4_Rd_Addr {arid: id,
-			   araddr: addr,
-			   arlen: len,
-			   arsize: axsize_8,
-			   arburst: burst,
-			   arlock: 0,
-			   arcache: 0,
-			   arprot: 0,
-			   arqos: 0,
-			   arregion: 0,
-			   aruser: user};
+   function AXI4_AR #(Wd_Id, Wd_Addr, Wd_User)
+            fv_mkAR (Bit #(Wd_Id)    id,
+		     Bit #(Wd_Addr)  addr,
+		     Bit #(8)        len,
+		     Bit #(2)        burst,
+		     Bit #(Wd_User)  user);
+      return AXI4_AR {arid: id,
+		      araddr: addr,
+		      arlen: len,
+		      arsize: axsize_8,
+		      arburst: burst,
+		      arlock: 0,
+		      arcache: 0,
+		      arprot: 0,
+		      arqos: 0,
+		      arregion: 0,
+		      aruser: user};
    endfunction
 
-   function AXI4_Rd_Data #(Wd_Id, Wd_Data, Wd_User)
-            fv_mk_rd_data (AXI4_Rd_Addr #(Wd_Id, Wd_Addr, Wd_User) ar);
-      return AXI4_Rd_Data {rid:   ar.arid,
-			   rdata: zeroExtend (ar.araddr + 'h10_000),
-			   rresp: axi4_resp_okay,
-			   rlast: True,
-			   ruser: ar.aruser};
+   function AXI4_R #(Wd_Id, Wd_Data, Wd_User)
+            fv_mkR (AXI4_AR #(Wd_Id, Wd_Addr, Wd_User) ar);
+      return AXI4_R {rid:   ar.arid,
+		     rdata: zeroExtend (ar.araddr + 'h10_000),
+		     rresp: axi4_resp_okay,
+		     rlast: True,
+		     ruser: ar.aruser};
    endfunction
 
    // ================================================================
@@ -137,47 +128,47 @@ module sysTest_AXI4_Deburster (Empty);
 
    rule rl_wr_single (rg_test == 0);
       Bit #(8) len = 1;
-      let wa = fv_mk_wr_addr (id1, 'h1000, (len - 1), axburst_fixed, user1);
-      m.i_wr_addr.enq (wa);
+      let aw = fv_mkAW (id1, 'h1000, (len - 1), axburst_fixed, user1);
+      deburster.i_AW.enq (aw);
 
       f_len.enq (len);
       rg_idle_count <= 0;
       rg_test       <= 100;
 
       $display ("%0d: M.rl_wr_single", cur_cycle);
-      $display ("  ", fshow (wa));
+      $display ("  ", fshow (aw));
    endrule
 
    rule rl_wr_burst_addr_0 (rg_test == 10);
       Bit #(8) len = 2;
-      let wa = fv_mk_wr_addr (id1, 'h1000, (len - 1), axburst_incr, user1);
-      m.i_wr_addr.enq (wa);
+      let aw = fv_mkAW (id1, 'h1000, (len - 1), axburst_incr, user1);
+      deburster.i_AW.enq (aw);
 
       f_len.enq (len);
       rg_idle_count <= 0;
       rg_test       <= 11;
 
       $display ("%0d: M.rl_wr_burst_addr_0", cur_cycle);
-      $display ("  ", fshow (wa));
+      $display ("  ", fshow (aw));
    endrule
 
    rule rl_wr_burst_addr_1 (rg_test == 11);
       Bit #(8) len = 4;
-      let wa = fv_mk_wr_addr (id1, 'h2000, (len - 1), axburst_incr, user1);
-      m.i_wr_addr.enq (wa);
+      let aw = fv_mkAW (id1, 'h2000, (len - 1), axburst_incr, user1);
+      deburster.i_AW.enq (aw);
 
       f_len.enq (len);
       rg_idle_count <= 0;
       rg_test       <= 100;
 
       $display ("%0d: M.rl_wr_burst_addr_1", cur_cycle);
-      $display ("  ", fshow (wa));
+      $display ("  ", fshow (aw));
    endrule
 
    rule rl_wr_data;
       let data = 'h1_0000 + zeroExtend (rg_beat);
-      let wd = fv_mk_wr_data (data, user1);
-      m.i_wr_data.enq (wd);
+      let wd = fv_mkW (data, user1);
+      deburster.i_W.enq (wd);
       rg_idle_count <= 0;
 
       if (rg_beat < f_len.first - 1)
@@ -197,51 +188,51 @@ module sysTest_AXI4_Deburster (Empty);
    // Read tests
 
    rule rl_rd_single (rg_test == 2);
-      let ra = fv_mk_rd_addr (id1, 'h1000, 1, axburst_fixed, user1);
-      m.i_rd_addr.enq (ra);
+      let ar = fv_mkAR (id1, 'h1000, 1, axburst_fixed, user1);
+      deburster.i_AR.enq (ar);
       rg_idle_count <= 0;
       rg_test <= '1;
 
       $display ("%0d: M.rl_rd_single", cur_cycle);
-      $display ("  ", fshow (ra));
+      $display ("  ", fshow (ar));
    endrule
 
    rule rl_rd_burst_addr_0 (rg_test == 20);
       Bit #(8) len = 2;
-      let ra = fv_mk_rd_addr (id1, 'h1000, (len - 1), axburst_incr, user1);
-      m.i_rd_addr.enq (ra);
+      let ar = fv_mkAR (id1, 'h1000, (len - 1), axburst_incr, user1);
+      deburster.i_AR.enq (ar);
 
       rg_idle_count <= 0;
       rg_test       <= 21;
 
       $display ("%0d: M.rl_rd_burst_addr_0", cur_cycle);
-      $display ("  ", fshow (ra));
+      $display ("  ", fshow (ar));
    endrule
 
    rule rl_rd_burst_addr_1 (rg_test == 21);
       Bit #(8) len = 4;
-      let ra = fv_mk_rd_addr (id1, 'h2000, (len - 1), axburst_incr, user1);
-      m.i_rd_addr.enq (ra);
+      let ar = fv_mkAR (id1, 'h2000, (len - 1), axburst_incr, user1);
+      deburster.i_AR.enq (ar);
 
       rg_idle_count <= 0;
       rg_test       <= 100;
 
       $display ("%0d: M.rl_rd_burst_addr_1", cur_cycle);
-      $display ("  ", fshow (ra));
+      $display ("  ", fshow (ar));
    endrule
 
    // ================================================================
    // Drain and display responses received by M
 
    rule rl_wr_resps;
-      let wr_resp <- pop_o (m.o_wr_resp);
+      let wr_resp <- pop_o (deburster.o_B);
       $display ("%0d: M.rl_wr_resps", cur_cycle);
       $display ("  ", fshow (wr_resp));
       rg_idle_count <= 0;
    endrule
 
    rule rl_rd_resps;
-      let rd_resp <- pop_o (m.o_rd_data);
+      let rd_resp <- pop_o (deburster.o_R);
       $display ("%0d: M.rl_rd_resps", cur_cycle);
       $display ("  ", fshow (rd_resp));
       rg_idle_count <= 0;
@@ -254,22 +245,22 @@ module sysTest_AXI4_Deburster (Empty);
    rule rl_S_IP_model_writes;
       $display ("%0d:    S.rl_S_IP_model_writes", cur_cycle);
 
-      let wa <- pop_o (s.o_wr_addr);
-      let wd <- pop_o (s.o_wr_data);
+      let aw <- pop_o (s.ifc_M.o_AW);
+      let w  <- pop_o (s.ifc_M.o_W);
 
-      let wr = fv_mk_wr_resp (wa);
-      s.i_wr_resp.enq (wr);
-      $display ("        ", fshow (wa));
-      $display ("        ", fshow (wd));
-      $display ("        ", fshow (wr));
+      let b = fv_mkB (aw);
+      s.ifc_M.i_B.enq (b);
+      $display ("        ", fshow (aw));
+      $display ("        ", fshow (w));
+      $display ("        ", fshow (b));
    endrule
 
-   rule rl_S_IP_model_rd_addr;
-      let ra <- pop_o (s.o_rd_addr);
-      s.i_rd_data.enq (fv_mk_rd_data (ra));
+   rule rl_S_IP_model_AR;
+      let ar <- pop_o (s.ifc_M.o_AR);
+      s.ifc_M.i_R.enq (fv_mkR (ar));
 
-      $display ("%0d:    S.rl_S_IP_model_rd_addr", cur_cycle);
-      $display ("        ", fshow (ra));
+      $display ("%0d:    S.rl_S_IP_model_AR", cur_cycle);
+      $display ("        ", fshow (ar));
    endrule
 
    // ================================================================

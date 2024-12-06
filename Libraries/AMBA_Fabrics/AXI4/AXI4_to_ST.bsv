@@ -1,6 +1,5 @@
-// Copyright (c) 2021 Rishiyur S. Nikhil and Bluespec, Inc. All Rights Reserved
-// Author: Rishiyur S. Nikhil
-//
+// Copyright (c) 2021-2024 Rishiyur S. Nikhil and Bluespec, Inc. All Rights Reserved
+
 // SPDX-License-Identifier: BSD-3-Clause
 
 package AXI4_to_ST;
@@ -67,9 +66,9 @@ Integer verbosity = 0;
 // Module
 
 module mkAXI4_to_ST
-   #(FIFOF_O #(AXI4_Wr_Addr #(wd_id_t, wd_addr_t, wd_user_t))  o_wr_addr,
-     FIFOF_O #(AXI4_Wr_Data #(wd_axi_data_t, wd_user_t))       o_wr_data,
-     FIFOF_I #(AXI4_Wr_Resp #(wd_id_t, wd_user_t))             i_wr_resp)
+   #(FIFOF_O #(AXI4_AW #(wd_id_t, wd_addr_t, wd_user_t))  o_wr_addr,
+     FIFOF_O #(AXI4_W  #(wd_axi_data_t, wd_user_t))       o_wr_data,
+     FIFOF_I #(AXI4_B  #(wd_id_t, wd_user_t))             i_wr_resp)
    (AXI4_to_ST_IFC #(wd_addr_t, wd_ldst_data_t))
 
    provisos (Add #(a__,             8,                                 wd_addr_t),
@@ -160,10 +159,11 @@ module mkAXI4_to_ST
    Bit #(wd_addr_t) addr_axi_bus_lo  = fn_addr_to_NAPOT (awaddr,
 							 fromInteger (wdB_axi_data_I));
    // Bytelane of awaddr on AXI data
-   Bit #(8)         addr_bytelane    = fn_addr_to_axi_data_bytelane (awaddr, wdB_axi_data_I);
+   Bit #(8) addr_bytelane    = fn_addr_to_axi_data_bytelane (awaddr, wdB_axi_data_I);
 
    // AWSIZE specifies a NAPOT window around awaddr, ...
-   Bit #(8)         wdB_szwindow_B   = fv_AXI4_Size_to_num_bytes (wr_addr_S.awsize);
+   Bit #(8) wdB_szwindow_B   = fv_AXI4_Size_to_num_bytes (wr_addr_S.awsize);
+
    // Address of NAPOT AWSIZE window containing awaddr
    Bit #(wd_addr_t) addr_szwindow_lo = fn_addr_to_NAPOT (awaddr, wdB_szwindow_B);
 
@@ -472,11 +472,11 @@ module mkAXI4_to_ST
       match { .illegal_req, .bid, .buser } = f_axi_rsp_info.first;
       f_axi_rsp_info.deq;
 
-      let wr_resp_S = AXI4_Wr_Resp {bid:   bid,
-				    bresp: ((illegal_req || rg_cumulative_err)
-					    ? axi4_resp_slverr
-					    : axi4_resp_okay),
-				    buser: buser};
+      let wr_resp_S = AXI4_B {bid:   bid,
+			      bresp: ((illegal_req || rg_cumulative_err)
+				      ? axi4_resp_slverr
+				      : axi4_resp_okay),
+			      buser: buser};
       i_wr_resp.enq (wr_resp_S);
 
       if (verbosity > 0) begin

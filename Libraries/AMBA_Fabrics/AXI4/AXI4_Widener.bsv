@@ -1,20 +1,28 @@
-// Copyright (c) 2020-2021 Bluespec, Inc. All Rights Reserved
-//
+// Copyright (c) 2020-2023 Bluespec, Inc. All Rights Reserved
+// Copyright (c) 2024 Rishiyur S. Nikhil.
+
 // SPDX-License-Identifier: BSD-3-Clause
 
 package AXI4_Widener;
 
-// ================================================================
-// This package defines an AXI4-S-to-AXI4-M 'widener' module.
+// ****************************************************************
+// This package defines an AXI4-S-to-AXI4-M 'data widener' module.
+// The module arguments are an M interface from upstream and an S
+// interface to downstream.
 // The interfaces facing S and M differ in data-bus width
 // The S-side data bus is wider than the M-side by some multiple.
 
-// The primary function is data-bus re-alignment due to widening.
+// The primary function here is data-bus re-alignment due to widening.
 
 // NOTE: Does not support bursts yet (which would need reshaping the
-// data beats, strobes, burst lengh, etc.)
+// data beats, strobes, burst length, etc.)
+// Use AXI4_Deburster in front, if needed.
 
-// ================================================================
+// ****************************************************************
+
+export mkAXI4_Widener;
+
+// ****************************************************************
 // Bluespec library imports
 
 import Vector       :: *;
@@ -29,53 +37,36 @@ import Cur_Cycle  :: *;
 import GetPut_Aux :: *;
 import Semi_FIFOF :: *;
 
-// ================================================================
+// ----------------
 // Project imports
 
-import AXI4_Types :: *;
+import AXI4_Types   :: *;
 
-// ================================================================
-// The interface for the widener module
+// ****************************************************************
+// Simulation verbosity during simulation on stdout for this package (edit as desired)
+//   0: quiet
+//   1: display rules
 
-interface AXI4_Widener_IFC #(numeric type wd_id_t,
-			     numeric type wd_addr_t,
-			     numeric type m_wd_data_t,    // narrower
-			     numeric type s_wd_data_t,    // wider
-			     numeric type wd_user_t);
-   // From M
-   interface AXI4_S_IFC  #(wd_id_t, wd_addr_t, m_wd_data_t, wd_user_t) from_M;
-   // To S
-   interface AXI4_M_IFC #(wd_id_t, wd_addr_t, s_wd_data_t, wd_user_t) to_S;
-endinterface
+Integer verbosity = 0;
 
-// ================================================================
+// ****************************************************************
 // The Widener module
 
-module mkAXI4_Widener (AXI4_Widener_IFC #(wd_id_t, wd_addr_t, m_wd_data_t, s_wd_data_t, wd_user_t))
+module mkAXI4_Widener #(AXI4_M_IFC #(wd_id_t, wd_addr_t, m_wd_data_t, wd_user_t) ifc_M,
+			AXI4_S_IFC #(wd_id_t, wd_addr_t, s_wd_data_t, wd_user_t) ifc_S)
+		      (Empty)
    provisos (Mul #(8, m_wd_bytes_t, m_wd_data_t),
 	     Div #(m_wd_data_t, 8, m_wd_bytes_t),
 	     Mul #(8, s_wd_bytes_t, s_wd_data_t),
 	     Div #(s_wd_data_t, 8, s_wd_bytes_t),
-	     Add #(m_wd_data_t,  __a, s_wd_data_t),     // m_wd_data <= s_wd_data ("widening")
-	     Add #(m_wd_bytes_t, __b, s_wd_bytes_t),    // m_wd_bytes <= s_wd_bytes ("widening")
+	     Add #(m_wd_data_t,  __a, s_wd_data_t),   // m_wd_data <= s_wd_data ("widening")
+	     Add #(m_wd_bytes_t, __b, s_wd_bytes_t),  // m_wd_bytes <= s_wd_bytes ("widening")
 	     Log #(m_wd_bytes_t, log2_m_wd_bytes_t),
 	     Log #(s_wd_bytes_t, log2_s_wd_bytes_t),
 	     NumAlias #(word_index_t, TSub #(s_wd_bytes_t, m_wd_bytes_t)));
 
-   // 0 quiet; 1: display rules
-   Integer verbosity = 0;
-
    Integer log2_m_wd_bytes = valueOf (log2_m_wd_bytes_t);
    Integer log2_s_wd_bytes = valueOf (log2_s_wd_bytes_t);
-
-   // ----------------
-   // Transactor facing M
-   AXI4_S_Xactor_IFC  #(wd_id_t, wd_addr_t, m_wd_data_t, wd_user_t)
-      xactor_from_M <- mkAXI4_S_Xactor;
-
-   // Transactor facing S
-   AXI4_M_Xactor_IFC #(wd_id_t, wd_addr_t, s_wd_data_t, wd_user_t)
-       xactor_to_S <- mkAXI4_M_Xactor;
 
    // size covers latency to mem read response
    FIFOF #(Bit #(wd_addr_t)) f_araddrs <- mkSizedFIFOF (8);
@@ -111,96 +102,95 @@ module mkAXI4_Widener (AXI4_Widener_IFC #(wd_id_t, wd_addr_t, m_wd_data_t, s_wd_
    endfunction
 
    // ----------------
-   // Wr requests (AW and W channels)
+   // AW and W channels (write requests)
 
-   rule rl_wr_xaction_M_to_S;
-      AXI4_Wr_Addr #(wd_id_t, wd_addr_t, wd_user_t) m_wra <- pop_o (xactor_from_M.o_wr_addr);
-      AXI4_Wr_Data #(m_wd_data_t, wd_user_t)        m_wrd <- pop_o (xactor_from_M.o_wr_data);
+   rule rl_AW_W;
+      AXI4_AW #(wd_id_t, wd_addr_t, wd_user_t) m_aw <- pop_o (ifc_M.o_AW);
+      AXI4_W  #(m_wd_data_t, wd_user_t)        m_w  <- pop_o (ifc_M.o_W);
 
-      let s_wra = m_wra;
+      let s_aw = m_aw;
 
-      match { .s_wdata, .s_wstrb} = fv_align_to_wider (m_wra.awaddr, m_wrd.wdata, m_wrd.wstrb);
-      AXI4_Wr_Data #(s_wd_data_t, wd_user_t) s_wrd = AXI4_Wr_Data {wdata: s_wdata,
-								   wstrb: s_wstrb,
-								   wlast: m_wrd.wlast,
-								   wuser: m_wrd.wuser};
+      match { .s_wdata, .s_wstrb} = fv_align_to_wider (m_aw.awaddr, m_w.wdata, m_w.wstrb);
+      AXI4_W #(s_wd_data_t, wd_user_t) s_w = AXI4_W {wdata: s_wdata,
+						       wstrb: s_wstrb,
+						       wlast: m_w.wlast,
+						       wuser: m_w.wuser};
       // Send to S
-      xactor_to_S.i_wr_addr.enq (s_wra);
-      xactor_to_S.i_wr_data.enq (s_wrd);
+      ifc_S.i_AW.enq (s_aw);
+      ifc_S.i_W.enq  (s_w);
 
       // Debugging
       if (verbosity > 0) begin
-	 $display ("%0d: AXI4_Widener.rl_wr_xaction_M_to_S: m -> s", cur_cycle);
-	 $display ("    m_wra : ", fshow (m_wra));
-	 $display ("    m_wrd: ",  fshow (m_wrd));
-	 $display ("    s_wrd: ",  fshow (s_wrd));
-      end
-   endrule: rl_wr_xaction_M_to_S
-
-   // ----------------
-   // Wr responses (B channel): just pass through as-is.
-
-   rule rl_wr_resp_S_to_M;
-      AXI4_Wr_Resp #(wd_id_t, wd_user_t) s_wrr <- pop_o (xactor_to_S.o_wr_resp);
-      let m_wrr = s_wrr;
-      xactor_from_M.i_wr_resp.enq (m_wrr);
-
-      if (verbosity > 1) begin
-	 $display ("%0d: AXI4_Widener.rl_wr_resp_S_to_M: m <- s", cur_cycle);
-	 $display ("    s_wrr: ", fshow (s_wrr));
-	 $display ("    m_wrr: ", fshow (m_wrr));
+	 $display ("%0d: AXI4_Widener.rl_AW_W: m -> s", cur_cycle);
+	 $display ("    m_aw : ", fshow (m_aw));
+	 $display ("    m_w:   ", fshow (m_w));
+	 $display ("    s_w:   ", fshow (s_w));
       end
    endrule
 
    // ----------------
-   // Rd requests (AR channel); just pass it through, as-is
-   // but remember the addr in order to align the data response.
+   // B channel (write responses): just pass through as-is.
 
-   rule rl_rd_xaction_M_to_S;
-      AXI4_Rd_Addr #(wd_id_t, wd_addr_t, wd_user_t) m_rda <- pop_o (xactor_from_M.o_rd_addr);
-      let s_rda = m_rda;
-      xactor_to_S.i_rd_addr.enq (s_rda);
+   rule rl_B;
+      AXI4_B #(wd_id_t, wd_user_t) s_b <- pop_o (ifc_S.o_B);
+      let m_b = s_b;
+      ifc_M.i_B.enq (m_b);
 
-      f_araddrs.enq (m_rda.araddr);
-
-      // Debugging
-      if (verbosity > 0) begin
-	 $display ("%0d: AXI4_Widener.rl_rd_xaction_M_to_S: m -> s", cur_cycle);
-	 $display ("    m_rda: ", fshow (m_rda));
-	 $display ("    s_rda: ", fshow (s_rda));
+      if (verbosity > 1) begin
+	 $display ("%0d: AXI4_Widener.rl_B: m <- s", cur_cycle);
+	 $display ("    s_b: ", fshow (s_b));
+	 $display ("    m_b: ", fshow (m_b));
       end
-   endrule: rl_rd_xaction_M_to_S
+   endrule
 
    // ----------------
-   // Rd responses
+   // AR channel (read requests); just pass it through, as-is
+   // but remember the addr in order to align the data response.
 
-   rule rl_rd_resp_S_to_M;
-      AXI4_Rd_Data #(wd_id_t, s_wd_data_t, wd_user_t) s_rdd <- pop_o (xactor_to_S.o_rd_data);
-      let araddr <- pop (f_araddrs);
+   rule rl_AR;
+      AXI4_AR #(wd_id_t, wd_addr_t, wd_user_t) m_ar <- pop_o (ifc_M.o_AR);
+      let s_ar = m_ar;
+      ifc_S.i_AR.enq (s_ar);
 
-      let m_rdata = fv_align_to_narrower (araddr, s_rdd.rdata);
-      AXI4_Rd_Data #(wd_id_t, m_wd_data_t, wd_user_t) m_rdd = AXI4_Rd_Data {rid:   s_rdd.rid,
-									    rdata: m_rdata,
-									    rresp: s_rdd.rresp,
-									    rlast: s_rdd.rlast,
-									    ruser: s_rdd.ruser};
-      xactor_from_M.i_rd_data.enq (m_rdd);
+      f_araddrs.enq (m_ar.araddr);
 
       // Debugging
       if (verbosity > 0) begin
-	 $display ("%0d: AXI4_Widener.rl_rd_resp_S_to_M: m <- s", cur_cycle);
-	 $display ("    s_rdd: ", fshow (s_rdd));
-	 $display ("    m_rdd: ", fshow (m_rdd));
+	 $display ("%0d: AXI4_Widener.rl_AR: m -> s", cur_cycle);
+	 $display ("    m_ar: ", fshow (m_ar));
+	 $display ("    s_ar: ", fshow (s_ar));
       end
-   endrule: rl_rd_resp_S_to_M
+   endrule
 
-   // ----------------------------------------------------------------
+   // ----------------
+   // R channel (read responses)
+
+   rule rl_R;
+      AXI4_R #(wd_id_t, s_wd_data_t, wd_user_t) s_r <- pop_o (ifc_S.o_R);
+      let araddr <- pop (f_araddrs);
+
+      let m_rdata = fv_align_to_narrower (araddr, s_r.rdata);
+      AXI4_R #(wd_id_t, m_wd_data_t, wd_user_t) m_r = AXI4_R {rid:   s_r.rid,
+							      rdata: m_rdata,
+							      rresp: s_r.rresp,
+							      rlast: s_r.rlast,
+							      ruser: s_r.ruser};
+      ifc_M.i_R.enq (m_r);
+
+      // Debugging
+      if (verbosity > 0) begin
+	 $display ("%0d: AXI4_Widener.rl_R: m <- s", cur_cycle);
+	 $display ("    s_r: ", fshow (s_r));
+	 $display ("    m_r: ", fshow (m_r));
+      end
+   endrule
+
+   // ================================================================
    // INTERFACE
 
-   interface from_M = xactor_from_M.axi_side;
-   interface to_S   = xactor_to_S.axi_side;
+   // Empty
 endmodule
 
-// ================================================================
+// ****************************************************************
 
 endpackage: AXI4_Widener

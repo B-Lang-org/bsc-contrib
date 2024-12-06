@@ -1,0 +1,25 @@
+================================
+AXI4_Mem_Model[0]: initialization
+    addr_base:  0x2000  addr_lim:  0x3000 (byte addrs)
+    addrMW_base:0x800  addrMW_lim:0xc00 (word addrs)
+    AXI4 params: wd_id:5  wd_addr:14  wd_data:32  wd_user:30
+    Memory contains 1024 words, each wd_data bits (4 bytes) wide
+    Zeroing memory
+================================
+================================
+Test_AXI4_Mem_Model: initialization
+    addr_base:0x2000  addr_lim:0x3000
+    addrMW_base:0x800  addrMW_lim:0xc00 (word addrs)
+    AXI4 params: Wd_Id:5  Wd_Addr:14  Wd_Data:32  Wd_User:30
+    Memory contains 1024 words, each wd_data bits (4 bytes) wide
+    Zeroing reference memory
+================================
+AXI4_Mem_Model[0]: zero'd memory
+Test_AXI4_Mem_Model: zero'd reference memory
+sysTest_AXI4_Mem_Model: All Ms: stimulus generation complete.
+    Lingering to allow in-flight transactions to finish.
+mkMBox0: total requests:10000
+        ARs:   4977      AWs:   5023    to supported addrs
+        ARs:      0      AWs:      0    to wild (unsupported) addrs
+         RS:   4977       BS:   5023
+PASS

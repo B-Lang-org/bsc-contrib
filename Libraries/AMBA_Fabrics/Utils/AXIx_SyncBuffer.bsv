@@ -1,15 +1,14 @@
-// Copyright (c) 2021-2022 Bluespec, Inc. All Rights Reserved
-// Author: Rishiyur S. Nikhil
-//
+// Copyright (c) 2021-2024 Bluespec, Inc. All Rights Reserved
+
 // SPDX-License-Identifier: BSD-3-Clause
 
-package AXI_SyncBuffer;
+package AXIx_SyncBuffer;
 
 // ================================================================
+// This package can be used for both AXI4 and AXI4L.
 // This package defines a clock-domain-crossing buffer for an AXI bus
-// (parameterized, so can be used for AXI4 and AXI4 Lite).
 
-// The interfaces are FIFOF-like (not raw AXI4 signals).
+// The interfaces are FIFOF-like (not RTL-level AMBA signals).
 // The module merely contains 5 SyncFIFOs for each of the 5 AXI4 or
 // AXI4 Lite channels
 
@@ -22,7 +21,6 @@ import Connectable :: *;
 // ----------------
 // BSV additional libs
 
-import Cur_Cycle  :: *;
 import GetPut_Aux :: *;
 import Semi_FIFOF :: *;
 
@@ -32,9 +30,18 @@ import Semi_FIFOF :: *;
 // -- none
 
 // ================================================================
-// The interface for the fabric module
+// The AXIx_SyncBuffer interface.
+// Note: AXI (not AXI4 or AXI4L) because it can be used for both
 
-interface AXI_M_IFC #(type aw, type w, type b, type ar, type r);
+interface AXIx_SyncBuffer_IFC #(type aw, type w, type b, type ar, type r);
+   interface AXIx_S_IFC #(aw, w, b, ar, r) from_M;
+   interface AXIx_M_IFC #(aw, w, b, ar, r) to_S;
+endinterface
+
+// ----------------
+// The interface for the SyncBuffer
+
+interface AXIx_M_IFC #(type aw, type w, type b, type ar, type r);
    interface FIFOF_O #(aw)  o_aw;
    interface FIFOF_O #(w)   o_w;
    interface FIFOF_I #(b)   i_b;
@@ -42,7 +49,7 @@ interface AXI_M_IFC #(type aw, type w, type b, type ar, type r);
    interface FIFOF_I #(r)   i_r;
 endinterface
 
-interface AXI_S_IFC #(type aw, type w, type b, type ar, type r);
+interface AXIx_S_IFC #(type aw, type w, type b, type ar, type r);
    interface FIFOF_I #(aw)  i_aw;
    interface FIFOF_I #(w)   i_w;
    interface FIFOF_O #(b)   o_b;
@@ -50,11 +57,11 @@ interface AXI_S_IFC #(type aw, type w, type b, type ar, type r);
    interface FIFOF_O #(r)   o_r;
 endinterface
 
-instance Connectable #(AXI_M_IFC #(aw, w, b, ar, r),
-		       AXI_S_IFC #(aw, w, b, ar, r));
+instance Connectable #(AXIx_M_IFC #(aw, w, b, ar, r),
+		       AXIx_S_IFC #(aw, w, b, ar, r));
 
-   module mkConnection #(AXI_M_IFC #(aw, w, b, ar, r) m,
-			 AXI_S_IFC #(aw, w, b, ar, r) s)  (Empty);
+   module mkConnection #(AXIx_M_IFC #(aw, w, b, ar, r) m,
+			 AXIx_S_IFC #(aw, w, b, ar, r) s)  (Empty);
       mkConnection (m.o_aw, s.i_aw);
       mkConnection (m.o_w,  s.i_w);
       mkConnection (m.i_b,  s.o_b);
@@ -64,21 +71,13 @@ instance Connectable #(AXI_M_IFC #(aw, w, b, ar, r),
 endinstance
 
 // ================================================================
-// The SyncBuffer interface
-
-interface AXI_SyncBuffer_IFC #(type aw, type w, type b, type ar, type r);
-   interface AXI_S_IFC #(aw, w, b, ar, r) from_M;
-   interface AXI_M_IFC #(aw, w, b, ar, r) to_S;
-endinterface
-
-// ================================================================
 // The SyncBuffer module
 // Implements an AXI (AXI4 or AXI4 Lite) clock-crossing
 
-module mkAXI_SyncBuffer #(Integer depth,
+module mkAXIx_SyncBuffer #(Integer depth,
 			  Clock sClkIn, Reset sRstIn,
 			  Clock dClkIn, Reset dRstIn)
-                        (AXI_SyncBuffer_IFC #(aw, w, b, ar, r))
+                        (AXIx_SyncBuffer_IFC #(aw, w, b, ar, r))
    provisos (Bits #(aw, _size_aw_t),
 	     Bits #(w,  _size_w_t),
 	     Bits #(b,  _size_b_t),
@@ -113,7 +112,7 @@ module mkAXI_SyncBuffer #(Integer depth,
    // ----------------------------------------------------------------
    // INTERFACE
 
-   interface from_M = interface AXI_S_IFC;
+   interface from_M = interface AXIx_S_IFC;
 			 interface FIFOF_I i_aw = syncFIFO_to_FIFOF_I (f_aw);
 			 interface FIFOF_I i_w  = syncFIFO_to_FIFOF_I (f_w);
 			 interface FIFOF_O o_b  = syncFIFO_to_FIFOF_O (f_b);
@@ -121,7 +120,7 @@ module mkAXI_SyncBuffer #(Integer depth,
 			 interface FIFOF_O o_r  = syncFIFO_to_FIFOF_O (f_r);
 		      endinterface;
 
-   interface to_S   = interface AXI_M_IFC;
+   interface to_S   = interface AXIx_M_IFC;
 			 interface FIFOF_O o_aw = syncFIFO_to_FIFOF_O (f_aw);
 			 interface FIFOF_O o_w  = syncFIFO_to_FIFOF_O (f_w);
 			 interface FIFOF_I i_b  = syncFIFO_to_FIFOF_I (f_b);

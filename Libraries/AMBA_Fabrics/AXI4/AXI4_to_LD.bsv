@@ -1,6 +1,6 @@
 // Copyright (c) 2021 Rishiyur S. Nikhil and Bluespec, Inc. All Rights Reserved
 // Author: Rishiyur S. Nikhil
-//
+
 // SPDX-License-Identifier: BSD-3-Clause
 
 package AXI4_to_LD;
@@ -71,8 +71,8 @@ Integer verbosity = 0;
 // Loads: Module
 
 module mkAXI4_to_LD
-   #(FIFOF_O #(AXI4_Rd_Addr #(wd_id_t, wd_addr_t, wd_user_t))  o_rd_addr,
-     FIFOF_I #(AXI4_Rd_Data #(wd_id_t, wd_axi_data_t, wd_user_t))  i_rd_data)
+   #(FIFOF_O #(AXI4_AR #(wd_id_t, wd_addr_t, wd_user_t))     o_rd_addr,
+     FIFOF_I #(AXI4_R #(wd_id_t, wd_axi_data_t, wd_user_t))  i_rd_data)
    (AXI4_to_LD_IFC #(wd_addr_t, wd_ldst_data_t))
 
    provisos (Add #(a__,             8,                     wd_addr_t),
@@ -157,10 +157,11 @@ module mkAXI4_to_LD
    Bit #(wd_addr_t) addr_axi_bus_lo  = fn_addr_to_NAPOT (araddr,
 							 fromInteger (wdB_axi_data_I));
    // Bytelane of araddr on AXI data
-   Bit #(8)         addr_bytelane    = fn_addr_to_axi_data_bytelane (araddr, wdB_axi_data_I);
+   Bit #(8) addr_bytelane    = fn_addr_to_axi_data_bytelane (araddr, wdB_axi_data_I);
 
    // ARSIZE specifies a NAPOT window around araddr, ...
-   Bit #(8)         wdB_szwindow_B   = fv_AXI4_Size_to_num_bytes (rd_addr_S.arsize);
+   Bit #(8) wdB_szwindow_B   = fv_AXI4_Size_to_num_bytes (rd_addr_S.arsize);
+
    // Address of NAPOT ARSIZE window containing araddr
    Bit #(wd_addr_t) addr_szwindow_lo = fn_addr_to_NAPOT (araddr, wdB_szwindow_B);
 
@@ -477,13 +478,13 @@ module mkAXI4_to_LD
 
 	 Bit #(wd_axi_data_t) rdata = pack (rg_v_slice);
 
-	 let rd_data_S = AXI4_Rd_Data {rid:   rid,
-				       rresp: ((illegal_req || rg_cumulative_err)
-					       ? axi4_resp_slverr
-					       : axi4_resp_okay),
-				       rdata: rdata,
-				       ruser: ruser,
-				       rlast: True};
+	 let rd_data_S = AXI4_R {rid:   rid,
+				 rresp: ((illegal_req || rg_cumulative_err)
+					 ? axi4_resp_slverr
+					 : axi4_resp_okay),
+				 rdata: rdata,
+				 ruser: ruser,
+				 rlast: True};
 	 i_rd_data.enq (rd_data_S);
 
 	 // Get ready for next axi transaction
@@ -491,7 +492,7 @@ module mkAXI4_to_LD
 
 	 if (verbosity > 0) begin
 	    $display ("%0d: AXI4_to_LD:rl_send_axi_response", cur_cycle);
-	    $display ("  AXI4_Rd_Data  rid %0h  rresp %0h  rlast %0d  ruser %0h",
+	    $display ("  AXI4_R  rid %0h  rresp %0h  rlast %0d  ruser %0h",
 		      rd_data_S.rid, rd_data_S.rresp, rd_data_S.rlast, rd_data_S.ruser);
 	    fa_show_v_slices (rg_v_slice);
 	 end

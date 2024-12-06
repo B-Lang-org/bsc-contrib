@@ -15,7 +15,7 @@ If your BSV/BH code imports any Verilog, it should be placed in:
 
     bsc-contrib/Verilog/
 
-If you also have unit-tests, they should be in a new sub-dir:
+If you also have unit tests, they should be in a new sub-dir:
 
     bsc-contrib/testing/bsc.contrib/Unit_Test_MyContrib
 
@@ -36,7 +36,7 @@ We suggest the following "flow":
 * Create a new BRANCH in your clone of your FORK.
 * In this new BRANCH (in your clone of your FORK), prepare your
   contribution, including formatting, copyrights, licenses,
-  build-and-install Makefiles and optional unit-tests. See the
+  build-and-install Makefiles and optional unit tests. See the
   sections below for details.
 * Commit your BRANCH.
 
@@ -107,7 +107,7 @@ that it succeeds.
 
 NOTE: In the `Library` sub-dirs, this just compiles sources, it does
       not build executables.  See separate "Unit Tests" section for
-      building unit-test executables and running them.  Those are also
+      building unit test executables and running them.  Those are also
       performed by CI.
 
 // ----------------------------------------------------------------
@@ -166,7 +166,7 @@ You can optionally add unit tests for your library source files; these
 unit tests are run automatically and repeatedly as part of CI
 (Continuous Integration).
 
-NOTE: `bsc-contrib` 's unit-testing is performed as part of the main
+NOTE: `bsc-contrib` 's unit testing is performed as part of the main
       `bsc` compiler's testing of standard libraries, using the same
       infrastructure.  The infrastructure has many more ways to
       configure testing than the brief description here; please see
@@ -177,7 +177,7 @@ Add your unit tests to `bsc-contrib/testing/bsc.contrib/`.  For
 guidance, you can study any of the existing unit tests in that dir or
 in `testsuite/` in the `bsc` compiler repository.  Briefly:
 
-* Add a sub-dir for a new set of unit-tests for the new library (it
+* Add a sub-dir for a new set of unit tests for the new library (it
   can have sub-dirs for more detailed structure):
 
     bsc-contrib/testing/bsc.contrib/MyContrib/
@@ -208,6 +208,10 @@ If different output is expected from Bluesim vs. Verilog sim (e.g.,
    run in this dir.  It can invoke multiple tests in this dir.  Each
    test can be run in Bluesim or Verilog sim or both.  Again, see
    other existing unit tests for examples.
++
+For unit tests included in the `.exp` file, try to keep the
+   run-time short (no more than about a minute) when run in iverilog,
+   to limit the overall run-time of CI (Continuous Integration).
 
 // ----------------------------------------------------------------
 
