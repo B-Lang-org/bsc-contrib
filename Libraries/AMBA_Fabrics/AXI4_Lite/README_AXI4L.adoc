@@ -1,0 +1,105 @@
+= About `bsc-contrib/Libraries/AMBA_Fabrics/AXI4_Lite`
+:revnumber: v1.00
+:revdate: 2024-12-07
+:sectnums:
+:imagesdir: ../Doc/Figs
+:toc:
+:toclevels: 3
+:toc-title: Contents
+:keywords: Bluespec, B-Lang, BSV, BH, AMBA, ARM AXI, AXI4, AXI4-Lite, AXI4-Stream
+
+// ================================================================
+
+Copyright (C) 2017-2023 Bluespec, Inc.  All Rights Reserved +
+Copyright (C) 2024-2025 B-Lang.org.  All Rights Reserved
+
+SPDX-License-Identifier: BSD-3-Clause
+
+// ================================================================
+
+Pleae see README in parent directory
+(link:../README_AMBA_Fabrics.adoc[adoc],link:../README_AMBA_Fabrics.html[html])
+for general introduction and about compiling/building/testing.
+
+This directory describes AXI4-Lite facilities, including type definitions,
+cross-bar switches, connectors, clock-crossers, and edge-transactors
+to connect the B-Lang world to existing RTL (e.g., external AMBA IP).
+
+These source codes may import other `bsv-contrib` libraries; be sure
+they are visible in your _bsc_ compiler paths:
+
+    bsc-contrib/Libraries/AMBA_Fabrics/Utils/
+    bsc-contrib/Libraries/Misc/
+
+// ================================================================
+
+image::IMG_Under_Construction.png[align="left", width=100]
+
+The packages in this directory can be used as-is, but are expected to
+be restructured to be more like their AXI4 siblings (more consistent
+naming, clean separation of B-Lang-style and RTL-style, etc.)
+
+This documentation will be updated after that restructuring.
+
+// ================================================================
+== General
+
+Many of these modules take an upstream `AXI4L_M_IFC` and/or a
+downstream `AXI4L_S_IFC` as a module parameter.  Thus, the actual FIFO
+buffers producing these interfaces are external, allowing a choice of
+buffering alternatives.
+
+All these have a 'user' field which is not standard in AXI4-Lite (same
+role as 'user' in AXI4), which can be left unused, and/or set to width
+0.
+
+// ================================================================
+== `AXI4_Lite_Types.bsv`
+
+Definitions for AXI4_Lite bus types, M and S interfaces, connections
+between Ms and Ss, dummy M and S tie-offs, and transactors to provide
+higher-level FIFO-like interfaces to drive Ms and Ss.
+
+Everything is parameterizd on width of address, data and user buses.
+
+Note: some aspects of these definitions may seem a bit verbose and
+messy; that is not typical of BSV code, but is true here because it is
+meant to interface to hand-written Verilog, so we need to provide
+precise control on interface signal names and protocols that are
+required by the Verilog side.  Pure BSV code can be an order of
+magnitude more compact.
+
+Everything is parameterized on wd_addr, wd_data, wd_user.
+
+== `AXI4_Lite_Fabric.bsv`
+
+NOTE: Needs _bsc_ `-aggressive-conditions` flag (else will deadlock).
+
+Definition for interface and module for an num_M x num_S crossbar
+switch with AXI4-Lite interfaces.
+
+This is also an example of how, within BSV code, we don't worry about
+the details of AXI4-Lite signalling. We just instantiate the
+transactors defined in AXI4_Lite_Types.bsv, and then work only with
+simple, FIFO-like interfaces.
+
+Everything is parameterized on num_M, num_S, wd_addr, wd_data,
+wd_user.
+
+// ================================================================
+== Clock-crossers, other transactors
+
+(... To be written ...)
+
+// ================================================================
+== Unit tests
+
+There are some unit tests in:
+
+    bsc-contrib/testing/bsc.contrib/AMBA_Fabrics/AXI4_Lite/Test_*.bsv
+
+The conventions for unit tests are described in more detail in the
+README in the parent directory
+(link:../README_AMBA_Fabrics.adoc[adoc],link:../README_AMBA_Fabrics.html[html]).
+
+// ================================================================

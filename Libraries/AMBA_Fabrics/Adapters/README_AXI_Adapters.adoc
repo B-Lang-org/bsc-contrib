@@ -1,0 +1,71 @@
+= About `bsc-contrib/Libraries/AMBA_Fabrics/Adapters`
+:revnumber: v1.00
+:revdate: 2024-12-07
+:sectnums:
+:imagesdir: ../Doc/Figs
+:toc:
+:toclevels: 3
+:toc-title: Contents
+:keywords: Bluespec, B-Lang, BSV, BH, AMBA, ARM AXI, AXI4, AXI4-Lite, AXI4-Stream
+
+// ================================================================
+
+Copyright (C) 2017-2023 Bluespec, Inc.  All Rights Reserved +
+Copyright (C) 2024-2025 B-Lang.org.  All Rights Reserved
+
+SPDX-License-Identifier: BSD-3-Clause
+
+// ================================================================
+
+Pleae see README in parent directory
+(link:../README_AMBA_Fabrics.adoc[adoc],link:../README_AMBA_Fabrics.html[html])
+for general introduction and about compiling/building/testing.
+
+This directory describes adapters between AXI4 and AXI4-Lite.
+
+These source codes may import other `bsv-contrib` libraries; be sure
+they are visible in your _bsc_ compiler paths:
+
+    bsc-contrib/Libraries/AMBA_Fabrics/Utils/
+    bsc-contrib/Libraries/Misc/
+
+These source codes may import other `bsv-contrib` libraries; be sure
+they are visible in your _bsc_ compiler paths:
+
+    bsc-contrib/Libraries/AMBA_Fabrics/Utils/
+    bsc-contrib/Libraries/Misc/
+
+// ================================================================
+
+image::IMG_Under_Construction.png[align="left", width=100]
+
+The packages in this directory can be used as-is, but are expected to
+be restructured to be more like their AXI4 siblings (more consistent
+naming, clean separation of B-Lang-style and RTL-style, etc.)
+
+This documentation will be updated after that restructuring.
+
+// ================================================================
+== `AXI4L_S_to_AXI4_M_Adapter.bsv`
+
+A module to bridge from an AXI4-Lite S to an AXI4 M.
+
+(... To be written ...)
+
+// ================================================================
+== `AXI4_AXI4_Lite_Adapters.bsv`
+
+(... To be written ...)
+
+// ================================================================
+== Unit tests
+
+Unit tests will be found in:
+
+    bsc-contrib/testing/bsc.contrib/AMBA_Fabrics/Adapters/Test_*.bsv
+
+The conventions for unit tests are described in more detail in the
+README in the parent directory
+(link:../README_AMBA_Fabrics.adoc[adoc],link:../README_AMBA_Fabrics.html[html]).
+
+// ================================================================
