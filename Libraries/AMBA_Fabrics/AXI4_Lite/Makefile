@@ -8,8 +8,9 @@ LIBNAME=AMBA_Fabrics/AXI4_Lite
 # and defines the install target
 include ../../common.mk
 
-# Requires files in Misc and AMBA_Fabrics/AXI4
-BSCFLAGS += -p $(BUILDDIR)/../../Misc:$(BUILDDIR)/../../AMBA_Fabrics/AXI4:+
+# Requires files in Misc and Utils
+BSCFLAGS += -p $(BUILDDIR)/../../Misc:+
+BSCFLAGS += -p $(BUILDDIR)/../Utils:+
 
 .PHONY: build
 build:
