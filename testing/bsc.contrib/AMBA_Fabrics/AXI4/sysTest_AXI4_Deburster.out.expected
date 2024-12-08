@@ -1,0 +1,29 @@
+1: M.rl_rd_burst_addr_0
+  AXI4_AR { arid: 'h1, araddr: 'h00001000, arlen: 'h01, arsize: 'h3, arburst: 'h1, arlock: 'h0, arcache: 'h0, arprot: 'h0, arqos: 'h0, arregion: 'h0, aruser: 'h001 }
+2: M.rl_rd_burst_addr_1
+  AXI4_AR { arid: 'h1, araddr: 'h00002000, arlen: 'h03, arsize: 'h3, arburst: 'h1, arlock: 'h0, arcache: 'h0, arprot: 'h0, arqos: 'h0, arregion: 'h0, aruser: 'h001 }
+3:    S.rl_S_IP_model_AR
+        AXI4_AR { arid: 'h1, araddr: 'h00001000, arlen: 'h00, arsize: 'h3, arburst: 'h0, arlock: 'h0, arcache: 'h0, arprot: 'h0, arqos: 'h0, arregion: 'h0, aruser: 'h001 }
+4:    S.rl_S_IP_model_AR
+        AXI4_AR { arid: 'h1, araddr: 'h00001008, arlen: 'h00, arsize: 'h3, arburst: 'h0, arlock: 'h0, arcache: 'h0, arprot: 'h0, arqos: 'h0, arregion: 'h0, aruser: 'h001 }
+5:    S.rl_S_IP_model_AR
+        AXI4_AR { arid: 'h1, araddr: 'h00002000, arlen: 'h00, arsize: 'h3, arburst: 'h0, arlock: 'h0, arcache: 'h0, arprot: 'h0, arqos: 'h0, arregion: 'h0, aruser: 'h001 }
+5: M.rl_rd_resps
+  AXI4_R { rid: 'h1, rdata: 'h0000000000011000, rresp: 'h0, rlast: False, ruser: 'h001 }
+6:    S.rl_S_IP_model_AR
+        AXI4_AR { arid: 'h1, araddr: 'h00002008, arlen: 'h00, arsize: 'h3, arburst: 'h0, arlock: 'h0, arcache: 'h0, arprot: 'h0, arqos: 'h0, arregion: 'h0, aruser: 'h001 }
+6: M.rl_rd_resps
+  AXI4_R { rid: 'h1, rdata: 'h0000000000011008, rresp: 'h0, rlast: True, ruser: 'h001 }
+7:    S.rl_S_IP_model_AR
+        AXI4_AR { arid: 'h1, araddr: 'h00002010, arlen: 'h00, arsize: 'h3, arburst: 'h0, arlock: 'h0, arcache: 'h0, arprot: 'h0, arqos: 'h0, arregion: 'h0, aruser: 'h001 }
+7: M.rl_rd_resps
+  AXI4_R { rid: 'h1, rdata: 'h0000000000012000, rresp: 'h0, rlast: False, ruser: 'h001 }
+8:    S.rl_S_IP_model_AR
+        AXI4_AR { arid: 'h1, araddr: 'h00002018, arlen: 'h00, arsize: 'h3, arburst: 'h0, arlock: 'h0, arcache: 'h0, arprot: 'h0, arqos: 'h0, arregion: 'h0, aruser: 'h001 }
+8: M.rl_rd_resps
+  AXI4_R { rid: 'h1, rdata: 'h0000000000012008, rresp: 'h0, rlast: False, ruser: 'h001 }
+9: M.rl_rd_resps
+  AXI4_R { rid: 'h1, rdata: 'h0000000000012010, rresp: 'h0, rlast: False, ruser: 'h001 }
+10: M.rl_rd_resps
+  AXI4_R { rid: 'h1, rdata: 'h0000000000012018, rresp: 'h0, rlast: True, ruser: 'h001 }
+111: rl_idle_quit

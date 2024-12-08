@@ -111,8 +111,7 @@ module mkAXI4L_Gate
 
       $display ("WARNING: rl_wr_addr_disabled: rec'd wr request from M when gate disabled.");
       $display ("    ", fshow (wra));
-      $display ("    Returning error response.");
-      $display ("    %0d: %m", cur_cycle);
+      $display ("    %0d: Returning error response.", cur_cycle);
    endrule
 
    rule rl_wr_data_disabled (respond_with_err && (! rg_enabled));
@@ -123,8 +122,7 @@ module mkAXI4L_Gate
    rule rl_wr_resp_disabled_drain_S (respond_with_err && (! rg_enabled));
       let wrr <- pop_o (xactor_to_S.o_wr_resp);
       $display ("WARNING: rl_wr_resp_disabled: rec'd wr resp from S when gate disabled; ignoring");
-      $display ("    (there couldn't have been a request)");
-      $display ("    %0d: %m", cur_cycle);
+      $display ("    %0d: (there couldn't have been a request)", cur_cycle);
    endrule
 
    rule rl_rd_addr_disabled (respond_with_err && (! rg_enabled));
@@ -136,15 +134,13 @@ module mkAXI4L_Gate
 
       $display ("WARNING: rl_rd_addr_disabled: rec'd rd request from M when gate disabled.");
       $display ("    ", fshow (rda));
-      $display ("    Returning error response.");
-      $display ("    %0d: %m", cur_cycle);
+      $display ("    %0d: Returning error response.", cur_cycle);
    endrule
 
    rule rl_rd_data_disabled_drain_S (respond_with_err && (! rg_enabled));
       let rdd <- pop_o (xactor_to_S.o_rd_data);
       $display ("WARNING: rl_rd_data_disabled: rec'd rd resp from S when gate disabled; ignoring");
-      $display ("    (there couldn't have been a request)");
-      $display ("    %0d: %m", cur_cycle);
+      $display ("    %0d: (there couldn't have been a request)", cur_cycle);
    endrule
 
    // ----------------------------------------------------------------
@@ -155,9 +151,9 @@ module mkAXI4L_Gate
 
    method Action m_enable (Bool enabled);
       if (enabled && (! rg_enabled) && (verbosity != 0))
-	 $display ("%0d: %m: AXI4L ENABLING", cur_cycle);
+	 $display ("%0d: AXI4L ENABLING", cur_cycle);
       else if ((! enabled) && rg_enabled && (verbosity != 0))
-	 $display ("%0d: %m: AXI4L DISABLING", cur_cycle);
+	 $display ("%0d: AXI4L DISABLING", cur_cycle);
 
       rg_enabled <= enabled;
    endmethod

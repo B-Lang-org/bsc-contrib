@@ -1,0 +1,191 @@
+= About `bsc-contrib/Libraries/AMBA_Fabrics`
+:revnumber: v1.00
+:revdate: 2024-12-07
+:sectnums:
+:imagesdir: Doc/Figs
+:toc:
+:toclevels: 3
+:toc-title: Contents
+:keywords: Bluespec, B-Lang, BSV, BH, AMBA, ARM AXI, AXI4, AXI4-Lite, AXI4-Stream
+
+// ================================================================
+
+Copyright (C) 2017-2023 Bluespec, Inc.  All Rights Reserved +
+Copyright (C) 2024-2025 B-Lang.org.  All Rights Reserved
+
+SPDX-License-Identifier: BSD-3-Clause
+
+NOTE: AMBA, ARM AXI, AXI4, AXI4-Lite, AXI4-Stream are specifications
+by the company _ARM Limited_. The specs are open (no license required)
+and can be downloaded from
+https://www.arm.com/architecture/system-architectures/amba/amba-specifications[ARM's website].
+
+// ================================================================
+== Introduction
+
+This directory contains libraries for various AMBA resources (AXI4,
+AXI4-Lite, AXI4_Stream) including type definitions, cross-bar
+switches, connectors, clock-crossers, and edge-transactors to connect
+the B-Lang world to existing RTL (e.g., external AMBA IP).
+
+The source code is written in a B-Lang (BSV/BH/Bluespec Classic).  The
+free and open-source _bsc_ compiler tool can be used to generate
+synthesizable Verilog (https://github.com/B-Lang-org/bsc[]).
+
+The origins of this code date at least as far back as 2018 inside
+https://bluespec.com[Bluespec, Inc.]  The codes have evolved over time
+and various versions have been used and are still in use in numerous
+RISC-V CPUs and SoC designs at several universities and companies,
+including in commercialized ASICs.  The codes were moved to this
+repository in November-December 2024.
+
+CAUTION: In moving these codes to this repository, they are being
+         further cleaned up, so there may be a short period of
+         instability. The cleanups to the `AXI4/` directory have been
+         completed; cleanups to `AXI4_Lite` and `AXI4_Stream`
+         directories are ongoing.  We will remove this CAUTION when
+         that work is completed.
+
+// ----------------------------------------------------------------
+=== Terminology:
+
+Since 2021 ARM has replaced the terms "Master" and "Slave" by
+"Manager" and "Subordinate", respectively; in this library we just use
+"M" and "S" for these concepts.  An M sends requests (on AW, W, AR)
+and recieves responses (on B, R). An S recieves requests (on AW, W,
+AR) and sends responses (on B, R).
+
+In this library, identifiers use `AXI4` for AXI4 itsef, `AXI4L` for
+AXI4-Lite, and `AXI4S` for AXI4-Stream, three distinct parts of the
+AMBA AXI spec.
+
+// ================================================================
+== Principles
+
+=== Background on ARM AMBA AXI
+
+AXI4 and AXI4-Lite are specifications of buses, each with five
+independent "channels" (AW, W, B, AR, R).
+
+ARM's specs are described at the signal (RTL) level).  Each channel
+has multiple sub-buses (e.g., awaddr, awsize, arlen, bresp, rdata,
+...)  and is unidirectional (all sub-buses carry data in the same
+direction).  Each channel is independently flow-controlled with a
+traditional handshake on two additional wires called `ready` (receiver
+to sender) and `valid` (sender-to-receiver). Please see "RTL view" in
+diagram below.
+
+For a write-transaction, the sender sends information on AW (address
+etc.) and W (data etc.), and receives a response on B (status etc.).
+For a read-transaction, the sender sends information on AR (address
+etc.) and receives a response on R (status, data, etc.).
+
+Please see ARM's specs for full details of the channels, sub-buses,
+ready-valid handshaking, and detailed semantics of transactions.
+
+=== B-Lang view vs. RTL view
+
+In BSV/BH/Bluespec Classic the natural way to do unidirectional
+flow-controlled communication is with FIFOs.  Further, groups of
+related data values are naturally represented as "structs".  Further,
+complex interfaces can contain sub-interfaces.
+
+Thus, AMBA AXI is represented in BSV as shown in "B-Lang view" in the
+diagram below.  Each of the groups AW, W, B, AR, R is defined as a
+`struct` with fields corresponding to the sub-buses of the group.
+Each struct is communicated as a unit from sender to receiver with
+FIFO buffers.  An M interface (`AXI4_M_IFC`) contains five
+sub-interfaces, each corresponding to one end of a FIFO ("enqueue" end
+or "dequeue" end).  An S interface (`AXI4_S_IFC`) is the dual, using
+the opposite ends of FIFOs.  A one-line `mkConnection` is sufficient
+to connect two such interfaces together.
+
+image::RSN_2024-12-07.000.00.png[align="left"]
+
+As long as one is working within a B-Lang, that is the complete story
+on bus representation.  However, if it is necessary to connect to
+RTL-level AXI IP---Verilog/SystemVerilog buses, sub-buses, and
+ready-valid handshaking--- we provide two "transactors"
+`mkAXI4_BSV_to_RTL` (BSV M to RTL S) and `mkAXI4_RTL_to_BSV` (RTL M to
+BSV S) to perform the conversions. Each transactor has a B-Lang-view
+interface on one side and an RTL-view interface on the other side.
+These transactors are written in BSV, but when compiled by the _bsc_
+compiler, will produced RTL signals and logic with the correct signal
+names and ready-valid handshaking.  Within B-Lang, a one-line
+`mkConnection` is sufficient to connect `AXI4_RTL_M_IFC` and
+`AXI4_RTL_S_IFC` interfaces.
+
+CAUTION: In these AXI4 resources, WRAP bursts are not supported.
+         Where bursts are supported, it generally assumes INCR
+         (incrementing) bursts or FIXED.
+
+// ================================================================
+== Directory structure and links to details
+
+The source tree for this library is:
+
+    bsc-contrib_RSN/
+    └── Libraries/
+        └── AMBA_Fabrics/
+            ├── README_AMBA_Fabrics.txt
+            ├── AXI4/
+            ├── AXI4_Lite/
+            ├── AXI4_Stream/
+            ├── Adapters/
+            ├── Utils/
+            └── Makefile
+
+The code in `AXI4` is a substantially cleaned up version of existing
+codes that have been used in a number of projects.  The cleanup
+involved consistent naming, clean separation of B-Lang-view and
+RTL-view, externalizing of buffering choices, etc.
+
+The code in `AXI4_Lite`, `AXI4_Stream`, and `Adapters` are also
+snapshots of existing codes that have been used in a number of
+projects (and so they can be used, as-is), but they have not yet gone
+through the analogous cleanup, which is a work-in-progress.
+
+Please see READMEs in each directory for specifics of directory
+contents:
+
+* AXI4 (link:AXI4/README_AXI4.adoc[adoc], link:AXI4/README_AXI4.html[html]),
+* AXI4_Lite (link:AXI4_Lite/README_AXI4L.adoc[adoc], link:AXI4_Lite/README_AXI4L.html[html]),
+* AXI4_Stream (link:AXI4_Stream/README_AXI4S.adoc[adoc], link:AXI4_Stream/README_AXI4S.html[html]),
+* Adapters (link:Adapters/README_AXI_Adapters.adoc[adoc], link:Adapters/README_AXI_Adapters.html[html]).
+
+// ================================================================
+== Compiling/Building/Testing
+
+You can compile these libraries from source using the _bsc_ compiler
+as part of your own compile/build flow, by making sure the files you
+need are in located in your _bsc_ compiler search path.
+
+NOTE: Some of these files require the `-aggressive-conditions` flag (else may deadlock).
+
+The Makefiles in this library can be used if you wish to pre-compile
+these files using the _bsc_ compiler, by doing:
+
+    $ make install
+
+This will invoke _bsc_ and place the resulting `.bo` files in:
+
+    bsc-contrib/inst/lib/Libraries/AMBA_Fabrics/...
+
+There are several "unit tests" for this library located in:
+
+    bsc-contrib_RSN/
+    └── testing/
+        └── bsc.contrib/
+            ├── AMBA_Fabrics_AXI4/
+            ├── AMBA_Fabrics_AXI4_Lite/
+            ...
+
+Each directory, `Makefile`, script fragment (`foo.exp` file) and
+expected output (`foo.out.expected` file) is set up for the CI
+(Continuous Integration) flow that is run repeatedly for the _bsc_
+compiler.  Please see the "How to Contribute to bsc-contrib" document
+(link:../../doc/How_to_Contribute.adoc[adoc],
+link:../../doc/How_to_Contribute.html[html]) for details on this
+setup.
+
+// ================================================================
