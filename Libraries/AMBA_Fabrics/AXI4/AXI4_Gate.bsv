@@ -6,7 +6,7 @@
 package AXI4_Gate;
 
 // ================================================================
-// This package defines an 'gate' module connecting and ifc_M to an ifc_S.
+// This package defines a 'gate' module connecting an ifc_M to an ifc_S.
 // When driving method 'm_enable(True)'  it passes AXI4 traffic through.
 // When driving method 'm_enable(False)' it blocks AXI4 traffic.
 
@@ -19,7 +19,7 @@ import Vector :: *;
 import FIFOF  :: *;
 
 // ----------------
-// BSV additional libs
+// Bluespec misc. libs
 
 import Cur_Cycle  :: *;
 import GetPut_Aux :: *;

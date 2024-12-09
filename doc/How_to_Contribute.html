@@ -439,7 +439,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <h1>How to Contribute to <code>bsc-contrib</code></h1>
 <div class="details">
 <span id="revnumber">version v1.03,</span>
-<span id="revdate">2024-11-21</span>
+<span id="revdate">2024-12-09</span>
 </div>
 </div>
 <div id="content">
@@ -448,7 +448,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div class="paragraph">
 <p>Let&#8217;s assume you want to contribute a new library <code>MyContrib</code>.  All
 your B-Lang (BSV/BH) sources and documentation should be placed in a
-new sub-dir:</p>
+new sub-directory:</p>
 </div>
 <div class="literalblock">
 <div class="content">
@@ -464,7 +464,7 @@ new sub-dir:</p>
 </div>
 </div>
 <div class="paragraph">
-<p>If you also have unit tests, they should be in a new sub-dir:</p>
+<p>If you also have unit tests, they should be in a new sub-directory:</p>
 </div>
 <div class="literalblock">
 <div class="content">
@@ -500,7 +500,8 @@ Request (PR).</p>
 <div class="ulist">
 <ul>
 <li>
-<p>On GitHub, create a FORK of the original <code>bsc-contrib</code> repo, under your own account.</p>
+<p>On GitHub, create a FORK of the original <code>bsc-contrib</code> repository,
+under your own account.</p>
 </li>
 <li>
 <p>Clone your FORK to your work area (laptop, desktop, &#8230;&#8203;).</p>
@@ -606,16 +607,17 @@ AsciiDoctor (<code>.adoc</code>) are automatically rendered by GitHub.</p>
 <h2 id="_makefiles_for_building_and_installing">5. Makefiles for building and installing</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p><code>make all</code> at the top level descends recursively into all sub-dirs of
-<code>Libraries</code> and <code>Verilog</code>.  In a leaf-level library dir the Makefile
-contains a <code>build</code> target to compile source file(s) that are in that
-dir.  The corresponding object files get copied into the installation
-dir (default <code>bsc-contrib/inst</code>).  You can also specify other files to
-be copied (include files, config files, &#8230;&#8203;).</p>
+<p><code>make all</code> at the top level descends recursively into all
+sub-directories of <code>Libraries</code> and <code>Verilog</code>.  In a leaf-level library
+directory the <code>Makefile</code> contains a <code>build</code> target to compile source
+file(s) that are in that directory.  The corresponding object files
+get copied into the installation directory (default
+<code>bsc-contrib/inst</code>).  You can also specify other files to be copied
+(include files, config files, &#8230;&#8203;).</p>
 </div>
 <div class="paragraph">
-<p>If you added any files to the <code>Verilog/</code> dir, add those filenames to
-the <code>VERI_FILES</code> list in the <code>Verilog/Makefile</code>.</p>
+<p>If you added any files to the <code>Verilog/</code> directory, add those
+filenames to the <code>VERI_FILES</code> list in the <code>Verilog/Makefile</code>.</p>
 </div>
 <div class="paragraph">
 <p>The top-level <code>make all</code> is performed for installation, but is also
@@ -629,10 +631,10 @@ that it succeeds.</p>
 <div class="title">Note</div>
 </td>
 <td class="content">
-In the <code>Library</code> sub-dirs, this just compiles sources, it does
-      not build executables.  See separate "Unit Tests" section for
-      building unit test executables and running them.  Those are also
-      performed by CI.
+In the <code>Library</code> sub-directories, this just compiles sources, it
+      does not build executables.  See separate "Unit Tests" section
+      for building unit test executables and running them.  Those are
+      also performed by CI.
 </td>
 </tr>
 </table>
@@ -652,9 +654,9 @@ In the <code>Library</code> sub-dirs, this just compiles sources, it does
 contribution into the recursive descent.</p>
 </div>
 <div class="paragraph">
-<p>If <code>Libraries/MyContrib/</code> has sub-dirs, repeat the recursive pattern
-of <code>Libraries/Makefile</code> to enable recursive descent into each sub-dir,
-as needed.  Example:</p>
+<p>If <code>Libraries/MyContrib/</code> has sub-directories, repeat the recursive
+pattern of <code>Libraries/Makefile</code> to enable recursive descent into each
+sub-directory, as needed.  Example:</p>
 </div>
 <div class="literalblock">
 <div class="content">
@@ -750,14 +752,15 @@ unit tests are run automatically and repeatedly as part of CI
 </div>
 <div class="paragraph">
 <p>Add your unit tests to <code>bsc-contrib/testing/bsc.contrib/</code>.  For
-guidance, you can study any of the existing unit tests in that dir or
-in <code>testsuite/</code> in the <code>bsc</code> compiler repository.  Briefly:</p>
+guidance, you can study any of the existing unit tests in that
+directory or in <code>testsuite/</code> in the <code>bsc</code> compiler repository.
+Briefly:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>Add a sub-dir for a new set of unit tests for the new library (it
-can have sub-dirs for more detailed structure):</p>
+<p>Add a sub-directory for a new set of unit tests for the new library
+(it can have sub-directories for more detailed structure):</p>
 <div class="literalblock">
 <div class="content">
 <pre>bsc-contrib/testing/bsc.contrib/MyContrib/</pre>
@@ -765,12 +768,12 @@ can have sub-dirs for more detailed structure):</p>
 </div>
 </li>
 <li>
-<p>In this dir:</p>
+<p>In this directory:</p>
 <div class="ulist">
 <ul>
 <li>
 <p>There should be a <code>Makefile</code> that is just boilerplate; see any of
-the other unit test dirs for examples.</p>
+the other unit test directories for examples.</p>
 </li>
 <li>
 <p>You can have multiple test programs.  Each such top-level <code>Foo.bsv</code>
@@ -802,14 +805,12 @@ it is run.</p>
 </li>
 <li>
 <p>Finally, a file <code>foo.exp</code> contains a fragment of a "script" to be
-run in this dir.  It can invoke multiple tests in this dir.  Each
-test can be run in Bluesim or Verilog sim or both.  Again, see
-other existing unit tests for examples.</p>
-<div class="paragraph">
-<p>For unit tests included in the <code>.exp</code> file, try to keep the
-   run-time short (no more than about a minute) when run in iverilog,
-   to limit the overall run-time of CI (Continuous Integration).</p>
-</div>
+run in this directory.  It can invoke multiple tests in this
+directory.  Each test can be run in Bluesim or Verilog sim or both.
+Again, see other existing unit tests for examples.  + For unit
+tests included in the <code>.exp</code> file, try to keep the run-time short
+(no more than about a minute) when run in iverilog, to limit the
+overall run-time of CI (Continuous Integration).</p>
 </li>
 </ul>
 </div>
@@ -825,7 +826,7 @@ other existing unit tests for examples.</p>
 <p>See the "Testing" section of the <a href="../README.md">README</a> in
 <code>bsc-contrib</code> for information on how to run them (you have to copy
 <code>testing/bsc.contrib</code> from here into the <code>bsc</code> repository&#8217;s
-<code>testsuite</code> dir and run it there).</p>
+<code>testsuite</code> directory and run it there).</p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -853,7 +854,7 @@ other existing unit tests for examples.</p>
 <div id="footer">
 <div id="footer-text">
 Version v1.03<br>
-Last updated 2024-11-27 09:18:58 -0500
+Last updated 2024-12-09 10:57:55 -0500
 </div>
 </div>
 </body>

@@ -1,4 +1,4 @@
-// Copyright (c) 2019 Bluespec, Inc.  All Rights Reserved
+// Copyright (c) 2019-2024 Bluespec, Inc.  All Rights Reserved
 //
 // SPDX-License-Identifier: BSD-3-Clause
 
@@ -30,7 +30,7 @@ import FIFOF       :: *;
 import Connectable :: *;
 
 // ----------------
-// BSV additional libs
+// Bluespec misc. libs
 
 import Semi_FIFOF :: *;
 import EdgeFIFOFs :: *;

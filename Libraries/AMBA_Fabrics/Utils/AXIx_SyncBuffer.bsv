@@ -9,8 +9,8 @@ package AXIx_SyncBuffer;
 // This package defines a clock-domain-crossing buffer for an AXI bus
 
 // The interfaces are FIFOF-like (not RTL-level AMBA signals).
-// The module merely contains 5 SyncFIFOs for each of the 5 AXI4 or
-// AXI4 Lite channels
+// The module merely contains 5 standard SyncFIFOs for each of the 5
+// AXI4 or AXI4 Lite channels.
 
 // ================================================================
 // Bluespec library imports
@@ -19,7 +19,7 @@ import Clocks      :: *;
 import Connectable :: *;
 
 // ----------------
-// BSV additional libs
+// Bluespec misc. libs
 
 import GetPut_Aux :: *;
 import Semi_FIFOF :: *;
@@ -31,7 +31,7 @@ import Semi_FIFOF :: *;
 
 // ================================================================
 // The AXIx_SyncBuffer interface.
-// Note: AXI (not AXI4 or AXI4L) because it can be used for both
+// Note: AXIx (not AXI4 or AXI4L) because it can be used for both
 
 interface AXIx_SyncBuffer_IFC #(type aw, type w, type b, type ar, type r);
    interface AXIx_S_IFC #(aw, w, b, ar, r) from_M;
@@ -72,7 +72,7 @@ endinstance
 
 // ================================================================
 // The SyncBuffer module
-// Implements an AXI (AXI4 or AXI4 Lite) clock-crossing
+// Implements an AXIx (AXI4 or AXI4 Lite) clock-crossing
 
 module mkAXIx_SyncBuffer #(Integer depth,
 			  Clock sClkIn, Reset sRstIn,

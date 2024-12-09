@@ -1,6 +1,6 @@
 = About `bsc-contrib/Libraries/AMBA_Fabrics/AXI4`
 :revnumber: v1.00
-:revdate: 2024-12-07
+:revdate: 2024-12-09
 :sectnums:
 :imagesdir: Doc/Figs
 :toc:
@@ -11,7 +11,7 @@
 // ================================================================
 
 Copyright (C) 2017-2023 Bluespec, Inc.  All Rights Reserved +
-Copyright (C) 2024-2025 B-Lang.org.  All Rights Reserved
+Copyright (C) 2024 B-Lang.org.  All Rights Reserved
 
 SPDX-License-Identifier: BSD-3-Clause
 

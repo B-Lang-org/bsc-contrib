@@ -1,6 +1,6 @@
-// Copyright (c) 2022 Bluespec, Inc. All Rights Reserved
+// Copyright (c) 2022-2024 Bluespec, Inc. All Rights Reserved
 // Author: Rishiyur S. Nikhil
-// (original code for mkAXI4_ClockCrossing from Joe Stoy)
+// (adapted and renamed from original code from Joe Stoy)
 
 // SPDX-License-Identifier: BSD-3-Clause
 
@@ -31,7 +31,7 @@ import Clocks      :: *;
 import Connectable :: *;
 
 // ----------------
-// BSV additional libs
+// Bluespec misc. libs
 
 import Cur_Cycle  :: *;
 import GetPut_Aux :: *;

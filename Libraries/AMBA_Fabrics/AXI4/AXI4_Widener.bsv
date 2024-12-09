@@ -31,7 +31,7 @@ import SpecialFIFOs :: *;
 import ConfigReg    :: *;
 
 // ----------------
-// BSV additional libs
+// Bluespec misc. libs
 
 import Cur_Cycle  :: *;
 import GetPut_Aux :: *;

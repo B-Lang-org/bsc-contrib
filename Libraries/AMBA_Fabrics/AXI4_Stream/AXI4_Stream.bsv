@@ -11,7 +11,7 @@ import FIFOF       :: *;
 import Connectable :: *;
 
 // ----------------
-// BSV additional libs
+// Bluespec misc. libs
 
 import Semi_FIFOF :: *;
 import EdgeFIFOFs :: *;

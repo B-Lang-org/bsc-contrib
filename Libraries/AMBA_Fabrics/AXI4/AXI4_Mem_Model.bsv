@@ -29,7 +29,7 @@ import GetPut       :: *;
 import ClientServer :: *;
 
 // ----------------
-// BSV additional libs
+// Bluespec misc. libs
 
 import GetPut_Aux :: *;
 import Semi_FIFOF :: *;

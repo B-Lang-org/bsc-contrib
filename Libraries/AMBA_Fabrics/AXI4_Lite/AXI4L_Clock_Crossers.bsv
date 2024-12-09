@@ -33,7 +33,7 @@ import Clocks      :: *;
 import Connectable :: *;
 
 // ----------------
-// BSV additional libs
+// Bluespec misc. libs
 
 import Cur_Cycle  :: *;
 import GetPut_Aux :: *;

@@ -22,7 +22,7 @@ import SpecialFIFOs :: *;
 import ConfigReg    :: *;
 
 // ----------------
-// BSV additional libs
+// Bluespec misc. libs
 
 import Cur_Cycle  :: *;
 import Semi_FIFOF :: *;

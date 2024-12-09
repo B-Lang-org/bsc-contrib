@@ -18,7 +18,7 @@ package AXI4_Addr_Translator;
 // none
 
 // ----------------
-// BSV additional libs
+// Bluespec misc. libs
 
 import Semi_FIFOF :: *;
 

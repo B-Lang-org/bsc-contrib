@@ -21,7 +21,7 @@ import Vector       :: *;
 import FIFOF        :: *;
 
 // ----------------
-// BSV additional libs
+// Bluespec misc. libs
 
 import Cur_Cycle  :: *;
 import Semi_FIFOF :: *;
