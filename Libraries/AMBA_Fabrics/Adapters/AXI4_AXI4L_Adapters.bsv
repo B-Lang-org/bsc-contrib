@@ -1,4 +1,4 @@
-// Copyright (c) 2019 Bluespec, Inc.  All Rights Reserved
+// Copyright (c) 2019-2024 Bluespec, Inc.  All Rights Reserved
 //
 // SPDX-License-Identifier: BSD-3-Clause
 
@@ -21,7 +21,7 @@ package AXI4_AXI4L_Adapters;
 
 export
 
-fn_AXI4L_M_IFC_to_AXI4_M_IFC;
+fn_AXI4L_M_IFC_to_AXI4_RTL_M_IFC;
 
 // ================================================================
 // BSV library imports
@@ -30,7 +30,7 @@ import FIFOF       :: *;
 import Connectable :: *;
 
 // ----------------
-// BSV additional libs
+// Bluespec misc. libs
 
 import Semi_FIFOF :: *;
 import EdgeFIFOFs :: *;
@@ -38,8 +38,9 @@ import EdgeFIFOFs :: *;
 // ================================================================
 // Project imports
 
-import AXI4L_Types :: *;
-import AXI4_Types  :: *;
+import AXI4L_Types  :: *;
+import AXI4_Types   :: *;
+import AXI4_BSV_RTL :: *;
 
 // ================================================================
 // Compute the encoding of AWSIZE/ARSIZE
@@ -55,12 +56,12 @@ endfunction
 
 // ================================================================
 
-function AXI4_M_IFC #(wd_id, wd_addr, wd_data, wd_user)
-         fn_AXI4L_M_IFC_to_AXI4_M_IFC
+function AXI4_RTL_M_IFC #(wd_id, wd_addr, wd_data, wd_user)
+         fn_AXI4L_M_IFC_to_AXI4_RTL_M_IFC
          (AXI4L_M_IFC #(wd_addr, wd_data, wd_user)  axi4L);
 
    return
-   interface AXI4_M_IFC;
+   interface AXI4_RTL_M_IFC;
 
       // ----------------
       // Wr Addr channel
@@ -151,8 +152,8 @@ endfunction
 // Transformer to get AXI4L S interface from an AXI4 S interface
 
 function AXI4L_S_IFC #(wd_addr, wd_data, wd_user)
-         fv_AXI4_S_IFC_to_AXI4L_S_IFC
-         (AXI4_S_IFC #(wd_id, wd_addr, wd_data, wd_user)  axi4);
+         fv_AXI4_RTL_S_IFC_to_AXI4L_S_IFC
+         (AXI4_RTL_S_IFC #(wd_id, wd_addr, wd_data, wd_user)  axi4);
 
    return
    interface AXI4L_S_IFC;

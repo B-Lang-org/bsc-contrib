@@ -1,0 +1,21 @@
+# Include the boilerplate for bsc-contrib tests
+set here [file join [absolute $srcdir] $subdir]
+source $here/../../contrib.tcl
+
+if { $contribtest } {
+
+    add_contrib_dirs_to_path { AMBA_Fabrics/AXI4  AMBA_Fabrics/Utils  Misc }
+
+    # Because we use 'genC' to correct the 'cur_cycle', the .ba file
+    # is specific to the backend and cannot be reused for the other,
+    # so we use the '_separately' variant of the test procedure
+    #
+    test_c_only_bsv_modules_options     Test_AXI4_Fabric  {} {-aggressive-conditions}
+    test_veri_only_bsv_modules_options  Test_AXI4_Fabric  {} {-aggressive-conditions}
+    test_c_veri_bsv_separately          Test_AXI4_Mem_Model
+    test_c_veri_bsv_separately          Test_AXI4_to_LDST
+    test_c_veri_bsv_separately          Test_AXI4_Deburster
+
+    restore_path
+
+}

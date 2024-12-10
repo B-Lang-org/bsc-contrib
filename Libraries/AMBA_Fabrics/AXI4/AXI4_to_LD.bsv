@@ -1,6 +1,6 @@
-// Copyright (c) 2021 Rishiyur S. Nikhil and Bluespec, Inc. All Rights Reserved
+// Copyright (c) 2021-2024 Rishiyur S. Nikhil and Bluespec, Inc. All Rights Reserved
 // Author: Rishiyur S. Nikhil
-//
+
 // SPDX-License-Identifier: BSD-3-Clause
 
 package AXI4_to_LD;
@@ -22,7 +22,7 @@ import Vector :: *;
 import FIFOF  :: *;
 
 // ----------------
-// BSV additional libs
+// Bluespec misc. libs
 
 import Cur_Cycle  :: *;
 import Semi_FIFOF :: *;
@@ -71,8 +71,8 @@ Integer verbosity = 0;
 // Loads: Module
 
 module mkAXI4_to_LD
-   #(FIFOF_O #(AXI4_Rd_Addr #(wd_id_t, wd_addr_t, wd_user_t))  o_rd_addr,
-     FIFOF_I #(AXI4_Rd_Data #(wd_id_t, wd_axi_data_t, wd_user_t))  i_rd_data)
+   #(FIFOF_O #(AXI4_AR #(wd_id_t, wd_addr_t, wd_user_t))     o_rd_addr,
+     FIFOF_I #(AXI4_R #(wd_id_t, wd_axi_data_t, wd_user_t))  i_rd_data)
    (AXI4_to_LD_IFC #(wd_addr_t, wd_ldst_data_t))
 
    provisos (Add #(a__,             8,                     wd_addr_t),
@@ -157,10 +157,11 @@ module mkAXI4_to_LD
    Bit #(wd_addr_t) addr_axi_bus_lo  = fn_addr_to_NAPOT (araddr,
 							 fromInteger (wdB_axi_data_I));
    // Bytelane of araddr on AXI data
-   Bit #(8)         addr_bytelane    = fn_addr_to_axi_data_bytelane (araddr, wdB_axi_data_I);
+   Bit #(8) addr_bytelane    = fn_addr_to_axi_data_bytelane (araddr, wdB_axi_data_I);
 
    // ARSIZE specifies a NAPOT window around araddr, ...
-   Bit #(8)         wdB_szwindow_B   = fv_AXI4_Size_to_num_bytes (rd_addr_S.arsize);
+   Bit #(8) wdB_szwindow_B   = fv_AXI4_Size_to_num_bytes (rd_addr_S.arsize);
+
    // Address of NAPOT ARSIZE window containing araddr
    Bit #(wd_addr_t) addr_szwindow_lo = fn_addr_to_NAPOT (araddr, wdB_szwindow_B);
 
@@ -300,7 +301,7 @@ module mkAXI4_to_LD
 
    rule rl_start_xaction (rg_state == STATE_IDLE);
       if (verbosity > 0) begin
-	 $display ("%0d: %m.AXI4_to_LD:rl_start_xaction ================", cur_cycle);
+	 $display ("%0d: AXI4_to_LD:rl_start_xaction ================", cur_cycle);
 	 fa_show_axi_req_values();
       end
 
@@ -309,7 +310,7 @@ module mkAXI4_to_LD
       Bool illegal_req = False;
       if (wdB_szwindow_B  > fromInteger (wdB_axi_data_I)) begin
 	 if (verbosity == 0)
-	    $display ("%0d: %m.AXI4_to_LD:rl_start_xaction ================", cur_cycle);
+	    $display ("%0d: AXI4_to_LD:rl_start_xaction ================", cur_cycle);
 	 $display ("  ERROR: illegal AXI4 request");
 	 $display ("    awsize 0x%0h bytes > axi data bus width 0x%0h bytes",
 		   wdB_szwindow_B, wdB_axi_data_I);
@@ -318,7 +319,7 @@ module mkAXI4_to_LD
 
       if (rd_addr_S.arlen != 0) begin
 	 if (verbosity == 0)
-	    $display ("%0d: %m.AXI4_to_LD:rl_start_xaction ================", cur_cycle);
+	    $display ("%0d: AXI4_to_LD:rl_start_xaction ================", cur_cycle);
 	 $display ("  ERROR: illegal AXI4 request");
 	 $display ("    arlen 0x%0h; only arlen 0 (1-beat bursts) supported",
 		   rd_addr_S.arlen);
@@ -353,7 +354,7 @@ module mkAXI4_to_LD
 
    rule rl_next_slice (rg_state == STATE_SLICE);
       if (verbosity > 0)
-	 $display ("%0d: %m.AXI4_to_LD:rl_next_slice", cur_cycle);
+	 $display ("%0d: AXI4_to_LD:rl_next_slice", cur_cycle);
 
       Bit #(8) bytelane_slice_lo = rg_bytelane_slice_lo;
       Bit #(8) bytelane_slice_hi = rg_bytelane_slice_lo + fromInteger (wdB_ldst_data_I - 1);
@@ -371,7 +372,7 @@ module mkAXI4_to_LD
 
    rule rl_partial (rg_state == STATE_PARTIAL);
       if (verbosity > 0) begin
-	 $display ("%0d: %m.AXI4_to_LD:rl_partial", cur_cycle);
+	 $display ("%0d: AXI4_to_LD:rl_partial", cur_cycle);
 	 $display ("    rg_bytelane_hi..lo [%0h..%0h] rg_bytelane_slice_lo %0h",
 		   rg_bytelane_hi, rg_bytelane_lo, rg_bytelane_slice_lo);
       end
@@ -400,7 +401,7 @@ module mkAXI4_to_LD
 
    rule rl_finish_req (rg_state == STATE_FINISH_REQ);
       if (verbosity > 0)
-	 $display ("%0d: %m.AXI4_to_LD:rl_finish_ld_req", cur_cycle);
+	 $display ("%0d: AXI4_to_LD:rl_finish_ld_req", cur_cycle);
 
       f_ld_rsp_info.enq (tuple2 (RSP_DONE, ?));    // 'done' sentinel
       f_axi_rsp_info.enq (tuple3 (False, rd_addr_S.arid, rd_addr_S.aruser));
@@ -433,7 +434,7 @@ module mkAXI4_to_LD
       rg_v_slice <= v_slice;
 
       if (verbosity > 0) begin
-	 $display ("%0d: %m.AXI4_to_LD:rl_handle_ld_rsp: err = %0h data %0h", cur_cycle,
+	 $display ("%0d: AXI4_to_LD:rl_handle_ld_rsp: err = %0h data %0h", cur_cycle,
 		   err, ld_data);
 	 $display ("  ShiftInAtN slice %016h; new v_slice", slice);
 	 fa_show_v_slices (v_slice);
@@ -450,7 +451,7 @@ module mkAXI4_to_LD
       rg_remaining_slices <= rg_remaining_slices - 1;
 
       if (verbosity > 0) begin
-	 $display ("%0d: %m.AXI4_to_LD:rl_handle_ld_slice_ignore: skipping slice", cur_cycle);
+	 $display ("%0d: AXI4_to_LD:rl_handle_ld_slice_ignore: skipping slice", cur_cycle);
 	 $display ("  new v_slice");
 	 fa_show_v_slices (v_slice);
       end
@@ -464,7 +465,7 @@ module mkAXI4_to_LD
       rg_remaining_slices <= rg_remaining_slices - 1;
 
       if (verbosity > 0) begin
-	 $display ("%0d: %m.AXI4_to_LD:rl_send_axi_response; shift only; new v_slice", cur_cycle);
+	 $display ("%0d: AXI4_to_LD:rl_send_axi_response; shift only; new v_slice", cur_cycle);
 	 fa_show_v_slices (v_slice);
       end
    endrule
@@ -477,21 +478,21 @@ module mkAXI4_to_LD
 
 	 Bit #(wd_axi_data_t) rdata = pack (rg_v_slice);
 
-	 let rd_data_S = AXI4_Rd_Data {rid:   rid,
-				       rresp: ((illegal_req || rg_cumulative_err)
-					       ? axi4_resp_slverr
-					       : axi4_resp_okay),
-				       rdata: rdata,
-				       ruser: ruser,
-				       rlast: True};
+	 let rd_data_S = AXI4_R {rid:   rid,
+				 rresp: ((illegal_req || rg_cumulative_err)
+					 ? axi4_resp_slverr
+					 : axi4_resp_okay),
+				 rdata: rdata,
+				 ruser: ruser,
+				 rlast: True};
 	 i_rd_data.enq (rd_data_S);
 
 	 // Get ready for next axi transaction
 	 rg_remaining_slices <= fromInteger (slices_per_axi_data_I);
 
 	 if (verbosity > 0) begin
-	    $display ("%0d: %m.AXI4_to_LD:rl_send_axi_response", cur_cycle);
-	    $display ("  AXI4_Rd_Data  rid %0h  rresp %0h  rlast %0d  ruser %0h",
+	    $display ("%0d: AXI4_to_LD:rl_send_axi_response", cur_cycle);
+	    $display ("  AXI4_R  rid %0h  rresp %0h  rlast %0d  ruser %0h",
 		      rd_data_S.rid, rd_data_S.rresp, rd_data_S.rlast, rd_data_S.ruser);
 	    fa_show_v_slices (rg_v_slice);
 	 end
@@ -506,7 +507,7 @@ module mkAXI4_to_LD
 
    rule rl_illegal_req (rg_state == STATE_ILLEGAL_REQ);
       if (verbosity > 0)
-	 $display ("%0d: %m.AXI4_to_LD:rl_illegal_req", cur_cycle);
+	 $display ("%0d: AXI4_to_LD:rl_illegal_req", cur_cycle);
 
       f_ld_rsp_info.enq (tuple2 (RSP_DONE, ?));
       f_axi_rsp_info.enq (tuple3 (True, rd_addr_S.arid, rd_addr_S.aruser));

@@ -1,0 +1,37 @@
+1: M.rl_step0_wra
+    AXI4L_Wr_Addr { awaddr: 'h00001000, awprot: 'h0, awuser: 'h0 }
+2: M.rl_step2_wra
+    AXI4L_Wr_Addr { awaddr: 'h00001004, awprot: 'h0, awuser: 'h0 }
+2: M.rl_wr_data
+    AXI4L_Wr_Data { wdata: 'h0000000000001000, wstrb: 'hff }
+3: M.rl_step2_rda
+    AXI4L_Rd_Addr { araddr: 'h00002000, arprot: 'h0, aruser: 'h0 }
+3: M.rl_wr_data
+    AXI4L_Wr_Data { wdata: 'h0000000000001004, wstrb: 'hff }
+4: M.rl_step3_rda
+    AXI4L_Rd_Addr { araddr: 'h00002004, arprot: 'h0, aruser: 'h0 }
+5: M.rl_step4_rda
+    AXI4L_Rd_Addr { araddr: 'h00030000, arprot: 'h0, aruser: 'h0 }
+    6: rl_S_IP_model_wr_addr
+        AXI4L_Wr_Addr { awaddr: 'h00001000, awprot: 'h0, awuser: 'h0 }
+    6: rl_S_IP_model_wr_data
+        AXI4L_Wr_Data { wdata: 'h0000000000001000, wstrb: 'hff }
+    7: rl_S_IP_model_wr_addr
+        AXI4L_Wr_Addr { awaddr: 'h00001004, awprot: 'h0, awuser: 'h0 }
+    7: rl_S_IP_model_wr_data
+        AXI4L_Wr_Data { wdata: 'h0000000000001004, wstrb: 'hff }
+    7: rl_S_IP_model_rd_addr
+        AXI4L_Rd_Addr { araddr: 'h00002000, arprot: 'h0, aruser: 'h0 }
+    8: rl_S_IP_model_rd_addr
+        AXI4L_Rd_Addr { araddr: 'h00002004, arprot: 'h0, aruser: 'h0 }
+10: M.rl_wr_resps
+    AXI4L_Wr_Resp { bresp: AXI4L_OKAY, buser: 'h0 }
+11: M.rl_rd_resps
+    AXI4L_Rd_Data { rresp: AXI4L_OKAY, rdata: 'h0000000000012000, ruser: 'h0 }
+11: M.rl_wr_resps
+    AXI4L_Wr_Resp { bresp: AXI4L_OKAY, buser: 'h0 }
+12: M.rl_rd_resps
+    AXI4L_Rd_Data { rresp: AXI4L_OKAY, rdata: 'h0000000000012004, ruser: 'h0 }
+13: M.rl_rd_resps
+    AXI4L_Rd_Data { rresp: AXI4L_DECERR, rdata: 'h0000000000000000, ruser: 'h0 }
+114: rl_idle_quit

@@ -20,7 +20,7 @@ package AXI4L_Xactors;
 // None
 
 // ----------------
-// BSV additional libs
+// Bluespec misc. libs
 
 import Semi_FIFOF :: *;
 

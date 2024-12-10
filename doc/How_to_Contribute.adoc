@@ -1,13 +1,13 @@
 = How to Contribute to `bsc-contrib`
 :revnumber: v1.03
-:revdate: 2024-11-21
+:revdate: 2024-12-09
 :sectnums:
 
 // ================================================================
 
 Let's assume you want to contribute a new library `MyContrib`.  All
 your B-Lang (BSV/BH) sources and documentation should be placed in a
-new sub-dir:
+new sub-directory:
 
     bsc-contrib/Libraries/MyContrib/
 
@@ -15,7 +15,7 @@ If your BSV/BH code imports any Verilog, it should be placed in:
 
     bsc-contrib/Verilog/
 
-If you also have unit-tests, they should be in a new sub-dir:
+If you also have unit tests, they should be in a new sub-directory:
 
     bsc-contrib/testing/bsc.contrib/Unit_Test_MyContrib
 
@@ -31,12 +31,13 @@ Request (PR).
 
 We suggest the following "flow":
 
-* On GitHub, create a FORK of the original `bsc-contrib` repo, under your own account.
+* On GitHub, create a FORK of the original `bsc-contrib` repository,
+  under your own account.
 * Clone your FORK to your work area (laptop, desktop, ...).
 * Create a new BRANCH in your clone of your FORK.
 * In this new BRANCH (in your clone of your FORK), prepare your
   contribution, including formatting, copyrights, licenses,
-  build-and-install Makefiles and optional unit-tests. See the
+  build-and-install Makefiles and optional unit tests. See the
   sections below for details.
 * Commit your BRANCH.
 
@@ -46,7 +47,7 @@ We suggest the following "flow":
   final commit on top of the most recent `bsc-contrib` commit.
 
 * Push the commit from your clone up to your FORK.
-* From your FORK, create a PR for the original `bsc-contrib` repo.
+* From your FORK, create a PR for the original `bsc-contrib` repository.
 
 // ================================================================
 == Source text formatting
@@ -70,7 +71,7 @@ desired Copyright and License text. Example:
     // SPDX-License-Identifier: BSD-3-Clause
 
 You are responsible for specifying your preferred copyright and
-license text (but please remember that this is a public repo;
+license text (but please remember that this is a public repository;
 everything here is expected to be free and open-source; anything here
 should be freely usable in commercial products).
 
@@ -91,24 +92,25 @@ AsciiDoctor (`.adoc`) are automatically rendered by GitHub.
 // ================================================================
 == Makefiles for building and installing
 
-`make all` at the top level descends recursively into all sub-dirs of
-`Libraries` and `Verilog`.  In a leaf-level library dir the Makefile
-contains a `build` target to compile source file(s) that are in that
-dir.  The corresponding object files get copied into the installation
-directory (default `bsc-contrib/inst`).  You can also specify other
-files to be copied (include files, config files, ...).
+`make all` at the top level descends recursively into all
+sub-directories of `Libraries` and `Verilog`.  In a leaf-level library
+directory the `Makefile` contains a `build` target to compile source
+file(s) that are in that directory.  The corresponding object files
+get copied into the installation directory (default
+`bsc-contrib/inst`).  You can also specify other files to be copied
+(include files, config files, ...).
 
-If you added any files to the `Verilog/` dir, add those filenames to
-the `VERI_FILES` list in the `Verilog/Makefile`.
+If you added any files to the `Verilog/` directory, add those
+filenames to the `VERI_FILES` list in the `Verilog/Makefile`.
 
 The top-level `make all` is performed for installation, but is also
 repeated automatically during CI (continuous integration) to check
 that it succeeds.
 
-NOTE: In the `Library` sub-dirs, this just compiles sources, it does
-      not build executables.  See separate "Unit Tests" section for
-      building unit-test executables and running them.  Those are also
-      performed by CI.
+NOTE: In the `Library` sub-directories, this just compiles sources, it
+      does not build executables.  See separate "Unit Tests" section
+      for building unit test executables and running them.  Those are
+      also performed by CI.
 
 // ----------------------------------------------------------------
 
@@ -121,9 +123,9 @@ In the existing
 add `MyContrib` to the `BUILD_ORDER` list in order to include your
 contribution into the recursive descent.
 
-If `Libraries/MyContrib/` has sub-dirs, repeat the recursive pattern
-of `Libraries/Makefile` to enable recursive descent into each sub-dir,
-as needed.  Example:
+If `Libraries/MyContrib/` has sub-directories, repeat the recursive
+pattern of `Libraries/Makefile` to enable recursive descent into each
+sub-directory, as needed.  Example:
 
     Libraries/AMBA_TLM2/Makefile
 
@@ -153,9 +155,9 @@ your copy (clone of fork) of `bsc-contrib`:
     $ cd bsc-contrib    // my clone of my fork
     $ make all
 
-This should run the `make install` action on the whole repo, including
-compiling your sources in your newly added `MyContrib`, and installing
-the corresponding object files in:
+This should run the `make install` action on the whole repository,
+including compiling your sources in your newly added `MyContrib`, and
+installing the corresponding object files in:
 
     bsc-contrib/inst/lib/Libraries/MyContrib/
 
@@ -166,29 +168,34 @@ You can optionally add unit tests for your library source files; these
 unit tests are run automatically and repeatedly as part of CI
 (Continuous Integration).
 
-NOTE: `bsc-contrib` 's unit-testing is performed as part of the main
+NOTE: `bsc-contrib` 's unit testing is performed as part of the main
       `bsc` compiler's testing of standard libraries, using the same
-      infrastructure.  The infrastructure has more ways to configure
-      testing than described in this section; please see the `bsc`
-      repo for more details (https://github.com/B-Lang-org/bsc).
+      infrastructure.  The infrastructure has many more ways to
+      configure testing than the brief description here; please see
+      `testsuite/README.md` in the `bsc` repository for more details
+      (https://github.com/B-Lang-org/bsc).
 
-Add your unit tests to `bsc-contrib/testing/bsc.contrib/`.  You can
-study any of the existing unit tests in that directory for guidance.
+Add your unit tests to `bsc-contrib/testing/bsc.contrib/`.  For
+guidance, you can study any of the existing unit tests in that
+directory or in `testsuite/` in the `bsc` compiler repository.
 Briefly:
 
-* Add a sub-dir for a new set of unit-tests for the new library (it
-  can have sub-dirs for more detailed structure):
+* Add a sub-directory for a new set of unit tests for the new library
+  (it can have sub-directories for more detailed structure):
 
     bsc-contrib/testing/bsc.contrib/MyContrib/
 
-* In this dir:
+* In this directory:
 
-** Each top-level test driver module should be in a file `Foo.bsv` or
-   `Foo.bs`, and the module should be called `sysFoo`, with an `Empty`
-   interface.
+** There should be a `Makefile` that is just boilerplate; see any of
+   the other unit test directories for examples.
 
-** If the top-level file imports other support files (just for this
-   test, not library files), they can be placed here, too.
+** You can have multiple test programs.  Each such top-level `Foo.bsv`
+   (or `Foo.bs`) should contain a top-level module `sysFoo` with an
+   `Empty` interface.
+
+** If the top-level file imports other support source files (just for
+   this test, not library files), they can be placed here, too.
 
 ** Create a file `sysFoo.out.expected` containing output expected when
    it is run.
@@ -200,6 +207,16 @@ If different output is expected from Bluesim vs. Verilog sim (e.g.,
 *** for Bluesim: `sysFoo.c.out.expected`
 *** for Verilog: `sysFoo.v.out.expected`
 
+** Finally, a file `foo.exp` contains a fragment of a "script" to be
+   run in this directory.  It can invoke multiple tests in this
+   directory.  Each test can be run in Bluesim or Verilog sim or both.
+   Again, see other existing unit tests for examples.
++
+For unit
+   tests included in the `.exp` file, try to keep the run-time short
+   (no more than about a minute) when run in iverilog, to limit the
+   overall run-time of CI (Continuous Integration).
+
 // ----------------------------------------------------------------
 
 === Running unit tests
@@ -208,7 +225,8 @@ Please run your tests before submitting a PR.
 
 See the "Testing" section of the link:../README.md[README] in
 `bsc-contrib` for information on how to run them (you have to copy
-`testing/bsc.contrib` into the `bsc` repo and run it there).
+`testing/bsc.contrib` from here into the `bsc` repository's
+`testsuite` directory and run it there).
 
 NOTE: (Future restructuring plans) +
       We would like unit tests for
@@ -217,6 +235,6 @@ NOTE: (Future restructuring plans) +
       `testing/bsc.contrib/MyContrib`.  The current structure exists
       because it is derived from historical roots where `bsc-contrib`
       's testing was done along with `bsc` 's testing using shared
-      infrastructure in the `bsc` repo.
+      infrastructure in the `bsc` repository.
 
 // ================================================================

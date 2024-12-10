@@ -5,7 +5,8 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.23">
-<title>How to Contribute to bsc-contrib</title>
+<meta name="keywords" content="Bluespec, B-Lang, BSV, BH, AMBA, ARM AXI, AXI4, AXI4-Lite, AXI4-Stream">
+<title>About bsc-contrib/Libraries/AMBA_Fabrics/AXI4</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -436,115 +437,105 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </head>
 <body class="article">
 <div id="header">
-<h1>How to Contribute to <code>bsc-contrib</code></h1>
+<h1>About <code>bsc-contrib/Libraries/AMBA_Fabrics/AXI4</code></h1>
 <div class="details">
-<span id="revnumber">version v1.03,</span>
-<span id="revdate">2024-12-09</span>
+<span id="revnumber">version v1.00,</span>
+<span id="revdate">2024-12-07</span>
+</div>
+<div id="toc" class="toc">
+<div id="toctitle">Contents</div>
+<ul class="sectlevel1">
+<li><a href="#_general">1. General</a></li>
+<li><a href="#_axi4_types_bsv">2. <code>AXI4_Types.bsv</code></a></li>
+<li><a href="#_axi4_fabric_bsv">3. <code>AXI4_Fabric.bsv</code></a></li>
+<li><a href="#_axi4_mem_model_bsv">4. <code>AXI4_Mem_Model.bsv</code></a></li>
+<li><a href="#_misc">5. Misc.</a>
+<ul class="sectlevel2">
+<li><a href="#_axi4_addr_translator_bsv">5.1. <code>AXI4_Addr_Translator.bsv</code></a></li>
+<li><a href="#_axi4_deburster_bsv">5.2. <code>AXI4_Deburster.bsv</code></a></li>
+<li><a href="#_axi4_widener_bsv">5.3. <code>AXI4_Widener.bsv</code></a></li>
+<li><a href="#_axi4_gate_bsv">5.4. <code>AXI4_Gate.bsv</code></a></li>
+</ul>
+</li>
+<li><a href="#_axi4_to_ldst_bsv">6. <code>AXI4_to_LDST.bsv</code></a></li>
+<li><a href="#_axi4_clock_crossers_bsv">7. <code>AXI4_Clock_Crossers.bsv</code></a></li>
+<li><a href="#_axi4_bsv_rtl_bsv">8. <code>AXI4_BSV_RTL.bsv</code></a></li>
+<li><a href="#_unit_tests">9. Unit tests</a></li>
+</ul>
 </div>
 </div>
 <div id="content">
 <div id="preamble">
 <div class="sectionbody">
 <div class="paragraph">
-<p>Let&#8217;s assume you want to contribute a new library <code>MyContrib</code>.  All
-your B-Lang (BSV/BH) sources and documentation should be placed in a
-new sub-directory:</p>
+<p>Copyright &#169; 2017-2023 Bluespec, Inc.  All Rights Reserved<br>
+Copyright &#169; 2024 B-Lang.org.  All Rights Reserved</p>
+</div>
+<div class="paragraph">
+<p>SPDX-License-Identifier: BSD-3-Clause</p>
+</div>
+<div class="paragraph">
+<p>Pleae see README in parent directory
+(<a href="../README_AMBA_Fabrics.adoc">adoc</a>,<a href="../README_AMBA_Fabrics.html">html</a>)
+for general introduction and about compiling/building/testing.</p>
+</div>
+<div class="paragraph">
+<p>This directory describes AXI4 facilities, including type definitions,
+cross-bar switches, connectors, clock-crossers, and edge-transactors
+to connect the B-Lang world to existing RTL (e.g., external AMBA IP).</p>
+</div>
+<div class="paragraph">
+<p>These source codes may import other <code>bsv-contrib</code> libraries; be sure
+they are visible in your <em>bsc</em> compiler paths:</p>
 </div>
 <div class="literalblock">
 <div class="content">
-<pre>bsc-contrib/Libraries/MyContrib/</pre>
+<pre>bsc-contrib/Libraries/AMBA_Fabrics/Utils/
+bsc-contrib/Libraries/Misc/</pre>
 </div>
-</div>
-<div class="paragraph">
-<p>If your BSV/BH code imports any Verilog, it should be placed in:</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>bsc-contrib/Verilog/</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>If you also have unit tests, they should be in a new sub-directory:</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>bsc-contrib/testing/bsc.contrib/Unit_Test_MyContrib</pre>
-</div>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<div class="title">Note</div>
-</td>
-<td class="content">
-In future we may require unit tests also to be in
-      bsc-contrib/Libraries/MyContrib/`
-</td>
-</tr>
-</table>
-</div>
-<div class="paragraph">
-<p>This document should help you prepare your contribution, within your
-own fork of the <code>bsc-contrib</code> repository, before issuing a Pull
-Request (PR).</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_logistics">1. Logistics</h2>
+<h2 id="_general">1. General</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>We suggest the following "flow":</p>
+<p>Many of these modules take an upstream <code>AXI4_M_IFC</code> and/or a
+downstream <code>AXI4_S_IFC</code> as a module parameter.  Thus, the actual FIFO
+buffers producing these interfaces are external, allowing a choice of
+buffering alternatives.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_axi4_types_bsv">2. <code>AXI4_Types.bsv</code></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>This is a key file used by all the others.  Defines:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>On GitHub, create a FORK of the original <code>bsc-contrib</code> repository,
-under your own account.</p>
+<p>Basic bus and field payload types and structs for AW, W, B, AR, R,
+some help-functions and display-formatting functions</p>
 </li>
 <li>
-<p>Clone your FORK to your work area (laptop, desktop, &#8230;&#8203;).</p>
+<p>M and S interface types, their connections, and dummy tie-offs</p>
 </li>
 <li>
-<p>Create a new BRANCH in your clone of your FORK.</p>
-</li>
-<li>
-<p>In this new BRANCH (in your clone of your FORK), prepare your
-contribution, including formatting, copyrights, licenses,
-build-and-install Makefiles and optional unit tests. See the
-sections below for details.</p>
-</li>
-<li>
-<p>Commit your BRANCH.</p>
-</li>
-<li>
-<p>Please "squash" any "uninteresting" older commits so that the PR
-contains only useful commits (that a future maintainer may find
-useful).  In most cases, one can squash everything into a single,
-final commit on top of the most recent <code>bsc-contrib</code> commit.</p>
-</li>
-<li>
-<p>Push the commit from your clone up to your FORK.</p>
-</li>
-<li>
-<p>From your FORK, create a PR for the original <code>bsc-contrib</code> repository.</p>
+<p>AXI4 Buffers with different kinds of internal FIFOs</p>
 </li>
 </ul>
 </div>
+<div class="paragraph">
+<p>Everything is parameterized on wd_id, wd_addr, wd_data, wd_user (bit
+widths of corresponding buses).</p>
+</div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_source_text_formatting">2. Source text formatting</h2>
+<h2 id="_axi4_fabric_bsv">3. <code>AXI4_Fabric.bsv</code></h2>
 <div class="sectionbody">
-<div class="paragraph">
-<p>Source text formatting is checked automatically during CI (continuous
-integration).</p>
-</div>
-<div class="paragraph">
-<p>At the moment the only check is to disallow trailing blanks,
-particularly in source files.</p>
-</div>
 <div class="admonitionblock note">
 <table>
 <tr>
@@ -552,312 +543,190 @@ particularly in source files.</p>
 <div class="title">Note</div>
 </td>
 <td class="content">
-We may add more detailed format-checkers in future.
+Needs <em>bsc</em> <code>-aggressive-conditions</code> flag (else may deadlock).
 </td>
 </tr>
 </table>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="_copyright_and_license_text">3. Copyright and License text</h2>
-<div class="sectionbody">
 <div class="paragraph">
-<p>Make sure all files (code files, Makefiles, READMEs, &#8230;&#8203;) have your
-desired Copyright and License text. Example:</p>
+<p>Defines a module for a crossbar switch from a vector of Ms to a vector of Ss.</p>
+</div>
+<div class="paragraph">
+<p>Parameterized on number of Ms and Ss (<code>num_M</code> and <code>num_S</code>) and AXI4
+bus bitwidths (<code>wd_id</code>, <code>wd_addr</code>, <code>wd_data</code>, <code>wd_user</code>).</p>
+</div>
+<div class="paragraph">
+<p>Also paramterized by function <code>fn_addr_to_S_num()</code> which decides which
+S (if any) services which address (used to route transactions from an
+M to the appropriate S).</p>
+</div>
+<div class="paragraph">
+<p>The vector-of-Ms and vector-of-Ss are module parameters, so all
+buffering decisions are external to this module.</p>
+</div>
+<div class="paragraph">
+<p>Arbitration is statically decided, based on the index of an M or S in
+the input vectors:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>For simultaneously arriving requests from two Ms for a common S, the
+lower-indexed M wins.</p>
+</li>
+<li>
+<p>For simultaneously arriving responses from two Ss for a common M,
+the lower-indexed S wins.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Limitation: Corresponding field-widths are kept identical across AW,
+W, B, AR and R.  Technically, the <code>awwidth</code> and <code>arwidth</code> could
+differ; <code>awid</code>, <code>bid</code>, <code>arid</code>, <code>rid</code> could differ; all the <code>user</code>
+fields could differ, etc., but we have chosen not to make separate
+parameters for all these.  Please make your own modified variant of
+this code if you need such capability.</p>
+</div>
+<div class="paragraph">
+<p>See:</p>
 </div>
 <div class="literalblock">
 <div class="content">
-<pre>// Copyright (c) 2020 Bluespec, Inc. All rights reserved.
-//
-// SPDX-License-Identifier: BSD-3-Clause</pre>
+<pre>testing/bsc.contrib/AMBA_Fabrics/AXI4/Test_AXI4_Fabric.bsv</pre>
 </div>
 </div>
 <div class="paragraph">
-<p>You are responsible for specifying your preferred copyright and
-license text (but please remember that this is a public repository;
-everything here is expected to be free and open-source; anything here
-should be freely usable in commercial products).</p>
-</div>
-<div class="paragraph">
-<p>You can insert full license text or, if it is a standard well-known
-license, just provide its SPDX identifier as in the example above.  If
-you&#8217;re undecided, we recommend BSD-3-Clause.</p>
+<p>for an example of instantiating an <code>AXI4_Fabric</code> and connecting it to Ms and Ss.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_readme">4. README</h2>
+<h2 id="_axi4_mem_model_bsv">4. <code>AXI4_Mem_Model.bsv</code></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>It is normally good to have a README file in your contribution:</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>Libraries/MyContrib/README{,.txt,.md,.adoc}</pre>
-</div>
+<p>Module that takes an M interface parameter and attaches a memory model
+to it.  Parameterized by module-id, base address and address limit,
+and all the AXI4 bus widths.  Optionally zeroes out memory after
+reset.  In simulation, can load a memhex file to initialize memory.</p>
 </div>
 <div class="paragraph">
-<p>Plain-text (no extension or <code>.txt</code> extension), Markdown (<code>.md</code>) or
-AsciiDoctor (<code>.adoc</code>) are automatically rendered by GitHub.</p>
+<p>Implements the memory using a B-Lang <code>RegFile</code>, so this is technically
+synthesizable to hardware, although <code>RegFile</code> is not a good choice for
+anything other than small memories.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_makefiles_for_building_and_installing">5. Makefiles for building and installing</h2>
+<h2 id="_misc">5. Misc.</h2>
 <div class="sectionbody">
-<div class="paragraph">
-<p><code>make all</code> at the top level descends recursively into all
-sub-directories of <code>Libraries</code> and <code>Verilog</code>.  In a leaf-level library
-directory the <code>Makefile</code> contains a <code>build</code> target to compile source
-file(s) that are in that directory.  The corresponding object files
-get copied into the installation directory (default
-<code>bsc-contrib/inst</code>).  You can also specify other files to be copied
-(include files, config files, &#8230;&#8203;).</p>
-</div>
-<div class="paragraph">
-<p>If you added any files to the <code>Verilog/</code> directory, add those
-filenames to the <code>VERI_FILES</code> list in the <code>Verilog/Makefile</code>.</p>
-</div>
-<div class="paragraph">
-<p>The top-level <code>make all</code> is performed for installation, but is also
-repeated automatically during CI (continuous integration) to check
-that it succeeds.</p>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<div class="title">Note</div>
-</td>
-<td class="content">
-In the <code>Library</code> sub-directories, this just compiles sources, it
-      does not build executables.  See separate "Unit Tests" section
-      for building unit test executables and running them.  Those are
-      also performed by CI.
-</td>
-</tr>
-</table>
-</div>
 <div class="sect2">
-<h3 id="_setting_up_makefiles_for_build_and_install_of_mycontrib">5.1. Setting up Makefiles for build-and-install of <code>MyContrib</code></h3>
+<h3 id="_axi4_addr_translator_bsv">5.1. <code>AXI4_Addr_Translator.bsv</code></h3>
 <div class="paragraph">
-<p>In the existing</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>Libraries/Makefile</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>add <code>MyContrib</code> to the <code>BUILD_ORDER</code> list in order to include your
-contribution into the recursive descent.</p>
-</div>
-<div class="paragraph">
-<p>If <code>Libraries/MyContrib/</code> has sub-directories, repeat the recursive
-pattern of <code>Libraries/Makefile</code> to enable recursive descent into each
-sub-directory, as needed.  Example:</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>Libraries/AMBA_TLM2/Makefile</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Finally, at leaf level, have a <code>Makefile</code> that does the actual work.
-Example:</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>Libraries/AMBA_TLM2/AHB/Makefile</pre>
-</div>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Make sure it defines <code>TOP</code> and <code>LIBNAME</code></p>
-</li>
-<li>
-<p>It should compile each of the source files in <code>MyLibrary</code> (either
-directly, or via import into another source file).  The
-corresponding object files are placed in the "install" area by the
-<code>make</code> invocation.</p>
-</li>
-</ul>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<div class="title">Note</div>
-</td>
-<td class="content">
-Many of these Makefiles include <code>Libaries/common.mk</code> for
-      defaults and then selectively override defaults.  It expects
-      Makefile variables <code>TOP</code> and <code>LIBNAME</code> to be set.
-</td>
-</tr>
-</table>
+<p>Functions to transform an M interface into another M, and an S into
+another S, simply adding/subtracting a given address-delta to incoming
+address.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_running_build_and_install">5.2. Running build-and-install</h3>
+<h3 id="_axi4_deburster_bsv">5.2. <code>AXI4_Deburster.bsv</code></h3>
 <div class="paragraph">
-<p>Please run this before submitting a PR to ensure it all works.  In
-your copy (clone of fork) of <code>bsc-contrib</code>:</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>$ cd bsc-contrib    // my clone of my fork
-$ make all</pre>
+<p>Module that attaches to S interface parameter (downstream) and itself
+offers another S interface (upstream).  A burst transaction from the
+upstream side is converted into individual (non-burst) transactions on
+the downstream side.</p>
 </div>
 </div>
+<div class="sect2">
+<h3 id="_axi4_widener_bsv">5.3. <code>AXI4_Widener.bsv</code></h3>
 <div class="paragraph">
-<p>This should run the <code>make install</code> action on the whole repository,
-including compiling your sources in your newly added <code>MyContrib</code>, and
-installing the corresponding object files in:</p>
+<p>Module which connects an M and an S interface paramter.  The data
+width on S is some power-of-2 multiple of the data width on M.</p>
 </div>
-<div class="literalblock">
-<div class="content">
-<pre>bsc-contrib/inst/lib/Libraries/MyContrib/</pre>
 </div>
+<div class="sect2">
+<h3 id="_axi4_gate_bsv">5.4. <code>AXI4_Gate.bsv</code></h3>
+<div class="paragraph">
+<p>Module which connects an M and an S interface parameter. A method in
+the module interface controls whether traffic flows between M and S or
+is blocked.  Can be used to for authenticated access.</p>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_optional_unit_tests">6. Optional Unit Tests</h2>
+<h2 id="_axi4_to_ldst_bsv">6. <code>AXI4_to_LDST.bsv</code></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>You can optionally add unit tests for your library source files; these
-unit tests are run automatically and repeatedly as part of CI
-(Continuous Integration).</p>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<div class="title">Note</div>
-</td>
-<td class="content">
-<code>bsc-contrib</code> 's unit testing is performed as part of the main
-      <code>bsc</code> compiler&#8217;s testing of standard libraries, using the same
-      infrastructure.  The infrastructure has many more ways to
-      configure testing than the brief description here; please see
-      <code>testsuite/README.md</code> in the <code>bsc</code> repository for more details
-      (<a href="https://github.com/B-Lang-org/bsc" class="bare">https://github.com/B-Lang-org/bsc</a>).
-</td>
-</tr>
-</table>
+<p>Module which takes an M interface (upstream), and whose interface is a
+pair of FIFOs representing an simple "store" request/response
+interface and a pair of FIFOs representing an ordinary "load"
+request/response interface.  Data on the simple interfaces are
+LSB-aligned (not lane-aligned like in AXI).</p>
 </div>
 <div class="paragraph">
-<p>Add your unit tests to <code>bsc-contrib/testing/bsc.contrib/</code>.  For
-guidance, you can study any of the existing unit tests in that
-directory or in <code>testsuite/</code> in the <code>bsc</code> compiler repository.
-Briefly:</p>
+<p>Internal help-packages:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>Add a sub-directory for a new set of unit tests for the new library
-(it can have sub-directories for more detailed structure):</p>
+<p><code>AXI4_to_LD.bsv</code></p>
+</li>
+<li>
+<p><code>AXI4_to_ST.bsv</code></p>
+</li>
+<li>
+<p><code>AXI4_to_LDST_utils.bsv</code></p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_axi4_clock_crossers_bsv">7. <code>AXI4_Clock_Crossers.bsv</code></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Facilities for taking an AXI4 bus across a clock- and/or reset-domain
+boundary.  Effectively an AXI4 buffer where the upstream and
+downstream sides have different clocks and resets.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_axi4_bsv_rtl_bsv">8. <code>AXI4_BSV_RTL.bsv</code></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Defines RTL-level interfaces <code>AXI4_RTL_M_IFC</code> and <code>AXI4_RTL_M_IFC</code>
+(AMBA AXI bus names, ready-valid signals), <code>mkConnection</code> to connect
+them in a one-liner, dummy M and S interfaces (tie-offs), and buffers
+to connect B-Lang-style interfaces to RTL-style interfaces (B-Lang M
+to RTL S, and RTL B-Lang to B-Lang S).</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_unit_tests">9. Unit tests</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>There are some unit tests in:</p>
+</div>
 <div class="literalblock">
 <div class="content">
-<pre>bsc-contrib/testing/bsc.contrib/MyContrib/</pre>
+<pre>bsc-contrib/testing/bsc.contrib/AMBA_Fabrics/AXI4/Test_*.bsv</pre>
 </div>
-</div>
-</li>
-<li>
-<p>In this directory:</p>
-<div class="ulist">
-<ul>
-<li>
-<p>There should be a <code>Makefile</code> that is just boilerplate; see any of
-the other unit test directories for examples.</p>
-</li>
-<li>
-<p>You can have multiple test programs.  Each such top-level <code>Foo.bsv</code>
-(or <code>Foo.bs</code>) should contain a top-level module <code>sysFoo</code> with an
-<code>Empty</code> interface.</p>
-</li>
-<li>
-<p>If the top-level file imports other support source files (just for
-this test, not library files), they can be placed here, too.</p>
-</li>
-<li>
-<p>Create a file <code>sysFoo.out.expected</code> containing output expected when
-it is run.</p>
-<div class="paragraph">
-<p>If different output is expected from Bluesim vs. Verilog sim (e.g.,
-  <code>$time</code> can be slightly different), you can instead have separate
-  files for each:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>for Bluesim: <code>sysFoo.c.out.expected</code></p>
-</li>
-<li>
-<p>for Verilog: <code>sysFoo.v.out.expected</code></p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>Finally, a file <code>foo.exp</code> contains a fragment of a "script" to be
-run in this directory.  It can invoke multiple tests in this
-directory.  Each test can be run in Bluesim or Verilog sim or both.
-Again, see other existing unit tests for examples.</p>
-<div class="paragraph">
-<p>For unit
-   tests included in the <code>.exp</code> file, try to keep the run-time short
-   (no more than about a minute) when run in iverilog, to limit the
-   overall run-time of CI (Continuous Integration).</p>
-</div>
-</li>
-</ul>
-</div>
-</li>
-</ul>
-</div>
-<div class="sect2">
-<h3 id="_running_unit_tests">6.1. Running unit tests</h3>
-<div class="paragraph">
-<p>Please run your tests before submitting a PR.</p>
 </div>
 <div class="paragraph">
-<p>See the "Testing" section of the <a href="../README.md">README</a> in
-<code>bsc-contrib</code> for information on how to run them (you have to copy
-<code>testing/bsc.contrib</code> from here into the <code>bsc</code> repository&#8217;s
-<code>testsuite</code> directory and run it there).</p>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<div class="title">Note</div>
-</td>
-<td class="content">
-(Future restructuring plans)<br>
-      We would like unit tests for
-      library <code>MyContrib</code> to be located along with its sources, i.e.,
-      under <code>Libraries/MyContrib</code>, instead of separately in
-      <code>testing/bsc.contrib/MyContrib</code>.  The current structure exists
-      because it is derived from historical roots where <code>bsc-contrib</code>
-      's testing was done along with <code>bsc</code> 's testing using shared
-      infrastructure in the <code>bsc</code> repository.
-</td>
-</tr>
-</table>
-</div>
+<p>The conventions for unit tests are described in more detail in the
+README in the parent directory
+(<a href="../README_AMBA_Fabrics.adoc">adoc</a>,<a href="../README_AMBA_Fabrics.html">html</a>).</p>
 </div>
 </div>
 </div>
 </div>
 <div id="footer">
 <div id="footer-text">
-Version v1.03<br>
-Last updated 2024-12-09 22:01:56 -0500
+Version v1.00<br>
+Last updated 2024-12-09 10:41:34 -0500
 </div>
 </div>
 </body>
