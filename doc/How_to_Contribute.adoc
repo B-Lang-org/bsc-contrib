@@ -210,7 +210,9 @@ If different output is expected from Bluesim vs. Verilog sim (e.g.,
 ** Finally, a file `foo.exp` contains a fragment of a "script" to be
    run in this directory.  It can invoke multiple tests in this
    directory.  Each test can be run in Bluesim or Verilog sim or both.
-   Again, see other existing unit tests for examples.  + For unit
+   Again, see other existing unit tests for examples.
++
+For unit
    tests included in the `.exp` file, try to keep the run-time short
    (no more than about a minute) when run in iverilog, to limit the
    overall run-time of CI (Continuous Integration).
