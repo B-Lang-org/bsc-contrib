@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Rishiyur S. Nikhil and Bluespec, Inc. All Rights Reserved
+// Copyright (c) 2021-2024 Rishiyur S. Nikhil and Bluespec, Inc. All Rights Reserved
 // Author: Rishiyur S. Nikhil
 //
 // SPDX-License-Identifier: BSD-3-Clause

@@ -33,7 +33,7 @@ import Clocks      :: *;
 import Connectable :: *;
 
 // ----------------
-// BSV additional libs
+// Bluespec misc. libs
 
 import Cur_Cycle  :: *;
 import GetPut_Aux :: *;
@@ -42,7 +42,7 @@ import Semi_FIFOF :: *;
 // ================================================================
 // Project imports
 
-import AXI_SyncBuffer :: *;
+import AXIx_SyncBuffer :: *;
 
 import AXI4L_Types    :: *;
 import AXI4L_Xactors  :: *;
@@ -64,12 +64,12 @@ module mkAXI4L_S_Clock_Crosser
    axi4L_M_xactor <- mkAXI4L_M_Xactor (clocked_by clk1, reset_by rst1);
 
    // Syncbuffer between transactors
-   AXI_SyncBuffer_IFC #(AXI4L_Wr_Addr #(wd_addr, wd_user),
-			AXI4L_Wr_Data #(wd_data),
-			AXI4L_Wr_Resp #(wd_user),
-			AXI4L_Rd_Addr #(wd_addr, wd_user),
-			AXI4L_Rd_Data #(wd_data, wd_user))
-   axi4L_syncbuf <- mkAXI_SyncBuffer (depth, clk2, rst2, clk1, rst1);
+   AXIx_SyncBuffer_IFC #(AXI4L_Wr_Addr #(wd_addr, wd_user),
+			 AXI4L_Wr_Data #(wd_data),
+			 AXI4L_Wr_Resp #(wd_user),
+			 AXI4L_Rd_Addr #(wd_addr, wd_user),
+			 AXI4L_Rd_Data #(wd_data, wd_user))
+   axi4L_syncbuf <- mkAXIx_SyncBuffer (depth, clk2, rst2, clk1, rst1);
 
    // Transactor with ifc2
    AXI4L_S_Xactor_IFC #(wd_addr, wd_data, wd_user)
@@ -115,12 +115,12 @@ module mkAXI4L_M_Clock_Crosser
    axi4L_S_xactor <- mkAXI4L_S_Xactor (clocked_by clk1, reset_by rst1);
 
    // Syncbuffer between transactors
-   AXI_SyncBuffer_IFC #(AXI4L_Wr_Addr #(wd_addr, wd_user),
-			AXI4L_Wr_Data #(wd_data),
-			AXI4L_Wr_Resp #(wd_user),
-			AXI4L_Rd_Addr #(wd_addr, wd_user),
-			AXI4L_Rd_Data #(wd_data, wd_user))
-   axi4L_syncbuf <- mkAXI_SyncBuffer (depth, clk1, rst1, clk2, rst2);
+   AXIx_SyncBuffer_IFC #(AXI4L_Wr_Addr #(wd_addr, wd_user),
+			 AXI4L_Wr_Data #(wd_data),
+			 AXI4L_Wr_Resp #(wd_user),
+			 AXI4L_Rd_Addr #(wd_addr, wd_user),
+			 AXI4L_Rd_Data #(wd_data, wd_user))
+   axi4L_syncbuf <- mkAXIx_SyncBuffer (depth, clk1, rst1, clk2, rst2);
 
    // Transactor with ifc2
    AXI4L_M_Xactor_IFC #(wd_addr, wd_data, wd_user)

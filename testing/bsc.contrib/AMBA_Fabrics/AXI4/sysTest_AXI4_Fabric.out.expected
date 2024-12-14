@@ -1,0 +1,13 @@
+M0: COMPLETED stimulus generation
+M1: COMPLETED stimulus generation
+All Ms: stimulus generation complete.
+  Lingering to allow in-flight transactions to finish.
+M0: total requests:10000
+        ARs:   4312      AWs:   4387    to supported addrs
+        ARs:    661      AWs:    640    to wild (unsupported) addrs
+         RS:   4973       BS:   5027
+M1: total requests:10000
+        ARs:   4305      AWs:   4330    to supported addrs
+        ARs:    686      AWs:    679    to wild (unsupported) addrs
+         RS:   4991       BS:   5009
+PASS

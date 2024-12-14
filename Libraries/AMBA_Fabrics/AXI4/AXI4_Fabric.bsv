@@ -1,182 +1,142 @@
 // Copyright (c) 2013-2023 Bluespec, Inc. All Rights Reserved
-//
+// Copyright (c) 2024 Rishiyur S. Nikhil.
+
 // SPDX-License-Identifier: BSD-3-Clause
 
 package AXI4_Fabric;
 
-// ================================================================
-// This package defines a fabric connecting CPUs, Memories and DMAs
-// and other IP blocks.
+// ****************************************************************
+// This package defines a module mkAXI4_Fabric with an Empty interface.
+// It is a crossbar connecting a vector of Ms to a vector of Ss.
 
-// ================================================================
+// It is parameterized by:
+// * number of Ms
+// * number of Ss
+// * widths of the various AXI4 buses.
+// * a "routing function" address -> S num that specifies which S
+//     (or none) services a request.
+
+// Note that M-side ID fields (ARID, AWID) are narrower than S-side ID
+// fields (RID, BID). The extra S-side ID bits encode, for each AXI4
+// transaction, which M it came from, so that the response can be
+// routed back appropriately.
+
+// Handles bursts (read and write).
+
+// ****************************************************************
 // Bluespec library imports
 
 import Vector       :: *;
 import FIFOF        :: *;
 import SpecialFIFOs :: *;
-import ConfigReg    :: *;
 
 // ----------------
-// BSV additional libs
-
-import Cur_Cycle  :: *;
-
-// ================================================================
-// Project imports
+// Bluespec misc. libs
 
 import Semi_FIFOF :: *;
+
+// ----------------
+// Project imports
+
 import AXI4_Types :: *;
 
 // ================================================================
-// The interface for the fabric module
+// Project exports
 
-interface AXI4_Fabric_IFC #(numeric type tn_num_M,
-			    numeric type tn_num_S,
-			    numeric type wd_id,
-			    numeric type wd_addr,
-			    numeric type wd_data,
-			    numeric type wd_user);
-   method Action reset;
-   method Action set_verbosity (Bit #(4) verbosity);
+export mkAXI4_Fabric;
 
-   // From Ms
-   interface Vector #(tn_num_M,
-		      AXI4_S_IFC #(wd_id, wd_addr, wd_data, wd_user))  v_from_Ms;
-
-   // To Ss
-   interface Vector #(tn_num_S,
-		      AXI4_M_IFC #(wd_id, wd_addr, wd_data, wd_user)) v_to_Ss;
-endinterface
-
-// ================================================================
+// ****************************************************************
 // The Fabric module
 // The function parameter is an address-decode function, which
-// returns (True,  S-port-num)  if address is mapped to S-port-num
-//         (False, ?)           if address is unmapped to any S port
+// returns (True,  j)    if address maps to Sj
+//         (False, ?)    if address is wild (does not map to any Sj)
 
-module mkAXI4_Fabric #(function Tuple2 #(Bool, Bit #(TLog #(tn_num_S)))
-			        fn_addr_to_S_num (Bit #(wd_addr) addr))
-		     (AXI4_Fabric_IFC #(tn_num_M, tn_num_S,
-					wd_id, wd_addr, wd_data, wd_user))
+module mkAXI4_Fabric #(// Routing function
+		       function Tuple2 #(Bool, Bit #(TLog #(tn_num_S)))
+			        fn_addr_to_S_num (Bit #(wd_addr) addr),
+		       // From Ms
+		       Vector #(tn_num_M,
+				AXI4_M_IFC #(wd_id_M, wd_addr, wd_data, wd_user)) v_ifc_M,
+		       // To Ss
+		       Vector #(tn_num_S,
+				AXI4_S_IFC #(wd_id_S, wd_addr, wd_data, wd_user)) v_ifc_S)
+		     (Empty)
 
-   provisos (Log #(tn_num_M, log_nm),
-	     Log #(tn_num_S,  log_ns),
-	     Log #(TAdd #(tn_num_S,  1),  log_ns_plus_1),
-	     Log #(TAdd #(tn_num_M,  1), log_nm_plus_1));
-
-   Integer num_M = valueOf (tn_num_M);
-   Integer num_S  = valueOf (tn_num_S);
+   provisos (Log #(tn_num_M, log_nm),             // define log_nm
+	     Log #(tn_num_S, log_ns),             // define log_ns
+	     Add #(wd_id_M, log_nm, wd_id_S));    // assert
 
    // 0: quiet; 1: show transactions
-   Reg #(Bit #(4)) cfg_verbosity  <- mkConfigReg (0);
+   Integer verbosity = 0;
 
-   Reg #(Bool) rg_reset <- mkReg (True);
-
-   // Transactors facing Ms
-   Vector #(tn_num_M, AXI4_S_Xactor_IFC  #(wd_id, wd_addr, wd_data, wd_user))
-      xactors_from_Ms <- replicateM (mkAXI4_S_Xactor);
-
-   // Transactors facing Ss
-   Vector #(tn_num_S,  AXI4_M_Xactor_IFC #(wd_id, wd_addr, wd_data, wd_user))
-       xactors_to_Ss <- replicateM (mkAXI4_M_Xactor);
+   Integer num_M = valueOf (tn_num_M);
+   Integer num_S = valueOf (tn_num_S);
 
    // ----------------------------------------------------------------
-   // Book-keeping FIFOs and regs
-   // - to keep track of which M originated a transaction, in order
-   //       to route corresponding responses back to that M
-   // - to manage wdata channel based on burst info in awaddr channel
-   // - to manage requests that do not map to any of the Ss
-   // Legal Ss are 0..(num_S-1)
-   //     The "illegal" value of 'num_S' is used for decode errors (no such S).
-   // num_M could be 1 => Bit #(0) to identify a M, but
-   //     equality on Bit #(0) is dicey, so we always use num_M+1.
-   // Size of SizedFIFOs is estimated: should cover round-trip latency to S and back.
+   // Write-transaction control:
+
+   // The AW and W buses are separate and not synchronized, but the
+   // ordering is the same, i.e., in any AXI4 interface, the sequence
+   // of W bursts (W0, W1, ...) is assumed to correspond to the
+   // sequence of AW requests (AW0, AW1, ...).
+
+   // In a fabric, two write-transaction scenarios where the ordering could go wrong:
+   // A. Two M's to one S:
+   //      From Mi and Mj, if we send AWi and AWj to Sk, in that order,
+   //      then Wi should precede Wj.
+   //      Also: beats from the Wi and Wj bursts should not be interleaved.
+   // B. One M to two S's:
+   //      From Mi, if we send AWi1 and AWi2 to Sj and Sk, in that order,
+   //      then Wi1 should go to Sj and Wi2 should go to Sk
+   //
+
+   // For scenario A, we have a FIFO per-Sj which records order of M's
+   // from which it should take Ws.
+
+   Vector #(tn_num_S, FIFOF #(Bit #(log_nm)))    // FIFO of Mi
+   v_f_W_Mi <- replicateM (mkFIFOF);
+
+   // For scenario B, we have a FIFO per-Mi which records order of S's
+   // to which it should send Ws.
+
+   Vector #(tn_num_M, FIFOF #(Tuple2 #(Bool, Bit #(log_ns))))    // FIFO of Sj
+   v_f_W_Sj <- replicateM (mkFIFOF);
+
+   // For wild writes (addr does not map to any Sj), this FIFO records
+   // info to consume the write-burst and then respond with error.
+   // TODO: per-Mi FIFOs would add concurrency.
+
+   FIFOF #(Tuple3 #(Bit #(log_nm),      // Mi of current AWCHAN req
+		    Bit #(wd_id_M),     // AWID to reflect into BID
+		    Bit #(wd_user)))    // AWUSER to reflect into BUSER
+   f_W_wild <- mkFIFOF;
 
    // ----------------
-   // Write-transaction book-keeping
+   // Read-respose merge control
 
-   // On an mi->sj write-transaction, this fifo records sj for M mi
-   Vector #(tn_num_M, FIFOF #(Bit #(log_ns_plus_1))) v_f_wr_sjs <- replicateM (mkSizedFIFOF (8));
+   // For "simultaneous" RCHAN responses from Sj1 and Sj2 to the same
+   // Mi, the two bursts must not interleave. Each Sj must "own" Mi
+   // for its full burst.
 
-   // On an mi->sj write-transaction, this fifo records mi for S sj
-   Vector #(tn_num_S,  FIFOF #(Bit #(log_nm_plus_1))) v_f_wr_mis  <- replicateM (mkSizedFIFOF (8));
-
-   // On an mi->sj write-transaction, this fifo records a task (sj, awlen) for W channel
-   Vector #(tn_num_M,
-	    FIFOF #(Tuple2 #(Bit #(log_ns_plus_1),
-			     AXI4_Len)))     v_f_wd_tasks <- replicateM (mkFIFOF);
-   // On an mi->sj write-transaction, this register is the W-channel burst beat_count
-   // (0 => ready for next burst)
-   Vector #(tn_num_M, Reg #(AXI4_Len)) v_rg_wd_beat_count <- replicateM (mkReg (0));
-
-   // On a write-transaction to non-existent S, record id and user for error response
-   Vector #(tn_num_M,
-	    FIFOF #(Tuple2 #(Bit #(wd_id),
-			     Bit #(wd_user))))  v_f_wr_err_info <- replicateM (mkSizedFIFOF (8));
-
-   // ----------------
-   // Read-transaction book-keeping
-
-   // On an mi->sj read-transaction, records sj for M mi
-   Vector #(tn_num_M, FIFOF #(Bit #(log_ns_plus_1))) v_f_rd_sjs <- replicateM (mkSizedFIFOF (8));
-   // On an mi->sj read-transaction, records (mi,arlen) for S sj
-   Vector #(tn_num_S,
-	    FIFOF #(Tuple2 #(Bit #(log_nm_plus_1),
-			     AXI4_Len)))            v_f_rd_mis <- replicateM (mkSizedFIFOF (8));
-   // On an mi->sj read-transaction, this register is the R-channel burst beat_count
-   // (0 => ready for next burst)
-   Vector #(tn_num_S, Reg #(AXI4_Len)) v_rg_r_beat_count <- replicateM (mkReg (0));
-
-   // On a read-transaction to non-exisitent S, record id and user for error response
-   Vector #(tn_num_M,
-	    FIFOF #(Tuple3 #(AXI4_Len,
-			     Bit #(wd_id),
-			     Bit #(wd_user)))) v_f_rd_err_info <- replicateM (mkSizedFIFOF (8));
-
-   // On an mi->non-existent-S read-transaction,
-   // this register is the R-channel burst beat_count
-   // (0 => ready for next burst)
-   Vector #(tn_num_M, Reg #(AXI4_Len)) v_rg_r_err_beat_count <- replicateM (mkReg (0));
+   Vector #(tn_num_M, Reg #(Maybe #(Bit #(log_ns))))
+   v_rg_M_RCHAN_owners <- replicateM (mkReg (tagged Invalid));
 
    // ----------------------------------------------------------------
-   // RESET
+   // Predicates to check if Mi has transaction for Sj
+   // The expression (s_num == fromInteger (sj)) is dodgy when num_S == 1
+   // because it's a Bit#(0) comparision; so special case 'num_S == 1'
 
-   rule rl_reset (rg_reset);
-      if (cfg_verbosity > 0) begin
-	 $display ("%0d: rl_reset", cur_cycle);
-	 $display ("    %m");
-      end
-      for (Integer mi = 0; mi < num_M; mi = mi + 1) begin
-	 xactors_from_Ms [mi].reset;
-
-	 v_f_wr_sjs [mi].clear;
-	 v_f_wd_tasks [mi].clear;
-	 v_rg_wd_beat_count [mi] <= 0;
-
-	 v_f_wr_err_info [mi].clear;
-
-	 v_f_rd_sjs [mi].clear;
-
-	 v_f_rd_err_info [mi].clear;
-      end
-
-      for (Integer sj = 0; sj < num_S; sj = sj + 1) begin
-	 xactors_to_Ss [sj].reset;
-	 v_f_wr_mis [sj].clear;
-	 v_f_rd_mis [sj].clear;
-	 v_rg_r_beat_count [sj] <= 0;
-      end
-      rg_reset <= False;
-   endrule
-
-   // ----------------------------------------------------------------
-   // BEHAVIOR
-
-   // ----------------------------------------------------------------
-   // Predicates to check if M I has transaction for S J
 
    function Bool fv_mi_has_wr_for_sj (Integer mi, Integer sj);
-      let addr = xactors_from_Ms [mi].o_wr_addr.first.awaddr;
+      let addr = v_ifc_M [mi].o_AW.first.awaddr;
+      match { .legal, .s_num } = fn_addr_to_S_num (addr);
+      return (legal
+	      && (   (num_S == 1)
+		  || (s_num == fromInteger (sj))));
+   endfunction
+
+   function Bool fv_mi_has_rd_for_sj (Integer mi, Integer sj);
+      let addr = v_ifc_M [mi].o_AR.first.araddr;
       match { .legal, .s_num } = fn_addr_to_S_num (addr);
       return (legal
 	      && (   (num_S == 1)
@@ -184,287 +144,259 @@ module mkAXI4_Fabric #(function Tuple2 #(Bool, Bit #(TLog #(tn_num_S)))
    endfunction
 
    function Bool fv_mi_has_wr_for_none (Integer mi);
-      let addr = xactors_from_Ms [mi].o_wr_addr.first.awaddr;
+      let addr = v_ifc_M [mi].o_AW.first.awaddr;
       match { .legal, ._ } = fn_addr_to_S_num (addr);
       return (! legal);
-   endfunction
-
-   function Bool fv_mi_has_rd_for_sj (Integer mi, Integer sj);
-      let addr = xactors_from_Ms [mi].o_rd_addr.first.araddr;
-      match { .legal, .s_num } = fn_addr_to_S_num (addr);
-      return (legal
-	      && (   (num_S == 1)
-		  || (s_num == fromInteger (sj))));
    endfunction
 
    function Bool fv_mi_has_rd_for_none (Integer mi);
-      let addr = xactors_from_Ms [mi].o_rd_addr.first.araddr;
+      let addr = v_ifc_M [mi].o_AR.first.araddr;
       match { .legal, ._ } = fn_addr_to_S_num (addr);
       return (! legal);
    endfunction
 
    // ================================================================
-   // Wr requests (AW, W and B channels)
+   // BEHAVIOR: AWCHAN (write-requests)
 
-   // Wr requests to legal Ss (AW channel)
-   for (Integer mi = 0; mi < num_M; mi = mi + 1)
+   Rules all_rules = emptyRules;
+
+   // AW legal addrs
+   for (Integer mi = 0; mi < num_M; mi = mi + 1) begin
       for (Integer sj = 0; sj < num_S; sj = sj + 1)
+	 all_rules =
+	 rJoinDescendingUrgency (
+	    all_rules,
+	    rules
+	       rule rl_AW (fv_mi_has_wr_for_sj (mi, sj));
+		  // Forward the AW transaction
+		  let aw_in  <- pop_o (v_ifc_M [mi].o_AW);
+		  let awid_S = { aw_in.awid, fromInteger (mi) };
+		  let aw_out = fn_change_AW_id (aw_in, awid_S);
+		  v_ifc_S [sj].i_AW.enq (aw_out);
 
-	 rule rl_wr_xaction_M_to_S (fv_mi_has_wr_for_sj (mi, sj));
-	    // Move the AW transaction
-	    AXI4_Wr_Addr #(wd_id, wd_addr, wd_user) a <- pop_o (xactors_from_Ms [mi].o_wr_addr);
-	    xactors_to_Ss [sj].i_wr_addr.enq (a);
+		  // Enqueue mi->sj control info for W channel
+		  v_f_W_Sj [mi].enq (tuple2 (True, fromInteger (sj)));
+		  v_f_W_Mi [sj].enq (fromInteger (mi));
 
-	    // Enqueue a task for the W channel
-	    v_f_wd_tasks      [mi].enq (tuple2 (fromInteger (sj), a.awlen));
+		  if (verbosity > 0) begin
+		     $display ("AXI4_Fabric: AW m%0d -> s%0d", mi, sj);
+		     $display ("    ", fshow (aw_in));
+		  end
+	       endrule
+	    endrules);
 
-	    // Book-keeping
-	    v_f_wr_mis        [sj].enq (fromInteger (mi));
-	    v_f_wr_sjs        [mi].enq (fromInteger (sj));
+      // AW wild addrs (awaddr does not map to any Sj)
+      all_rules =
+      rJoinDescendingUrgency (
+	 all_rules,
+	 rules
+	    rule rl_AW_wild (fv_mi_has_wr_for_none (mi));
+	       let aw_in  <- pop_o (v_ifc_M [mi].o_AW);
 
-	    if (cfg_verbosity > 0) begin
-	       $display ("%0d: rl_wr_xaction_M_to_S: m%0d -> s%0d", cur_cycle, mi, sj);
-	       $display ("    %m");
-	       $display ("    ", fshow (a));
-	    end
-	 endrule
+	       // Enqueue mi->sj control info for W channel
+	       v_f_W_Sj [mi].enq (tuple2 (False, ?));
+	       f_W_wild.enq (tuple3 (fromInteger (mi), aw_in.awid, aw_in.awuser));
 
-   // Wr requests to non-existent S (AW channel)
-   for (Integer mi = 0; mi < num_M; mi = mi + 1)
-	 rule rl_wr_xaction_no_such_S (fv_mi_has_wr_for_none (mi));
-	    AXI4_Wr_Addr #(wd_id, wd_addr, wd_user) a <- pop_o (xactors_from_Ms [mi].o_wr_addr);
-
-	    // Special value 'num_S' (not a legal sj) means "no such S"
-	    v_f_wr_sjs        [mi].enq (fromInteger (num_S));
-	    v_f_wr_err_info   [mi].enq (tuple2 (a.awid, a.awuser));
-
-	    // Enqueue a task for the W channel (must consume the write-data burst)
-	    v_f_wd_tasks      [mi].enq (tuple2 (fromInteger (num_S), a.awlen));
-
-	    $display ("%0d: ERROR: rl_wr_xaction_no_such_S: m%0d -> ?", cur_cycle, mi);
-	    $display ("    %m");
-	    $display ("        ", fshow (a));
-	 endrule
-
-   // Wr data (W channel)
-   for (Integer mi = 0; mi < num_M; mi = mi + 1)
-
-      // Handle W channel burst
-      // Invariant: v_rg_wd_beat_count == 0 between bursts
-      // Note: awlen is encoded as 0..255 for burst lengths of 1..256
-      rule rl_wr_xaction_M_to_S_data (v_f_wd_tasks [mi].first matches {.sj, .awlen});
-	 AXI4_Wr_Data #(wd_data, wd_user) d <- pop_o (xactors_from_Ms [mi].o_wr_data);
-
-	 // If sj is a legal S, send it the data beat, else drop it.
-	 if (sj < fromInteger (num_S))
-	    xactors_to_Ss [sj].i_wr_data.enq (d);
-
-	 if (cfg_verbosity > 0) begin
-	    $display ("%0d: rl_wr_xaction_M_to_S_data: m%0d -> s%0d, beat %0d/%0d",
-		      cur_cycle, mi, sj, v_rg_wd_beat_count [mi], awlen);
-	    $display ("    %m");
-	    $display ("    ", fshow (d));
-	 end
-
-	 if (v_rg_wd_beat_count [mi] == awlen) begin
-	    // End of burst
-	    v_f_wd_tasks [mi].deq;
-	    v_rg_wd_beat_count [mi] <= 0;
-
-	    // Simulation-only assertion-check (no action, just display assertion failure)
-	    // Final beat must have WLAST = 1
-	    // Rely on S (which should also see this error) to return error response
-	    if (! (d.wlast)) begin
-	       $display ("%0d: ERROR: rl_wr_xaction_M_to_S_data: m%0d -> s%0d",
-			 cur_cycle, mi, sj);
-	       $display ("    WLAST not set on final data beat (awlen = %0d)", awlen);
-	       $display ("    %m");
-	       $display ("    ", fshow (d));
-	    end
-	 end
-	 else
-	    v_rg_wd_beat_count [mi] <= v_rg_wd_beat_count [mi] + 1;
-      endrule
-
-   // Wr responses from Ss to Ms (B channel)
-
-   for (Integer mi = 0; mi < num_M; mi = mi + 1)
-      for (Integer sj = 0; sj < num_S; sj = sj + 1)
-
-	 rule rl_wr_resp_S_to_M (   (v_f_wr_mis [sj].first == fromInteger (mi))
-					  && (v_f_wr_sjs [mi].first == fromInteger (sj)));
-	    v_f_wr_mis [sj].deq;
-	    v_f_wr_sjs [mi].deq;
-	    AXI4_Wr_Resp #(wd_id, wd_user) b <- pop_o (xactors_to_Ss [sj].o_wr_resp);
-
-	    xactors_from_Ms [mi].i_wr_resp.enq (b);
-
-	    if (cfg_verbosity > 0) begin
-	       $display ("%0d: rl_wr_resp_S_to_M: m%0d <- s%0d",
-			 cur_cycle, mi, sj);
-	       $display ("    %m");
-	       $display ("        ", fshow (b));
-	    end
-	 endrule
-
-   // Wr error responses to Ms (B channel)
-   // v_f_wr_sjs [mi].first has value num_S (illegal value)
-   // v_f_wr_err_info [mi].first contains request fields 'awid' and 'awuser'
-
-   for (Integer mi = 0; mi < num_M; mi = mi + 1)
-
-      rule rl_wr_resp_err_to_M (v_f_wr_sjs [mi].first == fromInteger (num_S));
-	 v_f_wr_sjs [mi].deq;
-	 v_f_wr_err_info [mi].deq;
-
-	 match { .awid, .awuser } = v_f_wr_err_info [mi].first;
-
-	 let b = AXI4_Wr_Resp {bid:   awid,
-			       bresp: axi4_resp_decerr,
-			       buser: awuser};
-
-	 xactors_from_Ms [mi].i_wr_resp.enq (b);
-
-	 if (cfg_verbosity > 0) begin
-	    $display ("%0d: rl_wr_resp_err_to_M: m%0d <- err", cur_cycle, mi);
-	    $display ("    %m");
-	    $display ("        ", fshow (b));
-	 end
-      endrule
-
-   // ================================================================
-   // Rd requests (AR and R channels)
-
-   // Rd requests to legal Ss (AR channel)
-   for (Integer mi = 0; mi < num_M; mi = mi + 1)
-      for (Integer sj = 0; sj < num_S; sj = sj + 1)
-
-	 rule rl_rd_xaction_M_to_S (fv_mi_has_rd_for_sj (mi, sj));
-	    AXI4_Rd_Addr #(wd_id, wd_addr, wd_user) a <- pop_o (xactors_from_Ms [mi].o_rd_addr);
-
-	    xactors_to_Ss [sj].i_rd_addr.enq (a);
-
-	    v_f_rd_mis [sj].enq (tuple2 (fromInteger (mi), a.arlen));
-	    v_f_rd_sjs [mi].enq (fromInteger (sj));
-
-	    if (cfg_verbosity > 0) begin
-	       $display ("%0d: rl_rd_xaction_M_to_S: m%0d -> s%0d",
-			 cur_cycle, mi, sj);
-	       $display ("    %m");
-	       $display ("        ", fshow (a));
-	    end
-	 endrule
-
-   // Rd requests to non-existent S (AR channel)
-   for (Integer mi = 0; mi < num_M; mi = mi + 1)
-	 rule rl_rd_xaction_no_such_S (fv_mi_has_rd_for_none (mi));
-	    AXI4_Rd_Addr #(wd_id, wd_addr, wd_user) a <- pop_o (xactors_from_Ms [mi].o_rd_addr);
-
-	    v_f_rd_sjs      [mi].enq (fromInteger (num_S));
-	    v_f_rd_err_info [mi].enq (tuple3 (a.arlen, a.arid, a.aruser));
-
-	    $display ("%0d: ERROR: rl_rd_xaction_no_such_S: m%0d -> ?", cur_cycle, mi);
-	    $display ("    %m");
-	    $display ("        ", fshow (a));
-	 endrule
-
-   // Rd responses from Ss to Ms (R channel)
-
-   for (Integer mi = 0; mi < num_M; mi = mi + 1)
-      for (Integer sj = 0; sj < num_S; sj = sj + 1)
-
-	 rule rl_rd_resp_S_to_M (v_f_rd_mis [sj].first matches { .mi2, .arlen }
-					  &&& (mi2 == fromInteger (mi))
-					  &&& (v_f_rd_sjs [mi].first == fromInteger (sj)));
-
-	    AXI4_Rd_Data #(wd_id, wd_data, wd_user) r <- pop_o (xactors_to_Ss [sj].o_rd_data);
-
-	    if (v_rg_r_beat_count [sj] == arlen) begin
-	       // Final beat of burst
-	       v_f_rd_mis [sj].deq;
-	       v_f_rd_sjs [mi].deq;
-	       v_rg_r_beat_count [sj] <= 0;
-
-	       // Assertion-check
-	       // Final beat must have RLAST = 1
-	       // If not, and if RRESP is OK, set RRESP to AXI4_RESP_SLVERR
-	       if ((r.rresp == axi4_resp_okay) && (! (r.rlast))) begin
-		  r.rresp = axi4_resp_slverr;
-		  $display ("%0d: ERROR: rl_rd_resp_S_to_M: m%0d <- s%0d",
-			    cur_cycle, mi, sj);
-		  $display ("    RLAST not set on final data beat (arlen = %0d)", arlen);
-		  $display ("    %m");
-		  $display ("    ", fshow (r));
+	       if (verbosity > 0) begin
+		  $display ("ERROR: AXI4_Fabric: AW m%0d -> wild", mi);
+		  $display ("    ", fshow (aw_in));
 	       end
-	    end
-	    else
-	       v_rg_r_beat_count [sj] <= v_rg_r_beat_count [sj] + 1;
-
-	    xactors_from_Ms [mi].i_rd_data.enq (r);
-
-	    if (cfg_verbosity > 0) begin
-	       $display ("%0d: rl_rd_resp_S_to_M: m%0d <- s%0d",
-			 cur_cycle, mi, sj);
-	       $display ("    %m");
-	       $display ("    r: ", fshow (r));
-	    end
-	 endrule
-
-   // Rd error responses to Ms (R channel)
-   // v_f_rd_sjs [mi].first has value num_S (illegal value)
-   // v_f_rd_err_info [mi].first contains request fields: 'arlen', 'arid', 'aruser'
-
-   for (Integer mi = 0; mi < num_M; mi = mi + 1)
-
-      rule rl_rd_resp_err_to_M (v_f_rd_sjs [mi].first == fromInteger (num_S));
-	 match { .arlen, .arid, .aruser } = v_f_rd_err_info [mi].first;
-
-	 Bit #(wd_data) data = 0;
-	 let r = AXI4_Rd_Data {rid:    arid,
-			       rdata:  data,
-			       rresp:  axi4_resp_decerr,
-			       rlast:  (v_rg_r_err_beat_count [mi] == arlen),
-			       ruser:  aruser};
-
-	 xactors_from_Ms [mi].i_rd_data.enq (r);
-
-	 if (v_rg_r_err_beat_count [mi] == arlen) begin
-	    // Last beat of burst
-	    v_f_rd_sjs [mi].deq;
-	    v_f_rd_err_info [mi].deq;
-	    v_rg_r_err_beat_count [mi] <= 0;
-	 end
-	 else
-	    v_rg_r_err_beat_count [mi] <= v_rg_r_err_beat_count [mi] + 1;
-
-	 if (cfg_verbosity > 0) begin
-	    $display ("%0d: rl_rd_resp_err_to_M: m%0d <- err",
-		      cur_cycle, mi);
-	    $display ("    %m");
-	    $display ("    r: ", fshow (r));
-	 end
-      endrule
+	    endrule
+	 endrules);
+   end
 
    // ================================================================
+   // BEHAVIOR: WCHAN (write-data)
+
+   // W normal
+   for (Integer mi = 0; mi < num_M; mi = mi + 1) begin
+      for (Integer sj = 0; sj < num_S; sj = sj + 1)
+	 all_rules =
+	 rJoinDescendingUrgency (
+	    all_rules,
+	    rules
+
+	       // W channel (with bursts)
+	       // Invariant: v_rg_wd_beat_count == 0 between bursts
+	       // Note: awlen encodes burst lengths of 1..256 as 0..255
+	       rule rl_W ((v_f_W_Mi [sj].first == fromInteger (mi))
+			  && tpl_1 (v_f_W_Sj [mi].first)
+			  && (tpl_2 (v_f_W_Sj [mi].first) == fromInteger (sj)));
+
+		  // Forward the W
+		  let w <- pop_o (v_ifc_M [mi].o_W);
+		  v_ifc_S [sj].i_W.enq (w);
+
+		  if (verbosity > 0) begin
+		     $display ("AXI4_Fabric: W m%0d -> s%0d", mi, sj);
+		     $display ("    ", fshow (w));
+		  end
+
+		  if (w.wlast) begin
+		     // End of burst; dequeue the control info
+		     v_f_W_Mi [sj].deq;
+		     v_f_W_Sj [mi].deq;
+		  end
+	       endrule
+	    endrules);
+
+      // W for wild addrs
+      all_rules =
+      rJoinDescendingUrgency (
+	 all_rules,
+	 rules
+	    rule rl_W_wild (tpl_1 (f_W_wild.first) == fromInteger (mi)
+			    && (! tpl_1 (v_f_W_Sj [mi].first)));
+
+	       match { .mi, .bid, .buser } = f_W_wild.first;
+
+	       // Consume the W and drop it
+	       let w <- pop_o (v_ifc_M [mi].o_W);
+
+	       if (verbosity > 0) begin
+		  $display ("AXI4_Fabric: W m%0d -> WILD", mi);
+		  $display ("    ", fshow (w));
+	       end
+
+	       if (w.wlast) begin
+		  // End of burst; dequeue the control info
+		  f_W_wild.deq;
+		  v_f_W_Sj [mi].deq;
+
+		  // Send error response to Mi
+		  let b = AXI4_B {bid:   bid,
+				  bresp: axi4_resp_decerr,
+				  buser: buser};
+		  v_ifc_M [mi].i_B.enq (b);
+	       end
+	    endrule
+	 endrules);
+   end
+
+   // ================================================================
+   // BEHAVIOR: BCHAN (write-responses)
+
+   // Wr responses from Ss to Ms
+   for (Integer sj = 0; sj < num_S; sj = sj + 1)
+      all_rules =
+      rJoinDescendingUrgency (
+	 all_rules,
+	 rules
+	    rule rl_B;
+	       // Incoming BCHAN response
+	       AXI4_B #(wd_id_S, wd_user) b_in <- pop_o (v_ifc_S [sj].o_B);
+	       // Extract mi and bid_M from incoming bid_S
+	       Bit #(wd_id_S) bid_S = b_in.bid;
+	       Bit #(log_nm)  mi    = truncate (bid_S);
+	       Bit #(wd_id_M) bid_M = truncateLSB (bid_S);
+	       // Replace bid_S with bid_M in BCHAN response, send to mi
+	       AXI4_B #(wd_id_M, wd_user) b_out = fn_change_B_id (b_in, bid_M);
+	       v_ifc_M [mi].i_B.enq (b_out);
+
+	       if (verbosity > 0) begin
+		  $display ("AXI4_Fabric: B m%0d <- s%0d", mi, sj);
+		  $display ("    ", fshow (b_out));
+	       end
+	    endrule
+	 endrules);
+
+   // ================================================================
+   // ARCHAN (read requests)
+
+   // Legal addrs
+   for (Integer mi = 0; mi < num_M; mi = mi + 1) begin
+      for (Integer sj = 0; sj < num_S; sj = sj + 1)
+	 all_rules =
+	 rJoinDescendingUrgency (
+	    all_rules,
+	    rules
+	       rule rl_AR (fv_mi_has_rd_for_sj (mi, sj));
+		  let ar_in <- pop_o (v_ifc_M [mi].o_AR);
+		  let arid_S = { ar_in.arid, fromInteger (mi) };
+		  let ar_out = fn_change_AR_id (ar_in, arid_S);
+		  v_ifc_S [sj].i_AR.enq (ar_out);
+
+		  if (verbosity > 0) begin
+		     $display ("AXI4_Fabric: AR m%0d -> s%0d", mi, sj);
+		     $display ("    ", fshow (ar_in));
+		  end
+	       endrule
+	    endrules);
+
+      all_rules =
+      rJoinDescendingUrgency (
+	 all_rules,
+	 rules
+	    // Wild addr (araddr does not map to any Sj)
+	    rule rl_AR_wild (fv_mi_has_rd_for_none (mi));
+	       let ar <- pop_o (v_ifc_M [mi].o_AR);
+	       let r = AXI4_R {rid:   ar.arid,
+			       rdata: ?,
+			       rresp: axi4_resp_decerr,
+			       rlast: True,
+			       ruser: ar.aruser};
+	       v_ifc_M [mi].i_R.enq (r);
+
+	       if (verbosity > 0) begin
+		  $display ("ERROR: AR m%0d -> WILD", mi);
+		  $display ("    ", fshow (ar));
+	       end
+	    endrule
+	 endrules);
+   end
+
+   // ================================================================
+   // RCHAN (read responses)
+
+   for (Integer sj = 0; sj < num_S; sj = sj + 1)
+      all_rules =
+      rJoinDescendingUrgency (
+	 all_rules,
+	 rules
+	    rule rl_R;
+	       AXI4_R #(wd_id_S, wd_data, wd_user)
+	       r_in = v_ifc_S [sj].o_R.first;
+
+	       // Check if we already own Mi or if Mi is free (no owner)
+	       Bit #(log_nm) mi = truncate (r_in.rid);
+	       Bool we_own      = False;
+	       if (v_rg_M_RCHAN_owners [mi] matches tagged Invalid)
+		  we_own = True;
+	       else if (v_rg_M_RCHAN_owners [mi] matches tagged Valid .sj2
+			&&& (sj2 == fromInteger (sj)))
+		  we_own = True;
+
+	       if (we_own) begin
+		  // Forward the R response
+		  v_ifc_S [sj].o_R.deq;
+		  Bit #(wd_id_S) rid_S = r_in.rid;
+		  Bit #(wd_id_M) rid_M = truncateLSB (rid_S);
+		  let r_M   = fn_change_R_id (r_in, rid_M);
+		  v_ifc_M [mi].i_R.enq (r_M);
+
+		  // Release ownership of Mi RCHAN on last beat
+		  if (r_in.rlast)
+		     v_rg_M_RCHAN_owners [mi] <= tagged Invalid;
+		  else
+		     // Record ownership for rest of beats
+		     v_rg_M_RCHAN_owners [mi] <= tagged Valid (fromInteger (sj));
+
+		  if (verbosity > 0) begin
+		     $display ("AXI4_Fabric: R m%0d <- s%0d", mi, sj);
+		     $display ("    ", fshow (r_M));
+		  end
+	       end
+	    endrule
+	 endrules);
+
+   addRules (all_rules);
+
+   // ****************************************************************
    // INTERFACE
 
-   function AXI4_S_IFC  #(wd_id, wd_addr, wd_data, wd_user) f1 (Integer j)
-      = xactors_from_Ms [j].axi_side;
-   function AXI4_M_IFC #(wd_id, wd_addr, wd_data, wd_user) f2 (Integer j)
-      = xactors_to_Ss    [j].axi_side;
-
-   method Action reset () if (! rg_reset);
-      rg_reset <= True;
-   endmethod
-
-   method Action set_verbosity (Bit #(4) verbosity);
-      cfg_verbosity <= verbosity;
-   endmethod
-
-   interface v_from_Ms = genWith (f1);
-   interface v_to_Ss   = genWith (f2);
+   // Empty
 endmodule
 
-// ================================================================
+// ****************************************************************
 
 endpackage: AXI4_Fabric

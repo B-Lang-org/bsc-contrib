@@ -1,13 +1,17 @@
-// Copyright (c) 2019 Bluespec, Inc. All Rights Reserved
-//
+// Copyright (c) 2019-2023 Bluespec, Inc. All Rights Reserved
+// Copyright (c) 2024 Rishiyur S. Nikhil.
+
 // SPDX-License-Identifier: BSD-3-Clause
 
 package AXI4_Deburster;
 
 // ================================================================
 // This package defines a AXI4-S-to-AXI4-S conversion module.
-// The M-side interface is an AXI4-S that carries no burst transactions.
-// The S-side interface is an AXI4-S that carries burst transactions.
+// The upstream interface (AXI4-S) is an AXI4-S that carries burst transactions.
+// The module argument is the downstream interface, also an AXI4-S,
+//    which does not have bursts.
+// i.e., a multi-beat burst request from upstream is sent to the
+// downstream as a series of 1-beat requests.
 
 // ================================================================
 // Bluespec library imports
@@ -18,125 +22,77 @@ import SpecialFIFOs :: *;
 import ConfigReg    :: *;
 
 // ----------------
-// BSV additional libs
+// Bluespec misc. libs
 
 import Cur_Cycle  :: *;
+import Semi_FIFOF :: *;
 
-// ================================================================
+// ----------------
 // Project imports
 
-import Semi_FIFOF :: *;
-import AXI4_Types :: *;
+import AXI4_Types   :: *;
 
-// ================================================================
-// The interface for the fabric module
+// ****************************************************************
+// Verbosity during simulation on stdout (edit this as desired):
+//   0: quiet
+//   1: display start of burst
+//   2: display detail
 
-interface AXI4_Deburster_IFC #(numeric type wd_id,
-			       numeric type wd_addr,
-			       numeric type wd_data,
-			       numeric type wd_user);
-   method Action reset;
+Integer verbosity = 0;
 
-   // From M
-   interface AXI4_S_IFC #(wd_id, wd_addr, wd_data, wd_user) from_M;
-
-   // To S
-   interface AXI4_M_IFC #(wd_id, wd_addr, wd_data, wd_user) to_S;
-endinterface
-
-// ================================================================
+// ****************************************************************
 // The Deburster module
 
-module mkAXI4_Deburster (AXI4_Deburster_IFC #(wd_id, wd_addr, wd_data, wd_user))
+module mkAXI4_Deburster #(AXI4_S_IFC #(wd_id, wd_addr, wd_data, wd_user) ifc_S)
+                        (AXI4_S_IFC #(wd_id, wd_addr, wd_data, wd_user))
    provisos (Add #(a__, 8, wd_addr));
 
-   // 0 quiet; 1: display start of burst; 2: display all traffic
-   Integer verbosity = 0;
+   // Buffer facing M
+   AXI4_Buffer_IFC #(wd_id, wd_addr, wd_data, wd_user) xactor_from_M <- mkAXI4_Buffer;
 
-   Reg #(Bool) rg_reset <- mkReg (True);
+   // ----------------
+   // Write-transaction book-keeping
 
-   // Transactor facing M
-   AXI4_S_Xactor_IFC  #(wd_id, wd_addr, wd_data, wd_user)
-      xaxtor_from_M <- mkAXI4_S_Xactor;
-
-   // Transactor facing S
-   AXI4_M_Xactor_IFC #(wd_id, wd_addr, wd_data, wd_user)
-       xactor_to_S <- mkAXI4_M_Xactor;
-
-   // On a write-transaction, this register is the W-channel burst beat count
-   // (0 => start of burst)
+   // This reg is W-channel burst beat count (0 => start of burst)
    Reg #(AXI4_Len) rg_w_beat_count <- mkReg (0);
 
-   // On a write-transaction, records awlen for S
-   // Size of FIFO should cover S latency
+   // Records awlen.
+   // Size of FIFO should cover S latency (because used on B to
+   // combine B responses).
    FIFOF #(AXI4_Len)  f_w_awlen <- mkSizedFIFOF (4);
 
-   // On a write-transaction, this register is the B-channel burst
-   // beat count which is the number of individual (non-burst)
-   // responses from the S to be combined into a single burst response
-   // to M.
-   // (0 => ready for next burst)
+   // This reg is the B-channel burst beat count which is the number
+   // of individual (non-burst) responses from the S to be combined
+   // into a single burst response to M. (0 => ready for next burst)
    Reg #(AXI4_Len) rg_b_beat_count <- mkReg (0);
 
-   // On a burst write-transaction, all the individual S responses may
-   // not have the same 'resp' on the B channel. This register
-   // remembers the first 'non-okay' resp (if any), to be returned to
-   // M in the burst response.
+   // All individual S responses may not have the same 'resp' on the B
+   // channel. This reg remembers first 'non-okay' resp (if any), to
+   // be returned to M in the burst response.
    Reg #(AXI4_Resp) rg_b_resp <- mkReg (axi4_resp_okay);
 
-   // On a read-transaction, records arlen for S
-   // Size of FIFO should cover S latency
+   // ----------------
+   // Read-transaction book-keeping
+
+   // Records arlen for S.
+   // Size of FIFO should cover S latency (because used on R to
+   // combine R-response into a burst).
    FIFOF #(AXI4_Len)  f_r_arlen <- mkSizedFIFOF (4);
 
-   // On a read-transaction, this register is the AR-channel burst beat count
-   // (0 => start of next burst)
+   // This reg is the AR-channel burst beat count (0 => start of next burst)
    Reg #(AXI4_Len) rg_ar_beat_count <- mkReg (0);
 
-   // On a read-transaction, this register is the R-channel burst beat count
-   // (0 => ready for next burst)
+   // This reg is the R-channel burst beat count (0 => ready for next burst)
    Reg #(AXI4_Len) rg_r_beat_count <- mkReg (0);
 
    // ----------------------------------------------------------------
-   // Compute address for beat
+   // Compute axaddr for beat
 
-// function ActionValue#(Bit #(wd_addr)) fv_addr_for_beat (Bit #(wd_addr) start_addr,
-//      				     AXI4_Size      axsize,
-//      				     AXI4_Burst     axburst,
-//                                           AXI4_Len       axlen,
-//      				     AXI4_Len       beat_count);
-//
-//    actionvalue
-//    // For incrementing bursts this address is the next address
-//    Bit #(wd_addr) addr = start_addr;
-//    addr = start_addr + (1 << pack (axsize));
-//
-//    // The actual length of the burst is one more than indicated by axlen
-//    Bit #(wd_addr) burst_len = zeroExtend (axlen) + 1;
-//
-//    // find the wrap boundary bit - this becomes the mask - will only work
-//    // for burst lengths which are a power of two
-//    Bit #(wd_addr) wrap_boundary = (burst_len << pack (axsize));
-//
-//    // For wrapping bursts the wrap_mask needs to be applied to check if the
-//    // wrapping boundary has been reached
-//    if (axburst == axburst_wrap) begin
-//       $display ("%0d: %m::AXI4_Deburster: wrapping burst. boundary: (%0x). addr: (%0x)", cur_cycle, wrap_boundary, addr);
-//       // The wrapping condition
-//       if ((addr % wrap_boundary) == 0) begin
-//          // wrap the address - retain all bits except the wrap boundary bit
-//          addr = addr & (~wrap_boundary);
-//          $display ("%0d: %m::AXI4_Deburster: wrapping burst. Wrapping: addr: (%0x)", cur_cycle, addr);
-//       end
-//    end
-//    return addr;
-//    endactionvalue
-// endfunction
-
-   function Bit #(wd_addr) fv_addr_for_beat (Bit #(wd_addr) start_addr,
-					     AXI4_Size      axsize,
-					     AXI4_Burst     axburst,
-                                             AXI4_Len       axlen,
-					     AXI4_Len       beat_count);
+   function Bit #(wd_addr) fv_axaddr_for_beat (Bit #(wd_addr) start_addr,
+					       AXI4_Size      axsize,
+					       AXI4_Burst     axburst,
+					       AXI4_Len       axlen,
+					       AXI4_Len       beat_count);
 
       // For incrementing bursts this address is the next address
       Bit #(wd_addr) addr = start_addr;
@@ -157,109 +113,92 @@ module mkAXI4_Deburster (AXI4_Deburster_IFC #(wd_id, wd_addr, wd_data, wd_user))
       return addr;
    endfunction
 
-   // ----------------------------------------------------------------
-   // RESET
-
-   rule rl_reset (rg_reset);
-      if (verbosity >= 1)
-	 $display ("%0d: %m::AXI4_Deburster.rl_reset", cur_cycle);
-      xaxtor_from_M.reset;
-      xactor_to_S.reset;
-
-      f_w_awlen.clear;
-      rg_w_beat_count <= 0;
-      rg_b_beat_count <= 0;
-      rg_b_resp       <= axi4_resp_okay;
-
-      f_r_arlen.clear;
-      rg_ar_beat_count <= 0;
-      rg_r_beat_count  <= 0;
-
-      rg_reset <= False;
-   endrule
-
-   // ----------------------------------------------------------------
+   // ================================================================
    // BEHAVIOR
-   Reg #(Bit #(wd_addr)) rg_last_beat_waddr <- mkRegU;
 
    // ----------------
-   // Wr requests (AW and W channels)
+   // AW and W channels (write requests)
 
-   rule rl_wr_xaction_M_to_S;
-      AXI4_Wr_Addr #(wd_id, wd_addr, wd_user) a_in = xaxtor_from_M.o_wr_addr.first;
-      AXI4_Wr_Data #(wd_data, wd_user)        d_in = xaxtor_from_M.o_wr_data.first;
+   Reg #(Bit #(wd_addr)) rg_last_beat_waddr <- mkRegU;
+
+   rule rl_AW_W;
+      AXI4_AW #(wd_id, wd_addr, wd_user) aw_in = xactor_from_M.ifc_M.o_AW.first;
+      AXI4_W  #(wd_data, wd_user)        w_in  = xactor_from_M.ifc_M.o_W.first;
 
       // Construct output AW item
-      let a_out = a_in;
-      // For the first beat the address is unchanged from the address in the
-      // input request, for the remaining beats we have the update the address
+      let aw_out = aw_in;
+      // For the first beat the address is unchanged from the address
+      // in the input request, for the remaining beats the address is
       // based on the previous address used
-      if (rg_w_beat_count != 0) begin
-         a_out.awaddr = fv_addr_for_beat (rg_last_beat_waddr, a_in.awsize, a_in.awburst, a_in.awlen, rg_w_beat_count);
-      end
+      if (rg_w_beat_count != 0)
+         aw_out.awaddr = fv_axaddr_for_beat (rg_last_beat_waddr,
+					     aw_in.awsize,
+					     aw_in.awburst,
+					     aw_in.awlen,
+					     rg_w_beat_count);
 
-      a_out.awlen   = 0;
-      a_out.awburst = axburst_fixed; // Not necessary when awlen=1, but S may be finicky
+      aw_out.awlen   = 0;
+      aw_out.awburst = axburst_fixed; // Not necessary when awlen=1, but S may be finicky
 
       // Set WLAST to true since this is always last beat of outgoing xaction (awlen=1)
-      let d_out   = d_in;
-      d_out.wlast = True;
+      let w_out   = w_in;
+      w_out.wlast = True;
 
       // Send to S
-      xactor_to_S.i_wr_addr.enq (a_out);
-      xactor_to_S.i_wr_data.enq (d_out);
+      ifc_S.i_AW.enq (aw_out);
+      ifc_S.i_W.enq  (w_out);
 
-      xaxtor_from_M.o_wr_data.deq;
+      xactor_from_M.ifc_M.o_W.deq;
 
       // Remember burst length so that individual responses from S can
       // be combined into a single burst response to M.
 
       if (rg_w_beat_count == 0)
-	 f_w_awlen.enq (a_in.awlen);
+	 f_w_awlen.enq (aw_in.awlen);
 
-      if (rg_w_beat_count < a_in.awlen) begin
+      if (rg_w_beat_count < aw_in.awlen) begin
 	 rg_w_beat_count <= rg_w_beat_count + 1;
       end
       else begin
 	 // Last beat of incoming burst; done with AW item
-	 xaxtor_from_M.o_wr_addr.deq;
+	 xactor_from_M.ifc_M.o_AW.deq;
 	 rg_w_beat_count <= 0;
 
 	 // Simulation-only assertion-check (no action, just display assertion failure)
 	 // Last incoming beat must have WLAST = 1
-	 if (! d_in.wlast) begin
-	    $display ("%0d: ERROR: %m::AXI4_Deburster.rl_wr_xaction_M_to_S: m -> s",
+	 if (! w_in.wlast) begin
+	    $display ("%0d: ERROR: AXI4_Deburster.rl_AW_W: m -> s",
 		      cur_cycle);
-	    $display ("    WLAST not set on last data beat (awlen = %0d)", a_in.awlen);
-	    $display ("    ", fshow (d_in));
+	    $display ("    WLAST not set on last data beat (awlen = %0d)", aw_in.awlen);
+	    $display ("    ", fshow (w_in));
 	 end
       end
 
       // Remember this beat's address for calculating the next beat address.
       // This is necessary to support wrapping bursts
-      rg_last_beat_waddr <= a_out.awaddr;
+      rg_last_beat_waddr <= aw_out.awaddr;
 
       // Debugging
       if (verbosity > 0) begin
-	 $display ("%0d: %m::AXI4_Deburster.rl_wr_xaction_M_to_S: m -> s, beat %0d",
+	 $display ("%0d: AXI4_Deburster.rl_AW_W: m -> s, beat %0d",
 		   cur_cycle, rg_w_beat_count);
 	 if (rg_w_beat_count == 0)
-	    $display ("    a_in : ", fshow (a_in));
+	    $display ("    aw_in : ", fshow (aw_in));
 	 if ((rg_w_beat_count == 0) || (verbosity > 1)) begin
-	    $display ("    d_in : ", fshow (d_in));
-	    $display ("    a_out: ", fshow (a_out));
-	    $display ("    d_out: ", fshow (d_out));
+	    $display ("    w_in :  ", fshow (w_in));
+	    $display ("    aw_out: ", fshow (aw_out));
+	    $display ("    w_out:  ", fshow (w_out));
 	 end
       end
-   endrule: rl_wr_xaction_M_to_S
+   endrule: rl_AW_W
 
    // ----------------
-   // Wr responses (B channel): consume responses from until the last
-   // response for a burst, then respond to M.  Remember if any of
-   // them was not an 'okay' response.
+   // B channel (write responses): consume responses from until the
+   // last response for a burst, then respond to M.  Remember if any
+   // of them was not an 'okay' response.
 
-   rule rl_wr_resp_S_to_M;
-      AXI4_Wr_Resp #(wd_id, wd_user) b_in <- pop_o (xactor_to_S.o_wr_resp);
+   rule rl_B_S_to_M;
+      AXI4_B #(wd_id, wd_user) b_in <- pop_o (ifc_S.o_B);
 
       if (rg_b_beat_count < f_w_awlen.first) begin
 	 // Remember first non-okay response (if any) of a burst in rg_b_resp
@@ -270,7 +209,7 @@ module mkAXI4_Deburster (AXI4_Deburster_IFC #(wd_id, wd_addr, wd_data, wd_user))
 	 rg_b_beat_count <= rg_b_beat_count + 1;
 
 	 if (verbosity > 1) begin
-	    $display ("%0d: %m::AXI4_Deburster.rl_wr_resp_S_to_M: m <- s, beat %0d",
+	    $display ("%0d: AXI4_Deburster.rl_B_S_to_M: m <- s, beat %0d",
 		      cur_cycle, rg_b_beat_count);
 	    $display ("    Consuming and discarding beat %0d", rg_b_beat_count);
 	    $display ("    ", fshow (b_in));
@@ -281,7 +220,7 @@ module mkAXI4_Deburster (AXI4_Deburster_IFC #(wd_id, wd_addr, wd_data, wd_user))
 	 let b_out = b_in;
 	 if (rg_b_resp != axi4_resp_okay)
 	    b_out.bresp = rg_b_resp;
-	 xaxtor_from_M.i_wr_resp.enq (b_out);
+	 xactor_from_M.ifc_M.i_B.enq (b_out);
 
 	 f_w_awlen.deq;
 
@@ -290,7 +229,7 @@ module mkAXI4_Deburster (AXI4_Deburster_IFC #(wd_id, wd_addr, wd_data, wd_user))
 	 rg_b_resp       <= axi4_resp_okay;
 
 	 if (verbosity > 1) begin
-	    $display ("%0d: %m::AXI4_Deburster.rl_wr_resp_S_to_M: m <- s, beat %0d",
+	    $display ("%0d: AXI4_Deburster.rl_B_S_to_M: m <- s, beat %0d",
 		      cur_cycle, rg_b_beat_count);
 	    $display ("    b_in: ",  fshow (b_in));
 	    $display ("    b_out: ", fshow (b_out));
@@ -298,56 +237,56 @@ module mkAXI4_Deburster (AXI4_Deburster_IFC #(wd_id, wd_addr, wd_data, wd_user))
       end
    endrule
 
-  // ----------------
-   // Rd requests (AR channel)
+   // ----------------
+   // AR channel (read requests)
 
    Reg #(Bit #(wd_addr)) rg_last_beat_raddr <- mkRegU;
    rule rl_rd_xaction_M_to_S;
-      AXI4_Rd_Addr #(wd_id, wd_addr, wd_user) a_in = xaxtor_from_M.o_rd_addr.first;
+      AXI4_AR #(wd_id, wd_addr, wd_user) ar_in = xactor_from_M.ifc_M.o_AR.first;
 
       // Compute forwarded request for each beat, and send
-      let a_out = a_in;
+      let ar_out = ar_in;
 
       // For the first beat the address is unchanged from the address in the
       // input request, for the remaining beats we have the update the address
       // based on the previous address used
       if (rg_ar_beat_count != 0) begin
-         a_out.araddr = fv_addr_for_beat (rg_last_beat_raddr,
-					  a_in.arsize,
-					  a_in.arburst,
-					  a_in.arlen,
-					  rg_ar_beat_count);
+         ar_out.araddr = fv_axaddr_for_beat (rg_last_beat_raddr,
+					     ar_in.arsize,
+					     ar_in.arburst,
+					     ar_in.arlen,
+					     rg_ar_beat_count);
       end
 
-      a_out.arlen   = 0;
-      a_out.arburst = axburst_fixed; // Not necessary when arlen=1, but S may be finicky
-      xactor_to_S.i_rd_addr.enq (a_out);
+      ar_out.arlen   = 0;
+      ar_out.arburst = axburst_fixed; // Not necessary when arlen=1, but S may be finicky
+      ifc_S.i_AR.enq (ar_out);
 
       // On first beat, set up the response count
       if (rg_ar_beat_count == 0)
-	 f_r_arlen.enq (a_in.arlen);
+	 f_r_arlen.enq (ar_in.arlen);
 
-      if (rg_ar_beat_count < a_in.arlen) begin
+      if (rg_ar_beat_count < ar_in.arlen) begin
 	 rg_ar_beat_count <= rg_ar_beat_count + 1;
       end
       else begin
 	 // Last beat sent; done with AR item
-	 xaxtor_from_M.o_rd_addr.deq;
+	 xactor_from_M.ifc_M.o_AR.deq;
 	 rg_ar_beat_count <= 0;
       end
 
       // Remember this beat's address for calculating the next beat address.
       // This is necessary to support wrapping bursts
-      rg_last_beat_raddr <= a_out.araddr;
+      rg_last_beat_raddr <= ar_out.araddr;
 
       // Debugging
       if (verbosity > 0) begin
-	 $display ("%0d: %m::AXI4_Deburster.rl_rd_xaction_M_to_S: m -> s, addr %08x beat %0d",
-		   cur_cycle, a_out.araddr, rg_ar_beat_count);
+	 $display ("%0d: AXI4_Deburster.rl_rd_xaction_M_to_S: m -> s, addr %08x beat %0d",
+		   cur_cycle, ar_out.araddr, rg_ar_beat_count);
 	 if (rg_ar_beat_count == 0)
-	    $display ("    a_in:  ", fshow (a_in));
+	    $display ("    ar_in:  ", fshow (ar_in));
 	 if ((rg_ar_beat_count == 0) || (verbosity > 1))
-	    $display ("    a_out: ", fshow (a_out));
+	    $display ("    ar_out: ", fshow (ar_out));
       end
 
    endrule: rl_rd_xaction_M_to_S
@@ -356,7 +295,7 @@ module mkAXI4_Deburster (AXI4_Deburster_IFC #(wd_id, wd_addr, wd_data, wd_user))
    // Rd responses
 
    rule rl_rd_resp_S_to_M;
-      AXI4_Rd_Data #(wd_id, wd_data, wd_user) r_in <- pop_o (xactor_to_S.o_rd_data);
+      AXI4_R #(wd_id, wd_data, wd_user) r_in <- pop_o (ifc_S.o_R);
       let arlen = f_r_arlen.first;
 
       let r_out = r_in;
@@ -372,11 +311,11 @@ module mkAXI4_Deburster (AXI4_Deburster_IFC #(wd_id, wd_addr, wd_data, wd_user))
 	 f_r_arlen.deq;
       end
 
-      xaxtor_from_M.i_rd_data.enq (r_out);
+      xactor_from_M.ifc_M.i_R.enq (r_out);
 
       // Debugging
       if (verbosity > 0) begin
-	 $display ("%0d: %m::AXI4_Deburster.rl_rd_resp_S_to_M: m <- s, beat %0d",
+	 $display ("%0d: AXI4_Deburster.rl_rd_resp_S_to_M: m <- s, beat %0d",
 		   cur_cycle, rg_r_beat_count);
 	 if ((rg_r_beat_count == 0) || (verbosity > 1)) begin
 	    $display ("    r_in:  ", fshow (r_in));
@@ -385,17 +324,12 @@ module mkAXI4_Deburster (AXI4_Deburster_IFC #(wd_id, wd_addr, wd_data, wd_user))
       end
    endrule: rl_rd_resp_S_to_M
 
-   // ----------------------------------------------------------------
+   // ****************************************************************
    // INTERFACE
 
-   method Action reset () if (! rg_reset);
-      rg_reset <= True;
-   endmethod
-
-   interface from_M = xaxtor_from_M.axi_side;
-   interface to_S   = xactor_to_S   .axi_side;
+   return xactor_from_M.ifc_S;
 endmodule
 
-// ================================================================
+// ****************************************************************
 
 endpackage: AXI4_Deburster

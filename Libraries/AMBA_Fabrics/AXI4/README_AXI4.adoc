@@ -1,0 +1,176 @@
+= About `bsc-contrib/Libraries/AMBA_Fabrics/AXI4`
+:revnumber: v1.00
+:revdate: 2024-12-09
+:sectnums:
+:imagesdir: Doc/Figs
+:toc:
+:toclevels: 3
+:toc-title: Contents
+:keywords: Bluespec, B-Lang, BSV, BH, AMBA, ARM AXI, AXI4, AXI4-Lite, AXI4-Stream
+
+// ================================================================
+
+Copyright (C) 2017-2023 Bluespec, Inc.  All Rights Reserved +
+Copyright (C) 2024 B-Lang.org.  All Rights Reserved
+
+SPDX-License-Identifier: BSD-3-Clause
+
+// ================================================================
+
+Pleae see README in parent directory
+(link:../README_AMBA_Fabrics.adoc[adoc],link:../README_AMBA_Fabrics.html[html])
+for general introduction and about compiling/building/testing.
+
+This directory describes AXI4 facilities, including type definitions,
+cross-bar switches, connectors, clock-crossers, and edge-transactors
+to connect the B-Lang world to existing RTL (e.g., external AMBA IP).
+
+These source codes may import other `bsv-contrib` libraries; be sure
+they are visible in your _bsc_ compiler paths:
+
+    bsc-contrib/Libraries/AMBA_Fabrics/Utils/
+    bsc-contrib/Libraries/Misc/
+
+// ================================================================
+== General
+
+Many of these modules take an upstream `AXI4_M_IFC` and/or a
+downstream `AXI4_S_IFC` as a module parameter.  Thus, the actual FIFO
+buffers producing these interfaces are external, allowing a choice of
+buffering alternatives.
+
+// ================================================================
+== `AXI4_Types.bsv`
+
+This is a key file used by all the others.  Defines:
+
+* Basic bus and field payload types and structs for AW, W, B, AR, R,
+  some help-functions and display-formatting functions
+
+* M and S interface types, their connections, and dummy tie-offs
+* AXI4 Buffers with different kinds of internal FIFOs
+
+Everything is parameterized on wd_id, wd_addr, wd_data, wd_user (bit
+widths of corresponding buses).
+
+// ================================================================
+== `AXI4_Fabric.bsv`
+
+NOTE: Needs _bsc_ `-aggressive-conditions` flag (else may deadlock).
+
+Defines a module for a crossbar switch from a vector of Ms to a vector of Ss.
+
+Parameterized on number of Ms and Ss (`num_M` and `num_S`) and AXI4
+bus bitwidths (`wd_id`, `wd_addr`, `wd_data`, `wd_user`).
+
+Also paramterized by function `fn_addr_to_S_num()` which decides which
+S (if any) services which address (used to route transactions from an
+M to the appropriate S).
+
+The vector-of-Ms and vector-of-Ss are module parameters, so all
+buffering decisions are external to this module.
+
+Arbitration is statically decided, based on the index of an M or S in
+the input vectors:
+
+* For simultaneously arriving requests from two Ms for a common S, the
+  lower-indexed M wins.
+
+* For simultaneously arriving responses from two Ss for a common M,
+  the lower-indexed S wins.
+
+Limitation: Corresponding field-widths are kept identical across AW,
+W, B, AR and R.  Technically, the `awwidth` and `arwidth` could
+differ; `awid`, `bid`, `arid`, `rid` could differ; all the `user`
+fields could differ, etc., but we have chosen not to make separate
+parameters for all these.  Please make your own modified variant of
+this code if you need such capability.
+
+See:
+
+    testing/bsc.contrib/AMBA_Fabrics/AXI4/Test_AXI4_Fabric.bsv
+
+for an example of instantiating an `AXI4_Fabric` and connecting it to Ms and Ss.
+
+// ================================================================
+== `AXI4_Mem_Model.bsv`
+
+Module that takes an M interface parameter and attaches a memory model
+to it.  Parameterized by module-id, base address and address limit,
+and all the AXI4 bus widths.  Optionally zeroes out memory after
+reset.  In simulation, can load a memhex file to initialize memory.
+
+Implements the memory using a B-Lang `RegFile`, so this is technically
+synthesizable to hardware, although `RegFile` is not a good choice for
+anything other than small memories.
+
+// ================================================================
+== Misc.
+
+=== `AXI4_Addr_Translator.bsv`
+
+Functions to transform an M interface into another M, and an S into
+another S, simply adding/subtracting a given address-delta to incoming
+address.
+
+=== `AXI4_Deburster.bsv`
+
+Module that attaches to S interface parameter (downstream) and itself
+offers another S interface (upstream).  A burst transaction from the
+upstream side is converted into individual (non-burst) transactions on
+the downstream side.
+
+=== `AXI4_Widener.bsv`
+
+Module which connects an M and an S interface paramter.  The data
+width on S is some power-of-2 multiple of the data width on M.
+
+=== `AXI4_Gate.bsv`
+
+Module which connects an M and an S interface parameter. A method in
+the module interface controls whether traffic flows between M and S or
+is blocked.  Can be used to for authenticated access.
+
+// ================================================================
+== `AXI4_to_LDST.bsv`
+
+Module which takes an M interface (upstream), and whose interface is a
+pair of FIFOs representing an simple "store" request/response
+interface and a pair of FIFOs representing an ordinary "load"
+request/response interface.  Data on the simple interfaces are
+LSB-aligned (not lane-aligned like in AXI).
+
+Internal help-packages:
+
+* `AXI4_to_LD.bsv`
+* `AXI4_to_ST.bsv`
+* `AXI4_to_LDST_utils.bsv`
+
+// ================================================================
+== `AXI4_Clock_Crossers.bsv`
+
+Facilities for taking an AXI4 bus across a clock- and/or reset-domain
+boundary.  Effectively an AXI4 buffer where the upstream and
+downstream sides have different clocks and resets.
+
+// ================================================================
+== `AXI4_BSV_RTL.bsv`
+
+Defines RTL-level interfaces `AXI4_RTL_M_IFC` and `AXI4_RTL_M_IFC`
+(AMBA AXI bus names, ready-valid signals), `mkConnection` to connect
+them in a one-liner, dummy M and S interfaces (tie-offs), and buffers
+to connect B-Lang-style interfaces to RTL-style interfaces (B-Lang M
+to RTL S, and RTL B-Lang to B-Lang S).
+
+// ================================================================
+== Unit tests
+
+There are some unit tests in:
+
+    bsc-contrib/testing/bsc.contrib/AMBA_Fabrics/AXI4/Test_*.bsv
+
+The conventions for unit tests are described in more detail in the
+README in the parent directory
+(link:../README_AMBA_Fabrics.adoc[adoc],link:../README_AMBA_Fabrics.html[html]).
+
+// ================================================================
