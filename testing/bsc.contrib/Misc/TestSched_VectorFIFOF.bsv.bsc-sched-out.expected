@@ -1,0 +1,216 @@
+checking package dependencies
+compiling TestSched_VectorFIFOF.bsv
+code generation for mkVectorFIFOF_4_Bool starts
+=== schedule:
+parallel: [esposito: [fifo_enq -> [],
+		      fifo_deq -> [],
+		      fifo_first -> [],
+		      fifo_notFull -> [],
+		      fifo_notEmpty -> [],
+		      fifo_clear -> [],
+		      vector -> [],
+		      RL_rl_magic -> []]]
+order: [fifo_first,
+	fifo_notFull,
+	fifo_notEmpty,
+	vector,
+	fifo_enq,
+	fifo_deq,
+	fifo_clear,
+	RL_rl_magic]
+
+-----
+
+=== resources:
+[(beforeClear.read, [(beforeClear.read, 1)]),
+ (beforeClear.write, [(beforeClear.write 1'd1, 1)]),
+ (beforeDeq.read, [(beforeDeq.read, 1)]),
+ (beforeDeq.write, [(beforeDeq.write 1'd1, 1)]),
+ (beforeEnq.read, [(beforeEnq.read, 1)]),
+ (beforeEnq.write, [(beforeEnq.write 1'd1, 1)]),
+ (pw_clear.whas, [(pw_clear.whas, 1)]),
+ (pw_clear.wset, [(pw_clear.wset, 1)]),
+ (pw_deq.whas, [(pw_deq.whas, 1)]),
+ (pw_deq.wset, [(pw_deq.wset, 1)]),
+ (r_count.read, [(r_count.read, 1)]),
+ (r_count.write,
+  [(if pw_clear_whas_OR_w_enq_whas_AND_NOT_pw_deq_wha_ETC___d9 then
+      r_count.write IF_pw_clear_whas_THEN_0_ELSE_IF_w_enq_whas_AND_ETC___d14,
+    1)]),
+ (vr_data_0.read, [(vr_data_0.read, 1)]),
+ (vr_data_0.write, [(vr_data_0.write IF_w_enq_whas_THEN_IF_IF_pw_deq_whas_THEN_r_co_ETC___d22, 1)]),
+ (vr_data_1.read, [(vr_data_1.read, 1)]),
+ (vr_data_1.write, [(vr_data_1.write IF_w_enq_whas_THEN_IF_IF_pw_deq_whas_THEN_r_co_ETC___d27, 1)]),
+ (vr_data_2.read, [(vr_data_2.read, 1)]),
+ (vr_data_2.write, [(vr_data_2.write IF_w_enq_whas_THEN_IF_IF_pw_deq_whas_THEN_r_co_ETC___d32, 1)]),
+ (vr_data_3.read, [(vr_data_3.read, 1)]),
+ (vr_data_3.write, [(vr_data_3.write IF_w_enq_whas_THEN_IF_IF_pw_deq_whas_THEN_r_co_ETC___d35, 1)]),
+ (w_enq.wget, [(w_enq.wget, 1)]),
+ (w_enq.whas, [(w_enq.whas, 1)]),
+ (w_enq.wset, [(w_enq.wset fifo_enq_1, 1)])]
+
+-----
+
+=== vschedinfo:
+SchedInfo
+[RDY_fifo_clear CF [RDY_fifo_clear,
+		    RDY_vector,
+		    fifo_clear,
+		    fifo_deq,
+		    fifo_enq,
+		    fifo_first,
+		    fifo_notEmpty,
+		    fifo_notFull,
+		    vector],
+ RDY_fifo_deq CF [RDY_fifo_clear,
+		  RDY_fifo_deq,
+		  RDY_fifo_first,
+		  RDY_fifo_notEmpty,
+		  RDY_fifo_notFull,
+		  RDY_vector,
+		  fifo_clear,
+		  fifo_deq,
+		  fifo_enq,
+		  fifo_first,
+		  fifo_notEmpty,
+		  fifo_notFull,
+		  vector],
+ RDY_fifo_enq CF [RDY_fifo_clear,
+		  RDY_fifo_deq,
+		  RDY_fifo_enq,
+		  RDY_fifo_first,
+		  RDY_fifo_notEmpty,
+		  RDY_fifo_notFull,
+		  RDY_vector,
+		  fifo_clear,
+		  fifo_deq,
+		  fifo_enq,
+		  fifo_first,
+		  fifo_notEmpty,
+		  fifo_notFull,
+		  vector],
+ RDY_fifo_first CF [RDY_fifo_clear,
+		    RDY_fifo_first,
+		    RDY_fifo_notEmpty,
+		    RDY_fifo_notFull,
+		    RDY_vector,
+		    fifo_clear,
+		    fifo_deq,
+		    fifo_enq,
+		    fifo_first,
+		    fifo_notEmpty,
+		    fifo_notFull,
+		    vector],
+ RDY_fifo_notEmpty CF [RDY_fifo_clear,
+		       RDY_fifo_notEmpty,
+		       RDY_vector,
+		       fifo_clear,
+		       fifo_deq,
+		       fifo_enq,
+		       fifo_first,
+		       fifo_notEmpty,
+		       fifo_notFull,
+		       vector],
+ RDY_fifo_notFull CF [RDY_fifo_clear,
+		      RDY_fifo_notEmpty,
+		      RDY_fifo_notFull,
+		      RDY_vector,
+		      fifo_clear,
+		      fifo_deq,
+		      fifo_enq,
+		      fifo_first,
+		      fifo_notEmpty,
+		      fifo_notFull,
+		      vector],
+ RDY_vector CF [RDY_vector,
+		fifo_clear,
+		fifo_deq,
+		fifo_enq,
+		fifo_first,
+		fifo_notEmpty,
+		fifo_notFull,
+		vector],
+ fifo_enq CF [fifo_deq, fifo_first],
+ fifo_first CF [fifo_first, fifo_notEmpty, fifo_notFull, vector],
+ fifo_notEmpty CF [fifo_notEmpty, vector],
+ fifo_notFull CF [fifo_notEmpty, fifo_notFull, vector],
+ vector CF vector,
+ [fifo_deq, fifo_enq] SB fifo_clear,
+ fifo_first SB [fifo_clear, fifo_deq],
+ [fifo_notEmpty, fifo_notFull, vector] SB [fifo_clear, fifo_deq, fifo_enq],
+ fifo_clear C fifo_clear,
+ fifo_deq C fifo_deq,
+ fifo_enq C fifo_enq]
+[]
+[]
+[]
+
+-----
+
+Schedule dump file created: mkVectorFIFOF_4_Bool.sched
+=== Generated schedule for mkVectorFIFOF_4_Bool ===
+
+Method schedule
+---------------
+Method: fifo_enq
+Ready signal: (r_count < 3'd4) && beforeClear.read
+Conflict-free: fifo_deq, fifo_first
+Sequenced before: fifo_clear
+Sequenced after: fifo_notFull, fifo_notEmpty, vector
+Conflicts: fifo_enq
+ 
+Method: fifo_deq
+Ready signal: (! (r_count == 3'd0)) && beforeClear.read
+Conflict-free: fifo_enq
+Sequenced before: fifo_clear
+Sequenced after: fifo_first, fifo_notFull, fifo_notEmpty, vector
+Conflicts: fifo_deq
+ 
+Method: fifo_first
+Ready signal: beforeDeq.read && beforeClear.read && (! (r_count == 3'd0))
+Conflict-free: fifo_enq, fifo_first, fifo_notFull, fifo_notEmpty, vector
+Sequenced before: fifo_deq, fifo_clear
+ 
+Method: fifo_notFull
+Ready signal: beforeEnq.read && beforeDeq.read && beforeClear.read
+Conflict-free: fifo_first, fifo_notFull, fifo_notEmpty, vector
+Sequenced before: fifo_enq, fifo_deq, fifo_clear
+ 
+Method: fifo_notEmpty
+Ready signal: beforeEnq.read && beforeDeq.read && beforeClear.read
+Conflict-free: fifo_first, fifo_notFull, fifo_notEmpty, vector
+Sequenced before: fifo_enq, fifo_deq, fifo_clear
+ 
+Method: fifo_clear
+Ready signal: True
+Sequenced after: fifo_enq,
+		 fifo_deq,
+		 fifo_first,
+		 fifo_notFull,
+		 fifo_notEmpty,
+		 vector
+Conflicts: fifo_clear
+ 
+Method: vector
+Ready signal: beforeEnq.read && beforeDeq.read && beforeClear.read
+Conflict-free: fifo_first, fifo_notFull, fifo_notEmpty, vector
+Sequenced before: fifo_enq, fifo_deq, fifo_clear
+ 
+Rule schedule
+-------------
+Rule: rl_magic
+Predicate: True
+Blocking rules: (none)
+ 
+Logical execution order: fifo_first,
+			 fifo_notFull,
+			 fifo_notEmpty,
+			 vector,
+			 fifo_enq,
+			 fifo_deq,
+			 fifo_clear,
+			 rl_magic
+
+====================================================
+Verilog file created: mkVectorFIFOF_4_Bool.v
+All packages are up to date.

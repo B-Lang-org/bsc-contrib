@@ -14,16 +14,17 @@ package VectorFIFOF;
 // full.
 
 import FIFOF ::*;
+import RevertingVirtualReg ::*;
 import Vector ::*;
 
 interface VectorFIFOF#(numeric type depth, type t);
    interface FIFOF#(t) fifo;
-   interface Vector#(depth, Maybe#(t)) vector;
+   method Vector#(depth, Maybe#(t)) vector();
 endinterface
 
 module mkVectorFIFOF(VectorFIFOF#(depth, t))
    provisos(
-      Bits#(t, a__)
+      Bits#(t, tsz)
       );
 
    Vector#(depth, Reg#(t)) vr_data <- replicateM(mkRegU);
@@ -69,16 +70,31 @@ module mkVectorFIFOF(VectorFIFOF#(depth, t))
 	 return tagged Invalid;
    endfunction
 
+   Reg#(Bool) beforeEnq <- mkRevertingVirtualReg(True);
+   Reg#(Bool) beforeDeq <- mkRevertingVirtualReg(True);
+   Reg#(Bool) beforeClear <- mkRevertingVirtualReg(True);
+
+   Bool beforeActions = beforeEnq && beforeDeq && beforeClear;
+
    interface FIFOF fifo;
-      method Action enq(t x) if (notFull) = w_enq.wset(x);
-      method Action deq if (notEmpty) = pw_deq.send;
-      method t first if (r_count > 0) = vr_data[0];
-      method Action clear = pw_clear.send;
-      method Bool notFull = notFull;
-      method Bool notEmpty = notEmpty;
+      method Action enq(t x) if (notFull && beforeClear);
+        w_enq.wset(x);
+        beforeEnq <= False;
+      endmethod
+      method Action deq if (notEmpty && beforeClear);
+        pw_deq.send;
+        beforeDeq <= False;
+      endmethod
+      method t first if (beforeDeq && beforeClear && (r_count > 0)) = vr_data[0];
+      method Action clear();
+        pw_clear.send;
+        beforeClear <= False;
+      endmethod
+      method Bool notFull() if (beforeActions) = notFull;
+      method Bool notEmpty() if (beforeActions) = notEmpty;
    endinterface
 
-   interface Vector vector = zipWith(valid, genVector, readVReg(vr_data));
+   method vector() if (beforeActions) = zipWith(valid, genVector, readVReg(vr_data));
 
 endmodule
 

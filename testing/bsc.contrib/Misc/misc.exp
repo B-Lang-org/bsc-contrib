@@ -1,0 +1,25 @@
+# Include the boilerplate for bsc-contrib tests
+set here [file join [absolute $srcdir] $subdir]
+source $here/../contrib.tcl
+
+if { $contribtest } {
+
+    add_contrib_dirs_to_path { Misc }
+
+    # ---------------
+    # VectorFIFOF
+
+    # Check that the method scheduling relationships are as expected
+    compile_verilog_schedule_pass TestSched_VectorFIFOF.bsv
+    compare_file_filter_ids TestSched_VectorFIFOF.bsv.bsc-sched-out
+
+    # Test that the module operates as a FIFO
+    # and confirm that enq and deq occur in the same cycle
+    # Note: The use of Cur_Cycle requires separate .ba elaboration
+    test_c_veri_bsv_separately Test_VectorFIFOF
+
+    # ---------------
+
+    restore_path
+
+}
