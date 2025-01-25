@@ -15,6 +15,7 @@ build:
 	$(BSC) -u $(BSCFLAGS) EdgeFIFOFs.bsv
 	$(BSC) -u $(BSCFLAGS) GetPut_Aux.bsv
 	$(BSC) -u $(BSCFLAGS) Semi_FIFOF.bsv
+	$(BSC) -u $(BSCFLAGS) VectorFIFOF.bsv
 
 .PHONY: clean full_clean
 clean full_clean:
