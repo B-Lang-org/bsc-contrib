@@ -1,0 +1,25 @@
+package MList where
+
+import List
+
+-- A generic monadic List type that allows for the use of the "do" notation to
+-- build lists
+
+data MList_ t a = MList_ (a, List t)
+
+instance Monad (MList_ t) where
+    return x = MList_ (x, Nil)
+    bind (MList_ (a, as)) f =
+      case f a of
+        MList_ (b, bs) -> MList_ (b, append as bs)
+
+type MList t = MList_ t ()
+
+mList :: List t -> MList t
+mList as = MList_ ((), as)
+
+unMList :: MList_ t a -> List t
+unMList (MList_ (_, as)) = as
+
+m :: t -> MList t
+m x = mList $ Cons x Nil
