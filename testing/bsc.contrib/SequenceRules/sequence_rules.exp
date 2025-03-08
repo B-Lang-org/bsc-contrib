@@ -7,7 +7,7 @@ if { $contribtest } {
     add_contrib_dirs_to_path { SequenceRules }
 
     # Run the basic test
-    test_c_veri_bs_modules SequenceRulesTest
+    test_c_veri_bs_modules SequenceRulesTest {}
 
     restore_path
 

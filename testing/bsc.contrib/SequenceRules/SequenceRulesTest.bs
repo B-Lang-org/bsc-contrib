@@ -2,9 +2,9 @@ package SequenceRulesTest where
 
 import SequenceRules
 
-{-# verilog mkSequenceRulesTest #-}
-mkSequenceRulesTest :: Module Empty
-mkSequenceRulesTest = module
+{-# verilog sysSequenceRulesTest #-}
+sysSequenceRulesTest :: Module Empty
+sysSequenceRulesTest = module
   cycle :: UInt 8 <- mkCycleCounter
 
   let asUint3 :: Integer -> UInt 3
