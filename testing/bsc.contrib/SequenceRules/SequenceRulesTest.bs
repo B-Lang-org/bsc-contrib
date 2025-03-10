@@ -1,0 +1,61 @@
+package SequenceRulesTest where
+
+import SequenceRules
+
+{-# verilog sysSequenceRulesTest #-}
+sysSequenceRulesTest :: Module Empty
+sysSequenceRulesTest = module
+  cycle :: UInt 8 <- mkCycleCounter
+
+  let asUint3 :: Integer -> UInt 3
+      asUint3 = fromInteger
+
+  mkSequenceRules "SequenceRulesTest" cycle do
+    r $ $display "Cycle %d: rule 1" cycle
+    r $ $display "Cycle %d: rule 2" cycle
+    noR  -- Skip a cycle
+    r $ $display "Cycle %d: rule 4" cycle
+    rRepeat 3 $ r $ $display "Cycle %d: repeated rule" cycle
+    rDelay 3  -- Skip 3 cycles
+    rLoopUpTo 2 4 $ \i -> r $ $display "Cycle %d: rLoopUpTo 2 4 (%d)" cycle (asUint3 i)
+    rLoop 3 $ \i -> r $ $display "Cycle %d: rLoop 3 (%d)" cycle (asUint3 i)
+    rPar do
+      t do
+        r $ $display "Cycle %d: rPar, thread 1, rule 1" cycle
+        r $ $display "Cycle %d: rPar, thread 1, rule 2" cycle
+        r $ $display "Cycle %d: rPar, thread 1, rule 3" cycle
+        noR
+        r $ $display "Cycle %d: rPar, thread 1, rule 4" cycle
+      t do
+        r $ $display "Cycle %d: rPar, thread 2, rule 1" cycle
+        r $ $display "Cycle %d: rPar, thread 2, rule 2" cycle
+      t $ rRepeat 3 do
+        noR
+        r $ $display "Cycle %d: rPar, thread 3, rule 1" cycle
+    rParLoopUpTo 1 3 $ \i -> do
+      r $ $display "Cycle %d: rParLoopUpTo 1 3, rule 1 (%d)" cycle (asUint3 i)
+      r $ $display "Cycle %d: rParLoopUpTo 1 3, rule 2 (%d)" cycle (asUint3 i)
+    rParLoop 4 $ \i -> do
+      r $ $display "Cycle %d: rParLoop 4, rule 1 (%d)" cycle (asUint3 i)
+      r $ $display "Cycle %d: rParLoop 4, rule 2 (%d)" cycle (asUint3 i)
+      rPar do
+        t do
+          r $ $display "Cycle %d: rPar, rParLoop 4, subThread 1, rule 1 (%d)" cycle (asUint3 i)
+          r $ $display "Cycle %d: rPar, rParLoop 4, subThread 1, rule 2 (%d)" cycle (asUint3 i)
+        t do
+          r $ $display "Cycle %d: rPar, rParLoop 4, subThread 2, rule 1 (%d)" cycle (asUint3 i)
+          r $ $display "Cycle %d: rPar, rParLoop 4, subThread 2, rule 2 (%d)" cycle (asUint3 i)
+    do
+      r $ $display "Cycle %d: subsequence rule 1" cycle
+      r $ $display "Cycle %d: subsequence rule 2" cycle
+    rLoop 2 $ \i ->
+      rLoop 3 $ \j ->
+        r $ $display "Cycle %d: rLoop 2, rLoop 3 (%d, %d)" cycle (asUint3 i) (asUint3 j)
+    rParLoop 2 $ \i ->
+      rParLoop 3 $ \j ->
+        r $ $display "Cycle %d: rParLoop 2, rParLoop 3 (%d, %d)" cycle (asUint3 i) (asUint3 j)
+
+    r $ $display "Cycle %d: last rule" cycle
+    r $ pass
+
+  alwaysFailAtMaxCycleCount cycle

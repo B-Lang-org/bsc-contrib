@@ -1,0 +1,148 @@
+package SequenceRules where
+
+import List
+import MList
+
+-- Copyright (c) 2025 MatX, Inc. All Rights Reserved
+
+-- SPDX-License-Identifier: BSD-3-Clause
+
+-- This is a simplified version of StmtFSM that only handles straight-line
+-- sequences of statements.
+
+------------------------------------------------------------------------------
+-- These were selectively copied from different (much larger) libraries, and are
+-- not specific to this library.
+
+enumerateFrom :: Integer -> List a -> (Integer -> a -> b) -> List b
+enumerateFrom _ Nil _ = Nil
+enumerateFrom i (Cons x xs) fn = Cons (fn i x) (enumerateFrom (i + 1) xs fn)
+
+enumerate :: List a -> (Integer -> a -> b) -> List b
+enumerate = enumerateFrom 0
+
+ruleIf :: String -> Bool -> Action -> Rules
+ruleIf s b a =
+  rules
+    {-# ASSERT no implicit conditions #-}
+    {-# ASSERT fire when enabled #-}
+    s: when b ==> a
+
+-- The name 'rule' is unavailable, since it is a keyword.
+rule_ :: String -> Action -> Rules
+rule_ s a = ruleIf s True a
+
+alwaysIf :: (IsModule m c) => String -> Bool -> Action -> m Empty
+alwaysIf s b a = addRules $ ruleIf s b a
+
+always :: (IsModule m c) => String -> Action -> m Empty
+always s a = addRules $ rule_ s a
+
+mkCycleCounter :: (IsModule m c, DefaultValue t, Bits t t_size, Arith t) => m t
+mkCycleCounter = module
+  cycle :: Reg t <- mkReg 0
+  always "StepCycleCounter" $ cycle := cycle + 1
+  return cycle
+
+pass :: Action
+pass = do
+  $display "PASS"
+  $finish 0
+
+fail :: Action
+fail = do
+  $display "FAIL"
+  $fatal
+
+doIf :: Bool -> Action -> Action
+doIf True  a = a
+doIf False _ = noAction
+
+failIf :: Bool -> Action
+failIf cond = doIf cond fail
+
+-- Useful for scripted SequenceRules based tests, which should call pass at the
+-- end of their script. Detects if the script is missing a pass call, or hangs.
+alwaysFailAtMaxCycleCount :: (IsModule m c) => UInt n -> m Empty
+alwaysFailAtMaxCycleCount cycle =
+  alwaysIf "alwaysFailAtMaxCycleCount" (cycle == (unpack (0 - 1)))do
+    $display "Max cycle count reached: %d. Failing." cycle
+    fail
+
+------------------------------------------------------------------------------
+
+-- A sequence of actions, where each action is executed sequentially.
+type Sequence = MList (Maybe Action)
+
+-- "r" for "rule"
+r :: Action -> Sequence
+r a = m $ Valid a
+
+-- Equivalent to "r noAction" but does not create an empty rule (which would
+-- generate a compiler warning).
+noR :: Sequence
+noR = m Invalid
+
+-- Repeat a sequence of actions n times.
+rRepeat :: Integer -> Sequence -> Sequence
+rRepeat n s = mList $ concat $ replicate n $ unMList s
+
+-- Do nothing n times (does not create empty rules)
+rDelay :: Integer -> Sequence
+rDelay n = rRepeat n noR
+
+-- Loop over a sequence of actions n times, with the index passed to the
+-- function.
+rLoopUpTo :: Integer -> Integer -> (Integer -> Sequence) -> Sequence
+rLoopUpTo a b f = mList $ concat $ map unMList $ map f $ upto a b
+
+-- Simpler version of rLoopUpTo, starting at 0, going to n-1
+rLoop :: Integer -> (Integer -> Sequence) -> Sequence
+rLoop n = rLoopUpTo 0 (n - 1)
+
+-- A set of sequences, where each sequence is executed in parallel.
+type Sequences = MList Sequence
+
+-- "t" for "thread"
+t :: Sequence -> Sequences
+t = m
+
+-- Takes a list of threads (sequences of actions), and combines them to run them
+-- in parallel. If any of the sequences are shorter than the longest, the
+-- shorter ones will be padded with "do nothing" states so that the resulting
+-- action list is as long as the longest sequence.
+rPar :: Sequences -> Sequence
+rPar ts =
+  let headOrInvalid :: List (Maybe a) -> Maybe a
+      headOrInvalid Nil = Invalid
+      headOrInvalid (Cons a _) = a
+      tailOrNil :: List a -> List a
+      tailOrNil Nil = Nil
+      tailOrNil (Cons _ as) = as
+      zipLongest :: List (List (Maybe a)) -> List (List (Maybe a))
+      zipLongest xss =
+        if all null xss then Nil  -- 0 threads, or all threads are 0 length
+        else Cons (map headOrInvalid xss) (zipLongest (map tailOrNil xss))
+      joinMaybeActions :: List (Maybe Action) -> Maybe Action
+      joinMaybeActions as =
+        if not (any isValid as) then Invalid  -- All Invalid
+        else Valid $ joinActions $ map (fromMaybe noAction) as
+  in mList $ map joinMaybeActions $ zipLongest $ map unMList $ unMList ts
+
+rParLoopUpTo :: Integer -> Integer -> (Integer -> Sequence) -> Sequence
+rParLoopUpTo a b f = rPar $ mList $ map f $ upto a b
+
+rParLoop :: Integer -> (Integer -> Sequence) -> Sequence
+rParLoop n f = rParLoopUpTo 0 (n - 1) f
+
+-- Given a cycle counter, turn a sequence of actions into a set of rules
+-- controlled by that cycle counter.
+mkSequenceRules :: (IsModule m c) => String -> UInt n -> Sequence -> m Empty
+mkSequenceRules name cycle s = module
+  let actRules :: List Rules
+      actRules = enumerate (unMList s) $ \i ma ->
+        case ma of
+          Valid a -> ruleIf (name + "_" + (integerToString i))
+                            (cycle == (fromInteger i)) a
+          Invalid -> emptyRules
+  addRules $ fold rJoin actRules

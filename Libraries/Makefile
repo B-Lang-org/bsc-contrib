@@ -9,6 +9,7 @@ BUILD_ORDER = \
 	VerilogRepr \
 	Misc \
 	AMBA_Fabrics \
+	SequenceRules \
 
 .PHONY: all
 all: install

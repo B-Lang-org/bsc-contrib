@@ -1,0 +1,67 @@
+Cycle   0: rule 1
+Cycle   1: rule 2
+Cycle   3: rule 4
+Cycle   4: repeated rule
+Cycle   5: repeated rule
+Cycle   6: repeated rule
+Cycle  10: rLoopUpTo 2 4 (2)
+Cycle  11: rLoopUpTo 2 4 (3)
+Cycle  12: rLoopUpTo 2 4 (4)
+Cycle  13: rLoop 3 (0)
+Cycle  14: rLoop 3 (1)
+Cycle  15: rLoop 3 (2)
+Cycle  16: rPar, thread 1, rule 1
+Cycle  16: rPar, thread 2, rule 1
+Cycle  17: rPar, thread 1, rule 2
+Cycle  17: rPar, thread 2, rule 2
+Cycle  17: rPar, thread 3, rule 1
+Cycle  18: rPar, thread 1, rule 3
+Cycle  19: rPar, thread 3, rule 1
+Cycle  20: rPar, thread 1, rule 4
+Cycle  21: rPar, thread 3, rule 1
+Cycle  22: rParLoopUpTo 1 3, rule 1 (1)
+Cycle  22: rParLoopUpTo 1 3, rule 1 (2)
+Cycle  22: rParLoopUpTo 1 3, rule 1 (3)
+Cycle  23: rParLoopUpTo 1 3, rule 2 (1)
+Cycle  23: rParLoopUpTo 1 3, rule 2 (2)
+Cycle  23: rParLoopUpTo 1 3, rule 2 (3)
+Cycle  24: rParLoop 4, rule 1 (0)
+Cycle  24: rParLoop 4, rule 1 (1)
+Cycle  24: rParLoop 4, rule 1 (2)
+Cycle  24: rParLoop 4, rule 1 (3)
+Cycle  25: rParLoop 4, rule 2 (0)
+Cycle  25: rParLoop 4, rule 2 (1)
+Cycle  25: rParLoop 4, rule 2 (2)
+Cycle  25: rParLoop 4, rule 2 (3)
+Cycle  26: rPar, rParLoop 4, subThread 1, rule 1 (0)
+Cycle  26: rPar, rParLoop 4, subThread 2, rule 1 (0)
+Cycle  26: rPar, rParLoop 4, subThread 1, rule 1 (1)
+Cycle  26: rPar, rParLoop 4, subThread 2, rule 1 (1)
+Cycle  26: rPar, rParLoop 4, subThread 1, rule 1 (2)
+Cycle  26: rPar, rParLoop 4, subThread 2, rule 1 (2)
+Cycle  26: rPar, rParLoop 4, subThread 1, rule 1 (3)
+Cycle  26: rPar, rParLoop 4, subThread 2, rule 1 (3)
+Cycle  27: rPar, rParLoop 4, subThread 1, rule 2 (0)
+Cycle  27: rPar, rParLoop 4, subThread 2, rule 2 (0)
+Cycle  27: rPar, rParLoop 4, subThread 1, rule 2 (1)
+Cycle  27: rPar, rParLoop 4, subThread 2, rule 2 (1)
+Cycle  27: rPar, rParLoop 4, subThread 1, rule 2 (2)
+Cycle  27: rPar, rParLoop 4, subThread 2, rule 2 (2)
+Cycle  27: rPar, rParLoop 4, subThread 1, rule 2 (3)
+Cycle  27: rPar, rParLoop 4, subThread 2, rule 2 (3)
+Cycle  28: subsequence rule 1
+Cycle  29: subsequence rule 2
+Cycle  30: rLoop 2, rLoop 3 (0, 0)
+Cycle  31: rLoop 2, rLoop 3 (0, 1)
+Cycle  32: rLoop 2, rLoop 3 (0, 2)
+Cycle  33: rLoop 2, rLoop 3 (1, 0)
+Cycle  34: rLoop 2, rLoop 3 (1, 1)
+Cycle  35: rLoop 2, rLoop 3 (1, 2)
+Cycle  36: rParLoop 2, rParLoop 3 (0, 0)
+Cycle  36: rParLoop 2, rParLoop 3 (0, 1)
+Cycle  36: rParLoop 2, rParLoop 3 (0, 2)
+Cycle  36: rParLoop 2, rParLoop 3 (1, 0)
+Cycle  36: rParLoop 2, rParLoop 3 (1, 1)
+Cycle  36: rParLoop 2, rParLoop 3 (1, 2)
+Cycle  37: last rule
+PASS
