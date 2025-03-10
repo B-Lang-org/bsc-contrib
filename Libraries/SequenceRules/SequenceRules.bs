@@ -1,10 +1,14 @@
 package SequenceRules where
 
--- This is a simplified version of StmtFSM that only handles straight-line
--- sequences of statements.
-
 import List
 import MList
+
+-- Copyright (c) 2025 MatX, Inc. All Rights Reserved
+
+-- SPDX-License-Identifier: BSD-3-Clause
+
+-- This is a simplified version of StmtFSM that only handles straight-line
+-- sequences of statements.
 
 ------------------------------------------------------------------------------
 -- These were selectively copied from different (much larger) libraries, and are
@@ -24,16 +28,15 @@ ruleIf s b a =
     {-# ASSERT fire when enabled #-}
     s: when b ==> a
 
-alwaysIf :: (IsModule m c) => String -> Bool -> Action -> m Empty
-alwaysIf s b a = addRules $ ruleIf s b a
-
 -- The name 'rule' is unavailable, since it is a keyword.
 rule_ :: String -> Action -> Rules
 rule_ s a = ruleIf s True a
 
+alwaysIf :: (IsModule m c) => String -> Bool -> Action -> m Empty
+alwaysIf s b a = addRules $ ruleIf s b a
+
 always :: (IsModule m c) => String -> Action -> m Empty
 always s a = addRules $ rule_ s a
-
 
 mkCycleCounter :: (IsModule m c, DefaultValue t, Bits t t_size, Arith t) => m t
 mkCycleCounter = module

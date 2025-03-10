@@ -2,6 +2,10 @@ package MList where
 
 import List
 
+-- Copyright (c) 2025 MatX, Inc. All Rights Reserved
+
+-- SPDX-License-Identifier: BSD-3-Clause
+
 -- A generic monadic List type that allows for the use of the "do" notation to
 -- build lists
 
