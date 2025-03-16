@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2023 Bluespec, Inc.  All Rights Reserved
+// Copyright (c) 2019-2025 Bluespec, Inc.  All Rights Reserved
 // Copyright (c) 2024 Rishiyur S. Nikhil.
 
 // SPDX-License-Identifier: BSD-3-Clause
@@ -230,7 +230,7 @@ instance Connectable #(AXI4_RTL_M_IFC #(wd_id, wd_addr, wd_data, wd_user),
 		       (Empty);
 
       (* fire_when_enabled, no_implicit_conditions *)
-      rule rl_AW;
+      rule rl_AW_valid;
 	 axis.m_awvalid (axim.m_awvalid,
 			 axim.m_awid,
 			 axim.m_awaddr,
@@ -243,30 +243,42 @@ instance Connectable #(AXI4_RTL_M_IFC #(wd_id, wd_addr, wd_data, wd_user),
 			 axim.m_awqos,
 			 axim.m_awregion,
 			 axim.m_awuser);
+      endrule
+
+      (* fire_when_enabled, no_implicit_conditions *)
+      rule rl_AW_ready;
 	 axim.m_awready (axis.m_awready);
       endrule
 
       (* fire_when_enabled, no_implicit_conditions *)
-      rule rl_W;
+      rule rl_W_valid;
 	 axis.m_wvalid (axim.m_wvalid,
 			axim.m_wdata,
 			axim.m_wstrb,
 			axim.m_wlast,
 			axim.m_wuser);
+      endrule
+
+      (* fire_when_enabled, no_implicit_conditions *)
+      rule rl_W_ready;
 	 axim.m_wready (axis.m_wready);
       endrule
 
       (* fire_when_enabled, no_implicit_conditions *)
-      rule rl_B;
+      rule rl_B_valid;
 	 axim.m_bvalid (axis.m_bvalid,
 			axis.m_bid,
 			axis.m_bresp,
 			axis.m_buser);
+      endrule
+
+      (* fire_when_enabled, no_implicit_conditions *)
+      rule rl_B_ready;
 	 axis.m_bready (axim.m_bready);
       endrule
 
       (* fire_when_enabled, no_implicit_conditions *)
-      rule rl_AR;
+      rule rl_AR_valid;
 	 axis.m_arvalid (axim.m_arvalid,
 			 axim.m_arid,
 			 axim.m_araddr,
@@ -279,17 +291,25 @@ instance Connectable #(AXI4_RTL_M_IFC #(wd_id, wd_addr, wd_data, wd_user),
 			 axim.m_arqos,
 			 axim.m_arregion,
 			 axim.m_aruser);
+      endrule
+
+      (* fire_when_enabled, no_implicit_conditions *)
+      rule rl_AR_ready;
 	 axim.m_arready (axis.m_arready);
       endrule
 
       (* fire_when_enabled, no_implicit_conditions *)
-      rule rl_R;
+      rule rl_R_valid;
 	 axim.m_rvalid (axis.m_rvalid,
 			axis.m_rid,
 			axis.m_rdata,
 			axis.m_rresp,
 			axis.m_rlast,
 			axis.m_ruser);
+      endrule
+
+      (* fire_when_enabled, no_implicit_conditions *)
+      rule rl_R_ready;
 	 axis.m_rready (axim.m_rready);
       endrule
    endmodule
