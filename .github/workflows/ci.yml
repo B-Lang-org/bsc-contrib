@@ -6,9 +6,9 @@ on: [ push, pull_request ]
 jobs:
   build-check:
     name: "Check: code cleanliness"
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Check tabs and whitespace
         shell: bash
         run: ".github/workflows/check_whitespace.sh"
@@ -16,12 +16,12 @@ jobs:
   build-ubuntu:
     strategy:
       matrix:
-        os: [ ubuntu-20.04, ubuntu-22.04, ubuntu-24.04 ]
+        os: [ ubuntu-22.04, ubuntu-24.04 ]
       fail-fast: false
     name: "Build ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Download bsc
         uses: B-Lang-org/download-bsc@v1
@@ -44,12 +44,12 @@ jobs:
   build-macOS:
     strategy:
       matrix:
-        os: [ macos-13, macos-14, macos-15 ]
+        os: [ macos-14, macos-15, macos-15-intel, macos-26 ]
       fail-fast: false
     name: "Build ${{ matrix.os }}"
     runs-on: ${{ matrix. os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Download bsc
         uses: B-Lang-org/download-bsc@v1
@@ -72,13 +72,13 @@ jobs:
   test-ubuntu:
     strategy:
       matrix:
-        os: [ ubuntu-20.04, ubuntu-22.04, ubuntu-24.04 ]
+        os: [ ubuntu-22.04, ubuntu-24.04 ]
       fail-fast: false
     name: "Test ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
     needs: build-ubuntu
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install dependencies
         shell: bash
@@ -103,7 +103,7 @@ jobs:
           cp -r testing/bsc.contrib ../bsc-testsuite/testsuite/
 
       - name: Download bsc-contrib
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: ${{ matrix.os }} build
       - name: Install bsc-contrib
@@ -173,13 +173,13 @@ jobs:
   test-macOS:
     strategy:
       matrix:
-        os: [ macos-13, macos-14, macos-15 ]
+        os: [ macos-14, macos-15, macos-15-intel, macos-26 ]
       fail-fast: false
     name: "Test ${{ matrix.os }}"
     runs-on: ${{ matrix. os }}
     needs: build-macos
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install dependencies
         shell: bash
@@ -204,7 +204,7 @@ jobs:
           cp -r testing/bsc.contrib ../bsc-testsuite/testsuite/
 
       - name: Download bsc-contrib
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: ${{ matrix.os }} build
       - name: Install bsc-contrib
