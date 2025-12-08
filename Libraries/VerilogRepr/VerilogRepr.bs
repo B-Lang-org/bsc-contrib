@@ -128,7 +128,7 @@ instance TypeId' (NumArg i) where
   bsType' _ = integerToString $ valueOf i
   verilogTypeId' _ = integerToString $ valueOf i
 
-instance TypeId' ConArg where
+instance TypeId' OtherConArg where
   bsType' _ =
     error "Demanded Bluespec type of a higher-kinded type argument"
   verilogTypeId' _ =
