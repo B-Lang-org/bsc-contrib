@@ -277,8 +277,8 @@ instance (FIFOs' a brx1 nrx1 btx1 ntx1, FIFOs' b brx2 nrx2 btx2 ntx2,
           Add brx1 prx1 brx, Add brx2 prx2 brx, Add btx1 ptx1 btx, Add btx2 ptx2 btx,
           Add nrx1 nrx2 nrx, Add ntx1 ntx2 ntx) =>
          FIFOs' (a, b) brx nrx btx ntx where
-  mkRxCredits' _ = liftM2 append (mkRxCredits' (_ :: a)) (mkRxCredits' (_ :: b))
-  mkTxCredits' _ = liftM2 append (mkTxCredits' (_ :: a)) (mkTxCredits' (_ :: b))
+  mkRxCredits' _ = liftA2 append (mkRxCredits' (_ :: a)) (mkRxCredits' (_ :: b))
+  mkTxCredits' _ = liftA2 append (mkTxCredits' (_ :: a)) (mkTxCredits' (_ :: b))
   mkFIFOs' rxCredits rxTagEq rxBody deq txCredits enq = do
     (fifos1, rs1) <- mkFIFOs'
       (take rxCredits) rxTagEq rxBody deq
@@ -288,8 +288,8 @@ instance (FIFOs' a brx1 nrx1 btx1 ntx1, FIFOs' b brx2 nrx2 btx2 ntx2,
       (takeTail txCredits) (\ txTag txBody -> enq txTag txBody)
     return ((fifos1, fifos2), rs1 `rJoinDescendingUrgency` rs2)
 
-  genCMsgTypeHeaderDcls' _ = liftM2 strConcat (genCMsgTypeHeaderDcls' (_ :: a)) (genCMsgTypeHeaderDcls' (_ :: b))
-  genCMsgTypeImplDcls' _ = liftM2 strConcat (genCMsgTypeImplDcls' (_ :: a)) (genCMsgTypeImplDcls' (_ :: b))
+  genCMsgTypeHeaderDcls' _ = liftA2 strConcat (genCMsgTypeHeaderDcls' (_ :: a)) (genCMsgTypeHeaderDcls' (_ :: b))
+  genCMsgTypeImplDcls' _ = liftA2 strConcat (genCMsgTypeImplDcls' (_ :: a)) (genCMsgTypeImplDcls' (_ :: b))
   genCFIFOStructItems' _ = genCFIFOStructItems' (_ :: a) +++ genCFIFOStructItems' (_ :: b)
   genCFIFOInitCredits' _ = genCFIFOInitCredits' (_ :: a) +++ genCFIFOInitCredits' (_ :: b)
   genCFIFORestoreCredits' _ = genCFIFORestoreCredits' (_ :: a) +++ genCFIFORestoreCredits' (_ :: b)
