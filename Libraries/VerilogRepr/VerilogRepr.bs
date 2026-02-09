@@ -301,8 +301,20 @@ data RenderVerilog a
       (List (String, String) -> List VDecl -> List TypeInfo ->
        (a, List (String, String), List VDecl, List TypeInfo))
 
+instance Functor RenderVerilog where
+  fmap f (RenderVerilog g) = RenderVerilog $ \ names decls infos ->
+    case g names decls infos of
+      (x, names', decls', infos') -> (f x, names', decls', infos')
+
+instance Applicative RenderVerilog where
+  pure x = RenderVerilog $ \ names decls infos -> (x, names, decls, infos)
+  liftA2 f (RenderVerilog g) (RenderVerilog h) = RenderVerilog $ \ names decls infos ->
+    case g names decls infos of
+      (x, names', decls', infos') ->
+        case h names' decls' infos' of
+          (y, names'', decls'', infos'') -> (f x y, names'', decls'', infos'')
+
 instance Monad RenderVerilog where
-  return x = RenderVerilog $ \ names decls infos -> (x, names, decls, infos)
   bind (RenderVerilog f) g = RenderVerilog $ \ names decls infos ->
     case f names decls infos of
       (x, names', decls', infos') ->
@@ -541,7 +553,7 @@ instance VerilogRepr (Int n) where
 
 instance (VerilogRepr a, Bits a n, TypeId a) => VerilogRepr (Maybe a) where
   verilogType = mkStructType "Prelude" "value"
-  verilogFields _ base = liftM2 append
+  verilogFields _ base = liftA2 append
     (mkField (prx :: Bool) ("has_" +++ base))
     (mkField (prx :: a) base)
 
@@ -584,7 +596,7 @@ class VerilogTupleRepr a where
     RenderVerilog (List (VField, FieldInfo))
 
 instance (VerilogRepr a, VerilogTupleRepr b) => VerilogTupleRepr (a, b) where
-  verilogTupleFields _ i name = liftM2 append
+  verilogTupleFields _ i name = liftA2 append
     (verilogFields (prx :: a) $ name +++ integerToString i)
     (verilogTupleFields (prx :: b) (i + 1) name)
 
@@ -782,7 +794,7 @@ class VerilogSummands a where
 
 instance (VerilogSummands a, VerilogSummands b) =>
     VerilogSummands (Either a b) where
-  verilogSummands _ polyBaseName baseName pkg maxWidth = liftM2 append
+  verilogSummands _ polyBaseName baseName pkg maxWidth = liftA2 append
     (verilogSummands (prx :: a) polyBaseName baseName pkg maxWidth)
     (verilogSummands (prx :: b) polyBaseName baseName pkg maxWidth)
 
@@ -848,7 +860,7 @@ instance VerilogFields () where
   verilogFields' _ _ = return nil
 
 instance (VerilogFields a, VerilogFields b) => VerilogFields (a, b) where
-  verilogFields' _  named = liftM2 append
+  verilogFields' _  named = liftA2 append
     (verilogFields' (prx :: a) named)
     (verilogFields' (prx :: b) named)
 

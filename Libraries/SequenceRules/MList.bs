@@ -11,8 +11,14 @@ import List
 
 data MList_ t a = MList_ (a, List t)
 
+instance Functor (MList_ t) where
+    fmap f (MList_ (x, xs)) = MList_ (f x, xs)
+
+instance Applicative (MList_ t) where
+    pure x = MList_ (x, Nil)
+    liftA2 f (MList_ (a, as)) (MList_ (b, bs)) = MList_ (f a b, append as bs)
+
 instance Monad (MList_ t) where
-    return x = MList_ (x, Nil)
     bind (MList_ (a, as)) f =
       case f a of
         MList_ (b, bs) -> MList_ (b, append as bs)
