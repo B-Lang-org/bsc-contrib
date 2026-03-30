@@ -1,7 +1,7 @@
 checking package dependencies
 compiling TestSched_VectorFIFOF.bsv
 code generation for mkVectorFIFOF_4_Bool starts
-=== schedule:
+=== schedule (TestSched_VectorFIFOF mkVectorFIFOF_4_Bool):
 parallel: [esposito: [fifo_enq -> [],
 		      fifo_deq -> [],
 		      fifo_first -> [],
@@ -21,7 +21,7 @@ order: [fifo_first,
 
 -----
 
-=== resources:
+=== resources (TestSched_VectorFIFOF mkVectorFIFOF_4_Bool):
 [(beforeClear.read, [(beforeClear.read, 1)]),
  (beforeClear.write, [(beforeClear.write 1'd1, 1)]),
  (beforeDeq.read, [(beforeDeq.read, 1)]),
@@ -51,7 +51,7 @@ order: [fifo_first,
 
 -----
 
-=== vschedinfo:
+=== vschedinfo (TestSched_VectorFIFOF mkVectorFIFOF_4_Bool):
 SchedInfo
 [RDY_fifo_clear CF [RDY_fifo_clear,
 		    RDY_vector,
