@@ -74,7 +74,9 @@ endinterface
 module mkCompletionBuffer(CompletionBuffer#(ln, a, b))
    provisos (Bits#(a, sa), Bits#(b, sb), Add#(1, ln, ln1), FShow#(b));
 
-   let hi = fromInteger(valueOf(TExp#(ln)) - 1);
+   function t hi() provisos (Literal#(t));
+      return(fromInteger(valueOf(TExp#(ln)) - 1));
+   endfunction
 
    Reg#(Bool) initialized <- mkReg(False);
 
