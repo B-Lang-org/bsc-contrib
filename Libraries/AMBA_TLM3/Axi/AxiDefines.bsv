@@ -128,8 +128,8 @@ instance BusPayload#(AxiAddrCmd#(`TLM_PRM), TLMId#(`TLM_PRM));
    function isLast (payload);
       return True;
    endfunction
-   function getId(payload);
-      return payload.id;
+   function TLMId#(`TLM_PRM) getId(AxiAddrCmd#(`TLM_PRM) payload);
+      return fromAxiId(payload.id);
    endfunction
    function setId(payload, value);
       payload.id = getAxiId(value);
@@ -141,8 +141,8 @@ instance BusPayload#(AxiWrData#(`TLM_PRM), TLMId#(`TLM_PRM));
    function isLast (payload);
       return payload.last;
    endfunction
-   function getId(payload);
-      return payload.id;
+   function TLMId#(`TLM_PRM) getId(AxiWrData#(`TLM_PRM) payload);
+      return fromAxiId(payload.id);
    endfunction
    function setId(payload, value);
       payload.id = getAxiId(value);
@@ -154,8 +154,8 @@ instance BusPayload#(AxiWrResp#(`TLM_PRM), TLMId#(`TLM_PRM));
    function isLast (payload);
       return True;
    endfunction
-   function getId(payload);
-      return payload.id;
+   function TLMId#(`TLM_PRM) getId(AxiWrResp#(`TLM_PRM) payload);
+      return fromAxiId(payload.id);
    endfunction
    function setId(payload, value);
       payload.id = getAxiId(value);
@@ -167,8 +167,8 @@ instance BusPayload#(AxiRdResp#(`TLM_PRM), TLMId#(`TLM_PRM));
    function isLast (payload);
       return payload.last;
    endfunction
-   function getId(payload);
-      return payload.id;
+   function TLMId#(`TLM_PRM) getId(AxiRdResp#(`TLM_PRM) payload);
+      return fromAxiId(payload.id);
    endfunction
    function setId(payload, value);
       payload.id = getAxiId(value);
